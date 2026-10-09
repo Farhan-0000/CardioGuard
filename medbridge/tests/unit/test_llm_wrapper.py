@@ -1,414 +1,498 @@
 """
-Unit tests for TASK-17: Resilient LLM Wrapper.
+Unit tests for the Resilient LLM Wrapper (TASK-17, ADL-028).
 
-All tests mock HTTP calls — no real API requests are made.
-Tests cover: valid parsing, JSON extraction from code blocks, JSON repair,
-retry on timeout/5xx, graceful None on permanent failure, and provider
-failover.
+All HTTP traffic goes through an ``httpx.MockTransport`` — no real Ollama or
+remote API is contacted. Covers: native Ollama payload (structured-output
+``format`` schema, options, keep_alive, think gating), per-call model/seed,
+LOCAL_ONLY_MODE, optional remote providers and failover, retry/backoff,
+JSON extraction and repair, call statistics, the request cache, warm-up and
+health.
 """
-import asyncio
+from __future__ import annotations
+
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from collections.abc import Callable
+from typing import Any
 
 import httpx
 import pytest
 from pydantic import BaseModel
 
-from medbridge.ai.llm_wrapper import ResilientLLMWrapper
+from medbridge.ai import llm_wrapper
+from medbridge.ai.llm_wrapper import (
+    LLMCallStat,
+    ResilientLLMWrapper,
+    get_llm_wrapper,
+    llm_call_log,
+    llm_format_schema,
+    request_cache_key,
+    set_request_cache,
+)
+from medbridge.ai.schemas.extractor import ExtractorOutput
+from medbridge.ai.schemas.response_generator import ResponseGeneratorOutput
+from medbridge.config import Settings
 
-
-# ---------------------------------------------------------------------------
-# Test schema
-# ---------------------------------------------------------------------------
 
 class SampleOutput(BaseModel):
-    """Minimal schema for testing."""
     action: str
     rationale: str
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture
-def wrapper():
-    """Create a wrapper with fast retries for testing."""
-    with patch("medbridge.ai.llm_wrapper.get_settings") as mock_settings:
-        settings = MagicMock()
-        settings.LLM_MODEL = "test-model"
-        settings.LLM_MAX_RETRIES = 3
-        settings.LLM_RETRY_BASE_DELAY = 0.01  # Fast retries for tests
-        settings.LLM_SEED = 42
-        settings.GROQ_API_KEY = "test-groq-key"
-        settings.OPENAI_API_KEY = ""  # No fallback
-        mock_settings.return_value = settings
-        return ResilientLLMWrapper()
-
-
-@pytest.fixture
-def wrapper_with_failover():
-    """Create a wrapper with both Groq and OpenAI providers."""
-    with patch("medbridge.ai.llm_wrapper.get_settings") as mock_settings:
-        settings = MagicMock()
-        settings.LLM_MODEL = "test-model"
-        settings.LLM_MAX_RETRIES = 2
-        settings.LLM_RETRY_BASE_DELAY = 0.01
-        settings.LLM_SEED = 42
-        settings.GROQ_API_KEY = "test-groq-key"
-        settings.OPENAI_API_KEY = "test-openai-key"
-        mock_settings.return_value = settings
-        return ResilientLLMWrapper()
 
 
 VALID_JSON = json.dumps({"action": "PROCEED", "rationale": "Context sufficient"})
 
 
-def _make_httpx_response(content: str, status_code: int = 200) -> httpx.Response:
-    """Build a mock httpx.Response with chat-completions JSON body."""
-    body = json.dumps({
-        "choices": [{"message": {"content": content}}]
-    })
-    return httpx.Response(
-        status_code=status_code,
-        json=json.loads(body),
-        request=httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions"),
-    )
+def make_settings(**overrides: Any) -> Settings:
+    base: dict[str, Any] = {
+        "LLM_PROVIDER": "ollama",
+        "LOCAL_ONLY_MODE": True,
+        "OLLAMA_BASE_URL": "http://127.0.0.1:11434/v1",
+        "LLM_MODEL": "test-model",
+        "LLM_MAX_RETRIES": 3,
+        "LLM_RETRY_BASE_DELAY": 0.0,
+        "LLM_SEED": 42,
+        "LLM_KEEP_ALIVE": "30m",
+        "LLM_NUM_CTX": 8192,
+        "LLM_THINK": False,
+        "GROQ_API_KEY": "",
+        "OPENAI_API_KEY": "",
+    }
+    base.update(overrides)
+    return Settings(_env_file=None, **base)
+
+
+class FakeServer:
+    """Routes requests to per-path handlers and records everything it receives."""
+
+    def __init__(self) -> None:
+        self.requests: list[httpx.Request] = []
+        self.chat_contents: list[str] = [VALID_JSON]
+        self.chat_handler: Callable[[httpx.Request], httpx.Response] | None = None
+        self.capabilities: dict[str, list[str]] = {}
+        self.tags: list[str] = ["test-model"]
+        self.loaded: list[str] = []
+
+    def bodies(self, path: str) -> list[dict[str, Any]]:
+        return [json.loads(r.content) for r in self.requests if r.url.path == path]
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        self.requests.append(request)
+        path = request.url.path
+        if path == "/api/show":
+            model = json.loads(request.content)["model"]
+            return httpx.Response(200, json={"capabilities": self.capabilities.get(model, ["completion"])})
+        if path == "/api/tags":
+            return httpx.Response(200, json={"models": [{"name": n} for n in self.tags]})
+        if path == "/api/ps":
+            return httpx.Response(200, json={"models": [{"name": n} for n in self.loaded]})
+        if path == "/api/generate":
+            return httpx.Response(200, json={"done": True})
+        if self.chat_handler is not None:
+            return self.chat_handler(request)
+        content = self.chat_contents.pop(0) if len(self.chat_contents) > 1 else self.chat_contents[0]
+        if path == "/api/chat":
+            return httpx.Response(200, json={
+                "message": {"role": "assistant", "content": content},
+                "prompt_eval_count": 120, "eval_count": 30,
+                "total_duration": 2_500_000_000, "load_duration": 1_000_000_000,
+                "done_reason": "stop",
+            })
+        return httpx.Response(200, json={
+            "choices": [{"message": {"content": content}}],
+            "usage": {"prompt_tokens": 50, "completion_tokens": 10},
+        })
+
+
+@pytest.fixture
+def server() -> FakeServer:
+    return FakeServer()
+
+
+def make_wrapper(server: FakeServer, **overrides: Any) -> ResilientLLMWrapper:
+    return ResilientLLMWrapper(make_settings(**overrides), transport=httpx.MockTransport(server.handler))
+
+
+async def call(wrapper: ResilientLLMWrapper, schema: type[BaseModel] = SampleOutput, **kwargs: Any):
+    return await wrapper.call("test", "system", "user", schema, **kwargs)
 
 
 # ---------------------------------------------------------------------------
-# Valid JSON response parsing
+# Native Ollama request
 # ---------------------------------------------------------------------------
 
-class TestValidParsing:
-    """Mocked valid JSON response → validated Pydantic model."""
 
-    @pytest.mark.asyncio
-    async def test_parses_clean_json(self, wrapper):
-        mock_resp = _make_httpx_response(VALID_JSON)
+class TestNativeOllamaPayload:
+    async def test_posts_native_chat_endpoint_with_v1_stripped(self, server: FakeServer) -> None:
+        result = await call(make_wrapper(server))
+        assert isinstance(result, SampleOutput) and result.action == "PROCEED"
+        chat = [r for r in server.requests if r.url.path == "/api/chat"]
+        assert len(chat) == 1
+        assert str(chat[0].url) == "http://127.0.0.1:11434/api/chat"
 
-        with patch.object(httpx.AsyncClient, "post", new_callable=AsyncMock, return_value=mock_resp):
-            result = await wrapper.call(
-                call_name="test",
-                system_prompt="You are a test.",
-                user_prompt="Test input",
-                output_schema=SampleOutput,
-            )
+    async def test_payload_shape(self, server: FakeServer) -> None:
+        await call(make_wrapper(server), temperature=0.0, max_tokens=256)
+        body = server.bodies("/api/chat")[0]
+        assert body["model"] == "test-model"
+        assert body["stream"] is False
+        assert body["messages"] == [
+            {"role": "system", "content": "system"},
+            {"role": "user", "content": "user"},
+        ]
+        assert body["format"] == llm_format_schema(SampleOutput)
+        assert body["options"] == {
+            "temperature": 0.0, "seed": 42, "num_ctx": 8192, "num_predict": 256, "top_p": 1.0,
+        }
+        assert body["keep_alive"] == "30m"
 
+    async def test_generator_sampling_keeps_seed_and_uses_top_p_095(self, server: FakeServer) -> None:
+        await call(make_wrapper(server), temperature=0.3)
+        options = server.bodies("/api/chat")[0]["options"]
+        assert options["temperature"] == 0.3
+        assert options["top_p"] == 0.95
+        assert options["seed"] == 42
+
+    async def test_model_and_seed_override(self, server: FakeServer) -> None:
+        await call(make_wrapper(server), model="gemma3:4b", seed=7)
+        body = server.bodies("/api/chat")[0]
+        assert body["model"] == "gemma3:4b"
+        assert body["options"]["seed"] == 7
+
+    async def test_think_sent_only_to_thinking_models(self, server: FakeServer) -> None:
+        server.capabilities = {"qwen3:8b": ["completion", "thinking"], "gemma3:4b": ["completion"]}
+        wrapper = make_wrapper(server)
+        await call(wrapper, model="qwen3:8b")
+        await call(wrapper, model="gemma3:4b")
+        first, second = server.bodies("/api/chat")
+        assert first["think"] is False
+        assert "think" not in second
+
+    async def test_capabilities_cached_per_model(self, server: FakeServer) -> None:
+        server.capabilities = {"qwen3:8b": ["thinking"]}
+        wrapper = make_wrapper(server)
+        for _ in range(3):
+            await call(wrapper, model="qwen3:8b")
+        assert len(server.bodies("/api/show")) == 1
+
+    async def test_show_failure_omits_think(self, server: FakeServer) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/api/show":
+                return httpx.Response(500)
+            return server.handler(request)
+
+        wrapper = ResilientLLMWrapper(make_settings(), transport=httpx.MockTransport(handler))
+        assert await call(wrapper) is not None
+        assert "think" not in server.bodies("/api/chat")[0]
+
+
+class TestFormatSchema:
+    def test_refs_inlined_and_all_properties_required(self) -> None:
+        schema = llm_format_schema(ExtractorOutput)
+        assert "$defs" not in json.dumps(schema)
+        assert schema["required"] == ["delta_events", "search_query", "raw_intent"]
+        item = schema["properties"]["delta_events"]["items"]
+        assert item["required"] == ["event_type", "payload"]
+        assert item["properties"]["event_type"]["enum"][0] == "BP_READING"
+
+    def test_llm_omit_properties_removed(self) -> None:
+        schema = llm_format_schema(ResponseGeneratorOutput)
+        assert list(schema["properties"]) == ["response_text"]
+        assert schema["required"] == ["response_text"]
+
+
+# ---------------------------------------------------------------------------
+# Local-only mode and remote providers
+# ---------------------------------------------------------------------------
+
+
+class TestProviders:
+    async def test_local_only_blocks_remote_provider(self, server: FakeServer) -> None:
+        wrapper = make_wrapper(
+            server, LLM_PROVIDER="groq", GROQ_API_KEY="k1", OPENAI_API_KEY="k2", LOCAL_ONLY_MODE=True
+        )
+        assert wrapper.provider_names == ["ollama"]
+        server.chat_handler = lambda request: httpx.Response(503)
+        assert await call(wrapper) is None
+        assert all(r.url.host == "127.0.0.1" for r in server.requests)
+
+    async def test_remote_provider_when_local_only_disabled(self, server: FakeServer) -> None:
+        wrapper = make_wrapper(
+            server, LLM_PROVIDER="groq", GROQ_API_KEY="secret", LOCAL_ONLY_MODE=False,
+            GROQ_MODEL="llama-3.1-8b-instant",
+        )
+        assert wrapper.provider_names == ["groq"]
+        with llm_call_log() as stats:
+            result = await call(wrapper)
         assert result is not None
-        assert isinstance(result, SampleOutput)
-        assert result.action == "PROCEED"
-        assert result.rationale == "Context sufficient"
+        request = server.requests[-1]
+        assert str(request.url) == "https://api.groq.com/openai/v1/chat/completions"
+        assert request.headers["Authorization"] == "Bearer secret"
+        body = json.loads(request.content)
+        assert body["model"] == "llama-3.1-8b-instant"
+        assert body["response_format"] == {"type": "json_object"}
+        assert body["seed"] == 42
+        assert stats[0].provider == "groq" and stats[0].prompt_tokens == 50
+
+    async def test_remote_without_key_falls_back_to_ollama(self, server: FakeServer) -> None:
+        wrapper = make_wrapper(server, LLM_PROVIDER="openai", LOCAL_ONLY_MODE=False)
+        assert wrapper.provider_names == ["ollama"]
+
+    async def test_failover_to_remote_when_allowed(self, server: FakeServer) -> None:
+        wrapper = make_wrapper(
+            server, LLM_PROVIDER="ollama", LOCAL_ONLY_MODE=False, GROQ_API_KEY="k", LLM_MAX_RETRIES=2,
+        )
+        assert wrapper.provider_names == ["ollama", "groq"]
+
+        def chat(request: httpx.Request) -> httpx.Response:
+            if request.url.host == "127.0.0.1":
+                raise httpx.ReadTimeout("slow", request=request)
+            return httpx.Response(200, json={"choices": [{"message": {"content": VALID_JSON}}]})
+
+        server.chat_handler = chat
+        result = await call(wrapper)
+        assert result is not None
+        hosts = [r.url.host for r in server.requests if r.url.path.endswith(("chat", "completions"))]
+        assert hosts == ["127.0.0.1", "127.0.0.1", "api.groq.com"]
+
+    async def test_remote_blocked_at_send_time_in_local_only(self, server: FakeServer) -> None:
+        wrapper = make_wrapper(server)
+        remote = llm_wrapper._Provider("groq", "https://api.groq.com/openai/v1", "k", "m")
+        wrapper._providers = [remote]
+        assert await call(wrapper) is None
+        assert not any(r.url.host == "api.groq.com" for r in server.requests)
 
 
 # ---------------------------------------------------------------------------
-# JSON extraction from code blocks
+# Retry, extraction and repair
 # ---------------------------------------------------------------------------
+
+
+class TestRetries:
+    async def test_retry_on_timeout_then_succeed(self, server: FakeServer) -> None:
+        attempts: list[int] = []
+
+        def chat(request: httpx.Request) -> httpx.Response:
+            attempts.append(1)
+            if len(attempts) == 1:
+                raise httpx.ReadTimeout("timeout", request=request)
+            return httpx.Response(200, json={"message": {"content": VALID_JSON}})
+
+        server.chat_handler = chat
+        with llm_call_log() as stats:
+            assert await call(make_wrapper(server)) is not None
+        assert len(attempts) == 2 and stats[0].attempts == 2
+
+    async def test_retry_on_500_then_succeed(self, server: FakeServer) -> None:
+        responses = [httpx.Response(500), httpx.Response(200, json={"message": {"content": VALID_JSON}})]
+        server.chat_handler = lambda request: responses.pop(0)
+        assert await call(make_wrapper(server)) is not None
+
+    async def test_connect_error_retried_then_none(self, server: FakeServer) -> None:
+        def chat(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("refused", request=request)
+
+        server.chat_handler = chat
+        with llm_call_log() as stats:
+            assert await call(make_wrapper(server)) is None
+        assert stats[0].attempts == 3 and stats[0].success is False
+
+    async def test_client_error_not_retried(self, server: FakeServer) -> None:
+        server.chat_handler = lambda request: httpx.Response(404, json={"error": "model not found"})
+        with llm_call_log() as stats:
+            assert await call(make_wrapper(server)) is None
+        assert stats[0].attempts == 1
+
+    async def test_quota_429_not_retried_but_transient_429_is(self, server: FakeServer) -> None:
+        server.chat_handler = lambda request: httpx.Response(429, text="quota exceeded")
+        with llm_call_log() as stats:
+            assert await call(make_wrapper(server)) is None
+        assert stats[0].attempts == 1
+
+        server.chat_handler = lambda request: httpx.Response(429, text="slow down")
+        with llm_call_log() as stats:
+            assert await call(make_wrapper(server)) is None
+        assert stats[0].attempts == 3
+
+    async def test_repairable_json_parsed_without_new_request(self, server: FakeServer) -> None:
+        server.chat_contents = ['{"action": "PROCEED", "rationale": "ok",}']
+        assert await call(make_wrapper(server)) is not None
+        assert len(server.bodies("/api/chat")) == 1
+
+    async def test_invalid_output_retried_then_none(self, server: FakeServer) -> None:
+        server.chat_contents = ["this is not json at all"]
+        with llm_call_log() as stats:
+            assert await call(make_wrapper(server)) is None
+        assert len(server.bodies("/api/chat")) == 3 and stats[0].attempts == 3
+
+    async def test_schema_violation_returns_none(self, server: FakeServer) -> None:
+        server.chat_contents = [json.dumps({"wrong_field": "value"})]
+        assert await call(make_wrapper(server)) is None
+
+    async def test_malformed_response_body_retried(self, server: FakeServer) -> None:
+        responses = [
+            httpx.Response(200, json={"unexpected": True}),
+            httpx.Response(200, json={"message": {"content": VALID_JSON}}),
+        ]
+        server.chat_handler = lambda request: responses.pop(0)
+        assert await call(make_wrapper(server)) is not None
+
 
 class TestJsonExtraction:
-    """Extract JSON from markdown code blocks."""
+    @pytest.mark.parametrize("raw", [
+        '```json\n{"action": "PROCEED", "rationale": "ok"}\n```',
+        '```\n{"action": "PROCEED", "rationale": "ok"}\n```',
+        '{"action": "PROCEED", "rationale": "ok"}',
+        'Here is the result:\n```json\n{"action": "PROCEED", "rationale": "ok"}\n```\nDone.',
+        '<think>reasoning {x}</think>\n{"action": "PROCEED", "rationale": "ok"}',
+        'Sure! {"action": "PROCEED", "rationale": "ok"} Hope that helps.',
+    ])
+    def test_extract(self, raw: str) -> None:
+        assert json.loads(ResilientLLMWrapper._extract_json(raw))["action"] == "PROCEED"
 
-    def test_extract_from_json_code_block(self, wrapper):
-        raw = '```json\n{"action": "PROCEED", "rationale": "ok"}\n```'
-        result = wrapper._extract_json(raw)
-        parsed = json.loads(result)
-        assert parsed["action"] == "PROCEED"
-
-    def test_extract_from_plain_code_block(self, wrapper):
-        raw = '```\n{"action": "ANSWER", "rationale": "found"}\n```'
-        result = wrapper._extract_json(raw)
-        parsed = json.loads(result)
-        assert parsed["action"] == "ANSWER"
-
-    def test_extract_raw_json(self, wrapper):
-        raw = '{"action": "ABSTAIN", "rationale": "no evidence"}'
-        result = wrapper._extract_json(raw)
-        parsed = json.loads(result)
-        assert parsed["action"] == "ABSTAIN"
-
-    def test_extract_with_surrounding_text(self, wrapper):
-        raw = 'Here is the result:\n```json\n{"action": "PROCEED", "rationale": "ok"}\n```\nDone.'
-        result = wrapper._extract_json(raw)
-        parsed = json.loads(result)
-        assert parsed["action"] == "PROCEED"
-
-    @pytest.mark.asyncio
-    async def test_code_block_response_parsed(self, wrapper):
-        """Full end-to-end: code-block wrapped JSON → Pydantic model."""
-        content = '```json\n{"action": "PROCEED", "rationale": "ok"}\n```'
-        mock_resp = _make_httpx_response(content)
-
-        with patch.object(httpx.AsyncClient, "post", new_callable=AsyncMock, return_value=mock_resp):
-            result = await wrapper.call(
-                call_name="test",
-                system_prompt="sys",
-                user_prompt="usr",
-                output_schema=SampleOutput,
-            )
-
-        assert result is not None
-        assert result.action == "PROCEED"
-
-
-# ---------------------------------------------------------------------------
-# JSON repair on malformed strings
-# ---------------------------------------------------------------------------
 
 class TestJsonRepair:
-    """Common LLM JSON mistakes are repaired."""
+    @pytest.mark.parametrize(("malformed", "key", "expected"), [
+        ('{"action": "PROCEED", "rationale": "ok",}', "action", "PROCEED"),
+        ('{"items": ["a", "b",]}', "items", ["a", "b"]),
+        ('{"action": "PROCEED", "rationale": "ok"', "action", "PROCEED"),
+        ('{"items": ["a", "b"', "items", ["a", "b"]),
+        ("{'action': 'PROCEED', 'rationale': 'ok'}", "action", "PROCEED"),
+        ('{"action": "PROCEED", "rationale": "ok",', "action", "PROCEED"),
+        ('{"a": [{"b": 1', "a", [{"b": 1}]),
+        ('{"response_text": "Hello wor', "response_text", "Hello wor"),
+    ])
+    def test_repair(self, malformed: str, key: str, expected: Any) -> None:
+        assert json.loads(ResilientLLMWrapper._repair_json(malformed))[key] == expected
 
-    def test_trailing_comma_before_brace(self, wrapper):
-        malformed = '{"action": "PROCEED", "rationale": "ok",}'
-        repaired = wrapper._repair_json(malformed)
-        parsed = json.loads(repaired)
-        assert parsed["action"] == "PROCEED"
-
-    def test_trailing_comma_before_bracket(self, wrapper):
-        malformed = '{"items": ["a", "b",]}'
-        repaired = wrapper._repair_json(malformed)
-        parsed = json.loads(repaired)
-        assert parsed["items"] == ["a", "b"]
-
-    def test_unclosed_brace(self, wrapper):
-        malformed = '{"action": "PROCEED", "rationale": "ok"'
-        repaired = wrapper._repair_json(malformed)
-        parsed = json.loads(repaired)
-        assert parsed["action"] == "PROCEED"
-
-    def test_unclosed_bracket(self, wrapper):
-        malformed = '{"items": ["a", "b"]}'
-        # Missing outer brace close — but this is already valid
-        # Test a truly unclosed bracket:
-        malformed2 = '{"items": ["a", "b"'
-        repaired = wrapper._repair_json(malformed2)
-        # After repair: adds ] then } → valid
-        parsed = json.loads(repaired)
-        assert parsed["items"] == ["a", "b"]
-
-    def test_single_quotes_to_double(self, wrapper):
-        malformed = "{'action': 'PROCEED', 'rationale': 'ok'}"
-        repaired = wrapper._repair_json(malformed)
-        parsed = json.loads(repaired)
-        assert parsed["action"] == "PROCEED"
-
-    def test_apostrophes_preserved_in_values(self, wrapper):
-        """Mid-word apostrophes (e.g. patient's) must NOT be replaced."""
-        malformed = """{'rationale': "The patient's BP is high"}"""
-        repaired = wrapper._repair_json(malformed)
-        parsed = json.loads(repaired)
-        assert "patient's" in parsed["rationale"]
-
-    def test_mixed_quotes_with_apostrophe(self, wrapper):
-        """Single-quoted keys with double-quoted values containing apostrophes."""
-        malformed = """{'text': "patient's reading isn't normal", 'action': 'PROCEED'}"""
-        repaired = wrapper._repair_json(malformed)
-        parsed = json.loads(repaired)
-        assert "patient's" in parsed["text"]
-        assert parsed["action"] == "PROCEED"
-
-    def test_combined_errors(self, wrapper):
-        """Trailing comma + unclosed brace."""
-        malformed = '{"action": "PROCEED", "rationale": "ok",'
-        repaired = wrapper._repair_json(malformed)
-        parsed = json.loads(repaired)
-        assert parsed["action"] == "PROCEED"
+    def test_apostrophes_preserved(self) -> None:
+        repaired = ResilientLLMWrapper._repair_json("""{'text': "patient's reading isn't normal"}""")
+        assert json.loads(repaired)["text"] == "patient's reading isn't normal"
 
 
 # ---------------------------------------------------------------------------
-# Retry on timeout / 5xx errors
+# Telemetry and request cache
 # ---------------------------------------------------------------------------
 
-class TestRetryBehavior:
-    """Retry with exponential backoff on transient errors."""
 
-    @pytest.mark.asyncio
-    async def test_retry_on_timeout_then_succeed(self, wrapper):
-        """First call times out, second succeeds."""
-        mock_resp = _make_httpx_response(VALID_JSON)
+class TestCallLog:
+    async def test_stats_collected(self, server: FakeServer) -> None:
+        with llm_call_log() as stats:
+            await call(make_wrapper(server), model="m1")
+        assert len(stats) == 1
+        stat = stats[0]
+        assert isinstance(stat, LLMCallStat)
+        assert (stat.call_name, stat.model, stat.provider) == ("test", "m1", "ollama")
+        assert (stat.prompt_tokens, stat.completion_tokens) == (120, 30)
+        assert stat.total_duration_ms == 2500.0 and stat.load_duration_ms == 1000.0
+        assert stat.success and not stat.cached and stat.attempts == 1
+        assert stat.latency_ms >= 0.0
 
-        call_count = 0
+    async def test_logs_are_scoped(self, server: FakeServer) -> None:
+        wrapper = make_wrapper(server)
+        await call(wrapper)  # outside any log: not recorded anywhere
+        with llm_call_log() as outer:
+            await call(wrapper)
+            with llm_call_log() as inner:
+                await call(wrapper)
+            await call(wrapper)
+        assert len(outer) == 2 and len(inner) == 1
 
-        async def mock_post(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                raise httpx.TimeoutException("Connection timed out")
-            return mock_resp
 
-        with patch.object(httpx.AsyncClient, "post", side_effect=mock_post):
-            result = await wrapper.call(
-                call_name="test",
-                system_prompt="sys",
-                user_prompt="usr",
-                output_schema=SampleOutput,
-            )
+class DictCache:
+    def __init__(self) -> None:
+        self.store: dict[str, str] = {}
 
-        assert result is not None
-        assert result.action == "PROCEED"
-        assert call_count == 2
+    def get(self, key: str) -> str | None:
+        return self.store.get(key)
 
-    @pytest.mark.asyncio
-    async def test_retry_on_500_then_succeed(self, wrapper):
-        """First call returns 500, second succeeds."""
-        error_resp = _make_httpx_response("Server Error", status_code=500)
-        ok_resp = _make_httpx_response(VALID_JSON)
+    def set(self, key: str, value: str) -> None:
+        self.store[key] = value
 
-        call_count = 0
 
-        async def mock_post(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                raise httpx.HTTPStatusError(
-                    "Server Error",
-                    request=httpx.Request("POST", "https://test"),
-                    response=error_resp,
-                )
-            return ok_resp
+class TestRequestCache:
+    @pytest.fixture(autouse=True)
+    def _reset_cache(self):
+        yield
+        set_request_cache(None)
 
-        with patch.object(httpx.AsyncClient, "post", side_effect=mock_post):
-            result = await wrapper.call(
-                call_name="test",
-                system_prompt="sys",
-                user_prompt="usr",
-                output_schema=SampleOutput,
-            )
+    async def test_miss_then_hit(self, server: FakeServer) -> None:
+        cache = DictCache()
+        set_request_cache(cache)
+        wrapper = make_wrapper(server)
+        with llm_call_log() as stats:
+            first = await call(wrapper)
+            second = await call(wrapper)
+        assert first == second
+        assert len(server.bodies("/api/chat")) == 1
+        assert [s.cached for s in stats] == [False, True]
+        assert list(cache.store.values()) == [VALID_JSON]
 
-        assert result is not None
-        assert call_count == 2
+    async def test_failed_responses_not_stored(self, server: FakeServer) -> None:
+        cache = DictCache()
+        set_request_cache(cache)
+        server.chat_contents = ["not json"]
+        assert await call(make_wrapper(server)) is None
+        assert cache.store == {}
 
-    @pytest.mark.asyncio
-    async def test_retry_on_malformed_json_with_repair(self, wrapper):
-        """First call returns bad JSON, repair kicks in on attempt 2."""
-        # First response: malformed JSON (trailing comma)
-        bad_json = '{"action": "PROCEED", "rationale": "ok",}'
-        bad_resp = _make_httpx_response(bad_json)
-        # After repair on attempt 2, same malformed JSON should parse
-        good_resp = _make_httpx_response(bad_json)
+    async def test_key_ignores_keep_alive_but_not_options(self, server: FakeServer) -> None:
+        cache = DictCache()
+        set_request_cache(cache)
+        await call(make_wrapper(server, LLM_KEEP_ALIVE="5m"))
+        await call(make_wrapper(server, LLM_KEEP_ALIVE="1h"))
+        assert len(server.bodies("/api/chat")) == 1
+        await call(make_wrapper(server), temperature=0.3)
+        assert len(server.bodies("/api/chat")) == 2
 
-        call_count = 0
-
-        async def mock_post(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return bad_resp  # Will fail parse (no repair on attempt 1)
-            return good_resp  # Will succeed (repair on attempt 2)
-
-        with patch.object(httpx.AsyncClient, "post", side_effect=mock_post):
-            result = await wrapper.call(
-                call_name="test",
-                system_prompt="sys",
-                user_prompt="usr",
-                output_schema=SampleOutput,
-            )
-
-        assert result is not None
-        assert result.action == "PROCEED"
-        assert call_count == 2
+    def test_key_is_sha256_of_canonical_payload(self) -> None:
+        a = request_cache_key({"model": "m", "keep_alive": "5m", "options": {"seed": 1, "top_p": 1}})
+        b = request_cache_key({"options": {"top_p": 1, "seed": 1}, "model": "m"})
+        assert a == b and len(a) == 64
 
 
 # ---------------------------------------------------------------------------
-# Permanent failure → None
+# Warm-up, health, lifecycle
 # ---------------------------------------------------------------------------
 
-class TestPermanentFailure:
-    """Return None after all retries exhausted."""
 
-    @pytest.mark.asyncio
-    async def test_returns_none_after_all_retries(self, wrapper):
-        """3 consecutive timeouts → None."""
-        async def mock_post(*args, **kwargs):
-            raise httpx.TimeoutException("Timed out")
+class TestWarmupHealth:
+    async def test_warmup_loads_unique_models(self, server: FakeServer) -> None:
+        wrapper = make_wrapper(server, LLM_MODEL="a", LLM_MODEL_GATES="", LLM_MODEL_GENERATOR="b")
+        assert await wrapper.warmup() == {"a": True, "b": True}
+        bodies = server.bodies("/api/generate")
+        assert [b["model"] for b in bodies] == ["a", "b"]
+        assert all(b["prompt"] == "" and b["keep_alive"] == "30m" for b in bodies)
 
-        with patch.object(httpx.AsyncClient, "post", side_effect=mock_post):
-            result = await wrapper.call(
-                call_name="test",
-                system_prompt="sys",
-                user_prompt="usr",
-                output_schema=SampleOutput,
-            )
+    async def test_warmup_failure_reported(self, server: FakeServer) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/api/generate":
+                return httpx.Response(404)
+            return server.handler(request)
 
-        assert result is None
+        wrapper = ResilientLLMWrapper(make_settings(), transport=httpx.MockTransport(handler))
+        assert await wrapper.warmup(["missing"]) == {"missing": False}
 
-    @pytest.mark.asyncio
-    async def test_returns_none_on_permanent_parse_failure(self, wrapper):
-        """3 consecutive unparseable responses → None."""
-        bad_resp = _make_httpx_response("this is not json at all")
+    async def test_health_reachable(self, server: FakeServer) -> None:
+        server.tags = ["qwen3:8b", "gemma3:latest"]
+        server.loaded = ["qwen3:8b"]
+        wrapper = make_wrapper(server, LLM_MODEL="qwen3:8b", LLM_MODEL_GENERATOR="gemma3")
+        health = await wrapper.health()
+        assert health["provider"] == "ollama" and health["reachable"] is True
+        assert health["models"] == {"qwen3:8b": True, "gemma3": True}
+        assert health["loaded"] == ["qwen3:8b"]
+        assert health["local_only"] is True
 
-        with patch.object(httpx.AsyncClient, "post", new_callable=AsyncMock, return_value=bad_resp):
-            result = await wrapper.call(
-                call_name="test",
-                system_prompt="sys",
-                user_prompt="usr",
-                output_schema=SampleOutput,
-            )
+    async def test_health_unreachable(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("refused", request=request)
 
-        assert result is None
+        wrapper = ResilientLLMWrapper(make_settings(), transport=httpx.MockTransport(handler))
+        health = await wrapper.health()
+        assert health["reachable"] is False and health["models"] == {"test-model": False}
 
-    @pytest.mark.asyncio
-    async def test_returns_none_on_validation_failure(self, wrapper):
-        """Valid JSON but wrong schema → None after retries."""
-        wrong_schema_json = json.dumps({"wrong_field": "value"})
-        bad_resp = _make_httpx_response(wrong_schema_json)
+    async def test_close_and_reuse(self, server: FakeServer) -> None:
+        wrapper = make_wrapper(server)
+        await call(wrapper)
+        await wrapper.close()
+        assert await call(wrapper) is not None
 
-        with patch.object(httpx.AsyncClient, "post", new_callable=AsyncMock, return_value=bad_resp):
-            result = await wrapper.call(
-                call_name="test",
-                system_prompt="sys",
-                user_prompt="usr",
-                output_schema=SampleOutput,
-            )
-
-        assert result is None
-
-
-# ---------------------------------------------------------------------------
-# Provider failover
-# ---------------------------------------------------------------------------
-
-class TestProviderFailover:
-    """Fall back to OpenAI when Groq exhausted."""
-
-    @pytest.mark.asyncio
-    async def test_failover_to_openai(self, wrapper_with_failover):
-        """Groq times out → OpenAI succeeds."""
-        ok_resp = _make_httpx_response(VALID_JSON)
-
-        call_count = 0
-
-        async def mock_post(url, *args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if "groq" in str(url):
-                raise httpx.TimeoutException("Groq timed out")
-            return ok_resp
-
-        with patch.object(httpx.AsyncClient, "post", side_effect=mock_post):
-            result = await wrapper_with_failover.call(
-                call_name="test",
-                system_prompt="sys",
-                user_prompt="usr",
-                output_schema=SampleOutput,
-            )
-
-        assert result is not None
-        assert result.action == "PROCEED"
-        # 2 retries on Groq + at least 1 on OpenAI
-        assert call_count >= 3
-
-    @pytest.mark.asyncio
-    async def test_both_providers_fail(self, wrapper_with_failover):
-        """Both Groq and OpenAI fail → None."""
-        async def mock_post(*args, **kwargs):
-            raise httpx.TimeoutException("All timed out")
-
-        with patch.object(httpx.AsyncClient, "post", side_effect=mock_post):
-            result = await wrapper_with_failover.call(
-                call_name="test",
-                system_prompt="sys",
-                user_prompt="usr",
-                output_schema=SampleOutput,
-            )
-
-        assert result is None
+    def test_singleton(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(llm_wrapper, "_llm_wrapper_instance", None)
+        assert get_llm_wrapper() is get_llm_wrapper()

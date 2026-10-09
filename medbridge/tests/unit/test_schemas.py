@@ -330,3 +330,52 @@ class TestErrorResponse:
                 message="Something went wrong.",
                 # missing: safe_fallback
             )  # type: ignore[call-arg]
+
+
+# ---------------------------------------------------------------------------
+# AI (LLM output) schemas
+# ---------------------------------------------------------------------------
+
+from medbridge.ai.schemas import (
+    MISSING_FIELD_VOCABULARY,
+    ContextGateOutput,
+    DeltaEvent,
+    EvidenceGateOutput,
+    ExtractorOutput,
+    ResponseGeneratorOutput,
+)
+from medbridge.api.schemas.enums import EventTypeEnum
+
+
+class TestAISchemas:
+    """LLM output schemas: lenient validation, strict LLM-facing JSON schema."""
+
+    def test_extractor_defaults(self) -> None:
+        output = ExtractorOutput(search_query="q", raw_intent="i")
+        assert output.delta_events == []
+
+    def test_extractor_requires_query_and_intent(self) -> None:
+        with pytest.raises(ValidationError):
+            ExtractorOutput.model_validate({"delta_events": []})
+
+    def test_delta_event_json_schema_restricts_types(self) -> None:
+        schema = DeltaEvent.model_json_schema()
+        assert schema["properties"]["event_type"]["enum"] == [e.value for e in EventTypeEnum]
+        # Python-side validation stays lenient (filtered later by the extractor).
+        assert DeltaEvent(event_type="UNKNOWN").event_type == "UNKNOWN"
+
+    def test_context_gate_vocabulary(self) -> None:
+        assert len(MISSING_FIELD_VOCABULARY) == 12
+        schema = ContextGateOutput.model_json_schema()
+        assert schema["properties"]["missing_fields"]["items"]["enum"] == list(MISSING_FIELD_VOCABULARY)
+
+    def test_evidence_gate_optional_fields(self) -> None:
+        output = EvidenceGateOutput.model_validate({"action": "ABSTAIN", "evidence_sufficient": False})
+        assert output.rationale == "" and output.evidence_used == []
+
+    def test_generator_citations_not_requested_from_llm(self) -> None:
+        schema = ResponseGeneratorOutput.model_json_schema()
+        assert schema["required"] == ["response_text"]
+        assert schema["properties"]["citations"]["llm_omit"] is True
+        with pytest.raises(ValidationError):
+            ResponseGeneratorOutput(response_text="")

@@ -1,16 +1,22 @@
 """
-Unit tests for TASK-22: Response Generator (LLM Call 4).
+Unit tests for the Response Generator (LLM Call 4, TASK-22, ADL-029).
 
-Tests XML prompt isolation, citation parsing, action bypassing (bypassed for ABSTAIN/ESCALATE,
-invoked for ANSWER/GENERALIZE/SOFT-ASK), and temperature 0.3 configuration.
+Covers XML prompt construction, indexed chunk rendering, the generator modes
+(grounded / direct / prompt_safety), SOFT-ASK prompts driven by Gate 1's
+missing fields, template bypass for ABSTAIN/ESCALATE, and wrapper parameters
+(temperature 0.3, generator model). The LLM is always mocked.
 """
+from __future__ import annotations
+
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from pydantic import ValidationError
 
 from medbridge.ai.response_generator import (
     ALLOWED_ACTIONS,
     BYPASS_ACTIONS,
+    MISSING_FIELD_PHRASES,
+    PROMPT_SAFETY_RULE,
     ResponseGenerator,
     _build_system_prompt,
     _build_user_prompt,
@@ -18,326 +24,232 @@ from medbridge.ai.response_generator import (
     build_full_prompt,
     get_response_generator,
 )
-from medbridge.ai.schemas.response_generator import (
-    GeneratedCitation,
-    ResponseGeneratorOutput,
-)
+from medbridge.ai.schemas.response_generator import GeneratedCitation, ResponseGeneratorOutput
 from medbridge.api.schemas.enums import ActionEnum
+from medbridge.config import get_settings
 from medbridge.retrieval.hybrid_retriever import RetrievedChunk
+from medbridge.state.turn_store import ChatTurn
+
+
+def _chunk(i: int, text: str | None = None) -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id=f"c_{i}",
+        chunk_text=text or f"Clinical text snippet {i}",
+        guideline_id="AHA_ACC_2025",
+        section_title="First-Line Therapy",
+        page_number=18,
+        source_url="",
+        score=0.9,
+    )
+
+
+def _mock_llm(text: str = "Thiazide diuretics are a first-line option [1].") -> MagicMock:
+    llm = MagicMock()
+    llm.call = AsyncMock(return_value=ResponseGeneratorOutput(response_text=text))
+    return llm
 
 
 # ---------------------------------------------------------------------------
-# Prompt formatting & XML isolation (ADL-018, ADL-025, Constitution §7.1)
+# Prompt construction
 # ---------------------------------------------------------------------------
 
-class TestResponseGeneratorPromptConstruction:
-    """Verify XML prompt construction across all 4 mandatory tags."""
 
+class TestPromptConstruction:
     def test_all_xml_tags_present_in_full_prompt(self) -> None:
         query = "What is the recommended medication for high blood pressure?"
-        snapshot = {"demographics": {"age": 55}, "diagnoses": ["Hypertension"]}
-        chunks = [
-            RetrievedChunk(
-                chunk_id="chunk_101",
-                chunk_text="First-line pharmacotherapy includes thiazide diuretics, CCBs, and ACE inhibitors.",
-                guideline_id="AHA_ACC_2025",
-                section_title="First-Line Therapy",
-                page_number=18,
-                source_url="https://guidelines.acc.org/htn2025",
-                score=0.92,
-            )
-        ]
+        prompt = build_full_prompt(
+            ActionEnum.ANSWER, [_chunk(1)], {"demographics": {"age": 55}}, query
+        )
+        assert "<system_instructions>" in prompt and "</system_instructions>" in prompt
+        assert "Follow the routing action: ANSWER." in prompt
+        assert "<patient_context>" in prompt and '"age": 55' in prompt
+        assert "<clinical_evidence>" in prompt
+        assert ('<chunk index="1" source="AHA_ACC_2025" section="First-Line Therapy" page="18">'
+                in prompt)
+        assert "<user_query>" in prompt
+        start = prompt.find("<untrusted_user_input>")
+        end = prompt.find("</untrusted_user_input>")
+        assert start < prompt.find(query) < end
 
-        full_prompt = build_full_prompt(ActionEnum.ANSWER, chunks, snapshot, query)
+    @pytest.mark.parametrize("action", ["ANSWER", "GENERALIZE"])
+    def test_system_prompt_action_interpolation(self, action: str) -> None:
+        prompt = _build_system_prompt(action)
+        assert f"the routing action: {action}." in prompt
+        assert f"{action} means:" in prompt
 
-        # 1. <system_instructions>
-        assert "<system_instructions>" in full_prompt
-        assert "</system_instructions>" in full_prompt
-        assert "Follow\nthe routing action: ANSWER." in full_prompt
+    def test_grounded_rules_present(self) -> None:
+        prompt = _build_system_prompt("ANSWER")
+        for rule in ("ONLY facts stated in <clinical_evidence>", "[n]", "Never state numbers",
+                     "mistaken belief", "markdown", "never diagnose or prescribe"):
+            assert rule in prompt
+        assert PROMPT_SAFETY_RULE.strip() not in prompt
 
-        # 2. <patient_context>
-        assert "<patient_context>" in full_prompt
-        assert "</patient_context>" in full_prompt
-        assert '"age": 55' in full_prompt
-        assert '"Hypertension"' in full_prompt
-
-        # 3. <clinical_evidence>
-        assert "<clinical_evidence>" in full_prompt
-        assert "</clinical_evidence>" in full_prompt
-        assert '<chunk id="chunk_101" source="AHA_ACC_2025" section="First-Line Therapy">' in full_prompt
-        assert "First-line pharmacotherapy includes thiazide diuretics" in full_prompt
-
-        # 4. <user_query> with <untrusted_user_input>
-        assert "<user_query>" in full_prompt
-        assert "</user_query>" in full_prompt
-        assert "<untrusted_user_input>" in full_prompt
-        assert "</untrusted_user_input>" in full_prompt
-        start_tag = full_prompt.find("<untrusted_user_input>")
-        end_tag = full_prompt.find("</untrusted_user_input>")
-        assert start_tag < full_prompt.find(query) < end_tag
-
-    def test_system_prompt_action_interpolation(self) -> None:
-        for action in ["ANSWER", "GENERALIZE", "SOFT-ASK"]:
-            sys_prompt = _build_system_prompt(action)
-            assert f"the routing action: {action}." in sys_prompt
-            assert "<system_instructions>" in sys_prompt
-            assert "</system_instructions>" in sys_prompt
+    def test_generalize_says_not_personalised(self) -> None:
+        assert "not personalised advice" in _build_system_prompt("GENERALIZE")
 
     def test_top_5_chunk_truncation(self) -> None:
-        chunks = [
-            RetrievedChunk(
-                chunk_id=f"c_{i}",
-                chunk_text=f"Clinical text snippet {i}",
-                guideline_id="AHA",
-                section_title="Treatment",
-                page_number=i,
-                source_url="",
-                score=1.0 - (i * 0.05),
-            )
-            for i in range(1, 8)  # 7 chunks
-        ]
-        prompt = _build_user_prompt(chunks, {}, "query")
-
-        # Top 5 chunks must be in prompt
+        prompt = _build_user_prompt([_chunk(i) for i in range(1, 8)], {}, "query")
         for i in range(1, 6):
-            assert f'chunk id="c_{i}"' in prompt
-            assert f"Clinical text snippet {i}" in prompt
+            assert f'chunk index="{i}"' in prompt and f"Clinical text snippet {i}" in prompt
+        assert "Clinical text snippet 6" not in prompt and "Clinical text snippet 7" not in prompt
 
-        # Chunks 6 and 7 must be omitted
-        assert 'chunk id="c_6"' not in prompt
-        assert 'chunk id="c_7"' not in prompt
+    def test_chunk_text_truncated_to_configured_length(self) -> None:
+        limit = get_settings().EVIDENCE_MAX_CHARS_PER_CHUNK
+        prompt = _build_user_prompt([_chunk(1, "word " * (limit // 2))], {}, "q")
+        body = prompt.split('page="18">\n')[1].split("\n</chunk>")[0]
+        assert len(body) <= limit + 2 and body.endswith("…")
 
     def test_empty_chunks_formatting(self) -> None:
-        formatted = _format_chunks([])
-        assert '<chunk id="0" source="None" section="None">' in formatted
-        assert "No clinical evidence provided." in formatted
+        assert "No guideline evidence was retrieved" in _format_chunks([])
 
     def test_format_chunks_with_dicts_tuples_and_strings(self) -> None:
-        chunks = [
-            {"chunk_id": "dict_1", "guideline_id": "ACC", "section_title": "Sec1", "chunk_text": "Dict text"},
+        formatted = _format_chunks([
+            {"chunk_id": "d", "guideline_id": "ACC", "section_title": "Sec1", "chunk_text": "Dict text"},
             ("Tuple text", 0.88),
             "Raw string text",
-        ]
-        formatted = _format_chunks(chunks)
-        assert 'chunk id="dict_1" source="ACC" section="Sec1">' in formatted
-        assert "Dict text" in formatted
-        assert "Tuple text" in formatted
-        assert "Raw string text" in formatted
+        ])
+        assert '<chunk index="1" source="ACC" section="Sec1">' in formatted
+        assert "Tuple text" in formatted and "Raw string text" in formatted
+        assert '<chunk index="3"' in formatted
+
+    def test_attributes_escaped(self) -> None:
+        formatted = _format_chunks([{"chunk_text": "t", "guideline_id": 'X" onload="y',
+                                     "section_title": "<b>"}])
+        assert 'source="X&quot; onload=&quot;y"' in formatted and 'section="&lt;b&gt;"' in formatted
+
+    def test_history_included_and_isolated(self) -> None:
+        history = [ChatTurn(role="user", content="I take Telma"), ChatTurn(role="assistant", content="Ok.")]
+        prompt = build_full_prompt("ANSWER", [_chunk(1)], {}, "is it safe?", history=history)
+        assert '<turn role="patient"><untrusted_user_input>\nI take Telma' in prompt
+        assert '<turn role="assistant">Ok.</turn>' in prompt
+
+
+class TestGeneratorModes:
+    def test_direct_mode_has_no_evidence_or_grounding_rules(self) -> None:
+        prompt = build_full_prompt("ANSWER", [_chunk(1)], {}, "q", mode="direct")
+        assert "<clinical_evidence>" not in prompt
+        assert "Clinical text snippet 1" not in prompt
+        assert "general medical knowledge" in prompt and "informational only" in prompt
+        assert "<untrusted_user_input>" in prompt
+
+    def test_prompt_safety_mode_adds_instruction(self) -> None:
+        prompt = build_full_prompt("ANSWER", [_chunk(1)], {}, "q", mode="prompt_safety")
+        assert PROMPT_SAFETY_RULE.strip() in prompt
+        assert "<clinical_evidence>" in prompt
+
+    def test_soft_ask_lists_missing_fields_and_has_no_evidence(self) -> None:
+        prompt = build_full_prompt(
+            "SOFT-ASK", [_chunk(1)], {}, "Should I double my dose?",
+            missing_fields=["current_medications", "bp"],
+        )
+        assert "Follow the routing action: SOFT-ASK." in prompt
+        assert "<clinical_evidence>" not in prompt and "Clinical text snippet" not in prompt
+        assert MISSING_FIELD_PHRASES["current_medications"] in prompt
+        assert MISSING_FIELD_PHRASES["blood_pressure_reading"] in prompt
+        assert "Do NOT give medical facts" in prompt
+
+    def test_soft_ask_without_fields_uses_default_request(self) -> None:
+        prompt = build_full_prompt("SOFT-ASK", [], {}, "q")
+        assert "<missing_information>\n- the details needed" in prompt
+
+    def test_every_vocabulary_field_has_a_phrase(self) -> None:
+        from medbridge.ai.schemas.context_gate import MISSING_FIELD_VOCABULARY
+
+        assert set(MISSING_FIELD_PHRASES) == set(MISSING_FIELD_VOCABULARY)
 
 
 # ---------------------------------------------------------------------------
-# Action Bypassing (Acceptance Criteria: Bypassed for ABSTAIN / ESCALATE)
+# Bypass & invocation
 # ---------------------------------------------------------------------------
 
-class TestResponseGeneratorActionBypassing:
-    """Verify that ABSTAIN and ESCALATE actions bypass LLM Call 4 entirely."""
 
-    @pytest.mark.asyncio
-    async def test_bypasses_abstain_string_and_enum(self) -> None:
-        mock_llm = MagicMock()
-        generator = ResponseGenerator(llm=mock_llm)
+class TestActionBypassing:
+    @pytest.mark.parametrize("action", ["ABSTAIN", ActionEnum.ABSTAIN, "ESCALATE",
+                                        ActionEnum.ESCALATE, "INVALID_UNKNOWN_ACTION"])
+    async def test_bypassed_without_llm(self, action) -> None:
+        llm = _mock_llm()
+        assert await ResponseGenerator(llm=llm).generate(action, [], {}, query="q") is None
+        llm.call.assert_not_called()
 
-        # String action
-        res1 = await generator.generate(action="ABSTAIN", chunks=[], snapshot={}, query="query")
-        assert res1 is None
+    def test_action_sets(self) -> None:
+        assert ALLOWED_ACTIONS == {"ANSWER", "GENERALIZE", "SOFT-ASK"}
+        assert BYPASS_ACTIONS == {"ABSTAIN", "ESCALATE"}
 
-        # Enum action
-        res2 = await generator.generate(action=ActionEnum.ABSTAIN, chunks=[], snapshot={}, query="query")
-        assert res2 is None
-
-        # LLM must not have been called
-        mock_llm.call.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_bypasses_escalate_string_and_enum(self) -> None:
-        mock_llm = MagicMock()
-        generator = ResponseGenerator(llm=mock_llm)
-
-        # String action
-        res1 = await generator.generate(action="ESCALATE", chunks=[], snapshot={}, query="emergency")
-        assert res1 is None
-
-        # Enum action
-        res2 = await generator.generate(action=ActionEnum.ESCALATE, chunks=[], snapshot={}, query="emergency")
-        assert res2 is None
-
-        mock_llm.call.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_bypasses_invalid_action(self) -> None:
-        mock_llm = MagicMock()
-        generator = ResponseGenerator(llm=mock_llm)
-
-        res = await generator.generate(action="INVALID_UNKNOWN_ACTION", chunks=[], snapshot={}, query="query")
-        assert res is None
-        mock_llm.call.assert_not_called()
+    async def test_unknown_mode_returns_none(self) -> None:
+        llm = _mock_llm()
+        assert await ResponseGenerator(llm=llm).generate("ANSWER", [], {}, "q", mode="bogus") is None
+        llm.call.assert_not_called()
 
 
-# ---------------------------------------------------------------------------
-# Invocation & Parameter Verification (ANSWER, GENERALIZE, SOFT-ASK, Temp 0.3)
-# ---------------------------------------------------------------------------
-
-class TestResponseGeneratorInvocation:
-    """Verify LLM invocation for allowed actions and temperature 0.3 parameter."""
-
-    @pytest.mark.asyncio
-    async def test_invokes_for_answer_action(self) -> None:
-        mock_llm = MagicMock()
-        expected = ResponseGeneratorOutput(
-            response_text="First-line medications for high blood pressure include thiazide diuretics [1].",
-            citations=[
-                GeneratedCitation(
-                    marker="[1]",
-                    chunk_id="aha_c1",
-                    source="AHA_ACC_2025",
-                    section="First-Line Therapy",
-                    excerpt="First-line therapy includes thiazide diuretics.",
-                )
-            ],
+class TestInvocation:
+    async def test_invokes_for_answer_with_generator_parameters(self) -> None:
+        llm = _mock_llm()
+        result = await ResponseGenerator(llm=llm).generate(
+            ActionEnum.ANSWER, [_chunk(1)], {"demographics": {"age": 60}}, query="What meds for BP?"
         )
-        mock_llm.call = AsyncMock(return_value=expected)
+        assert result is not None and "[1]" in result.response_text
+        kwargs = llm.call.call_args.kwargs
+        settings = get_settings()
+        assert kwargs["call_name"] == "response_generator"
+        assert kwargs["output_schema"] is ResponseGeneratorOutput
+        assert kwargs["temperature"] == 0.3
+        assert kwargs["max_tokens"] == settings.LLM_MAX_TOKENS_GENERATOR
+        assert kwargs["model"] == settings.generator_model
 
-        generator = ResponseGenerator(llm=mock_llm)
-        result = await generator.generate(
-            action=ActionEnum.ANSWER,
-            chunks=[],
-            snapshot={"demographics": {"age": 60}},
-            query="What meds for BP?",
+    @pytest.mark.parametrize("action", ["GENERALIZE", "SOFT-ASK", ActionEnum.SOFT_ASK, "soft_ask"])
+    async def test_invokes_for_other_allowed_actions(self, action) -> None:
+        llm = _mock_llm("Could you share your current medicines?")
+        assert await ResponseGenerator(llm=llm).generate(action, [], {}, query="q") is not None
+        llm.call.assert_called_once()
+
+    async def test_message_preferred_over_query(self) -> None:
+        llm = _mock_llm()
+        await ResponseGenerator(llm=llm).generate(
+            "ANSWER", [_chunk(1)], {}, query="search terms", message="my own words"
         )
+        prompt = llm.call.call_args.kwargs["user_prompt"]
+        assert "my own words" in prompt and "search terms" not in prompt
 
-        assert result == expected
-        assert "[1]" in result.response_text
-        assert len(result.citations) == 1
+    async def test_mode_and_missing_fields_forwarded(self) -> None:
+        llm = _mock_llm()
+        gen = ResponseGenerator(llm=llm)
+        await gen.generate("ANSWER", [_chunk(1)], {}, "q", mode="direct")
+        assert "<clinical_evidence>" not in llm.call.call_args.kwargs["user_prompt"]
+        await gen.generate("SOFT-ASK", [], {}, "q", missing_fields=["age"])
+        assert MISSING_FIELD_PHRASES["age"] in llm.call.call_args.kwargs["user_prompt"]
 
-        mock_llm.call.assert_called_once()
-        call_kwargs = mock_llm.call.call_args.kwargs
-        assert call_kwargs["call_name"] == "response_generator"
-        assert call_kwargs["output_schema"] == ResponseGeneratorOutput
-        assert call_kwargs["temperature"] == 0.3  # Acceptance Criteria: Temperature 0.3 for fluency
-        assert call_kwargs["max_tokens"] == 1024
-
-    @pytest.mark.asyncio
-    async def test_invokes_for_generalize_action(self) -> None:
-        mock_llm = MagicMock()
-        expected = ResponseGeneratorOutput(
-            response_text="In general, calcium channel blockers relax blood vessels [1].",
-            citations=[
-                GeneratedCitation(
-                    marker="[1]",
-                    chunk_id="aha_c2",
-                    source="AHA_ACC_2025",
-                    section="CCBs",
-                    excerpt="CCBs relax blood vessels.",
-                )
-            ],
-        )
-        mock_llm.call = AsyncMock(return_value=expected)
-
-        generator = ResponseGenerator(llm=mock_llm)
-        result = await generator.generate(
-            action="GENERALIZE",
-            chunks=[],
-            snapshot={},
-            query="How does amlodipine work?",
-        )
-
-        assert result == expected
-        mock_llm.call.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_invokes_for_soft_ask_action(self) -> None:
-        mock_llm = MagicMock()
-        expected = ResponseGeneratorOutput(
-            response_text="To give you the most accurate information about your blood pressure medication, could you let me know your age?",
-            citations=[],
-        )
-        mock_llm.call = AsyncMock(return_value=expected)
-
-        generator = ResponseGenerator(llm=mock_llm)
-        # Verify both hyphen and enum work
-        result1 = await generator.generate(
-            action="SOFT-ASK",
-            chunks=[],
-            snapshot={},
-            query="What should my BP be?",
-        )
-        assert result1 == expected
-
-        result2 = await generator.generate(
-            action=ActionEnum.SOFT_ASK,
-            chunks=[],
-            snapshot={},
-            query="What should my BP be?",
-        )
-        assert result2 == expected
-
-    @pytest.mark.asyncio
     async def test_permanent_llm_failure_returns_none(self) -> None:
-        mock_llm = MagicMock()
-        mock_llm.call = AsyncMock(return_value=None)
-
-        generator = ResponseGenerator(llm=mock_llm)
-        result = await generator.generate(
-            action="ANSWER",
-            chunks=[],
-            snapshot={},
-            query="Any query",
-        )
-        assert result is None
+        llm = MagicMock()
+        llm.call = AsyncMock(return_value=None)
+        assert await ResponseGenerator(llm=llm).generate("ANSWER", [], {}, query="q") is None
 
 
 # ---------------------------------------------------------------------------
-# Citation Parsing & Schema Validation
+# Schema
 # ---------------------------------------------------------------------------
 
-class TestCitationParsingAndSchema:
-    """Verify validation and parsing of ResponseGeneratorOutput and GeneratedCitation."""
 
-    def test_citation_parsing_and_model_fields(self) -> None:
-        data = {
-            "response_text": "Lifestyle modifications lower systolic BP by 4-5 mmHg [1]. First-line agents include CCBs [2].",
-            "citations": [
-                {
-                    "marker": "[1]",
-                    "chunk_id": "aha_lifestyle_c1",
-                    "source": "AHA_ACC_2025",
-                    "section": "Nonpharmacological Interventions",
-                    "excerpt": "Lifestyle modifications reduce systolic BP by approximately 4-5 mm Hg.",
-                },
-                {
-                    "marker": "[2]",
-                    "chunk_id": "aha_pharm_c2",
-                    "source": "AHA_ACC_2025",
-                    "section": "First-Line Pharmacotherapy",
-                    "excerpt": "Dihydropyridine CCBs are recommended first-line agents.",
-                },
-            ],
-        }
-        output = ResponseGeneratorOutput.model_validate(data)
-        assert len(output.citations) == 2
-        assert output.citations[0].marker == "[1]"
-        assert output.citations[0].source == "AHA_ACC_2025"
-        assert output.citations[1].marker == "[2]"
-        assert output.citations[1].chunk_id == "aha_pharm_c2"
-
-    def test_citations_default_to_empty_list(self) -> None:
-        output = ResponseGeneratorOutput(response_text="General greeting without citations.")
-        assert output.response_text == "General greeting without citations."
+class TestSchema:
+    def test_citations_optional(self) -> None:
+        output = ResponseGeneratorOutput.model_validate({"response_text": "Hello [1]."})
         assert output.citations == []
 
+    def test_citation_parsing(self) -> None:
+        output = ResponseGeneratorOutput.model_validate({
+            "response_text": "x [1]",
+            "citations": [{"marker": "[1]", "chunk_id": "a", "source": "AHA", "section": "s",
+                           "excerpt": "e"}],
+        })
+        assert output.citations[0].chunk_id == "a"
+
     def test_citation_optional_fields_fallback(self) -> None:
-        cit = GeneratedCitation(marker="[1]")
-        assert cit.marker == "[1]"
-        assert cit.chunk_id == ""
-        assert cit.source == ""
-        assert cit.section == ""
-        assert cit.excerpt == ""
+        citation = GeneratedCitation(marker="[1]")
+        assert (citation.chunk_id, citation.source, citation.section, citation.excerpt) == ("",) * 4
 
+    def test_empty_response_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            ResponseGeneratorOutput(response_text="")
 
-# ---------------------------------------------------------------------------
-# Factory Function
-# ---------------------------------------------------------------------------
 
 def test_factory_function() -> None:
-    generator = get_response_generator()
-    assert isinstance(generator, ResponseGenerator)
+    assert isinstance(get_response_generator(), ResponseGenerator)

@@ -1,10 +1,14 @@
 """
-Unit tests for TASK-21: Evidence Gate (LLM Call 3).
+Unit tests for the Evidence Gate (LLM Call 3, Gate 2, TASK-21, ADL-029).
 
-Tests 4-way routing decision classification (ANSWER, GENERALIZE, ABSTAIN, ESCALATE),
-XML prompt isolation, Top-5 chunk truncation, schema validation, and deterministic zero-temperature parameters.
+Covers XML isolation, indexed chunk rendering and top-5 truncation, the
+decision rules and few-shot examples in the prompt, schema validation, and the
+deterministic wrapper parameters (temperature 0.0, gates model).
 """
+from __future__ import annotations
+
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from pydantic import ValidationError
 
@@ -16,348 +20,158 @@ from medbridge.ai.evidence_gate import (
     get_evidence_gate,
 )
 from medbridge.ai.schemas.evidence_gate import EvidenceGateOutput
+from medbridge.config import get_settings
 from medbridge.retrieval.hybrid_retriever import RetrievedChunk
 
 
+def _chunk(i: int, text: str | None = None, **extra) -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id=f"chunk_{i}",
+        chunk_text=text or f"Evidence text number {i}",
+        guideline_id="AHA_ACC_2025",
+        section_title="Drug Interactions",
+        page_number=35,
+        source_url="https://example.org",
+        score=0.9,
+        **extra,
+    )
+
+
 # ---------------------------------------------------------------------------
-# Prompt formatting & XML isolation (ADL-018, ADL-025, Constitution §7.1)
+# Prompt formatting & XML isolation
 # ---------------------------------------------------------------------------
+
 
 class TestEvidenceGatePromptFormatting:
-    """Ensure patient input is strictly encapsulated within XML boundary tags and chunks are formatted."""
-
     def test_xml_isolation_tags_present(self) -> None:
         query = "Can I take ibuprofen with lisinopril?"
         snapshot = {"current_medications": [{"drug": "lisinopril", "dosage": "10mg"}]}
-        chunks = [
-            RetrievedChunk(
-                chunk_id="chunk_1",
-                chunk_text="NSAIDs like ibuprofen may attenuate the antihypertensive effect of ACE inhibitors.",
-                guideline_id="AHA_ACC_2025",
-                section_title="Drug Interactions",
-                page_number=35,
-                source_url="https://guidelines.acc.org/htn2025",
-                score=0.9,
-            )
-        ]
+        prompt = _build_user_prompt([_chunk(1, "NSAIDs may blunt ACE inhibitors.")], snapshot, query)
 
-        prompt = _build_user_prompt(chunks, snapshot, query)
-
-        # Non-negotiable #5: Untrusted input tag wrapping
-        assert "<untrusted_user_input>" in prompt
-        assert "</untrusted_user_input>" in prompt
-        start_tag = prompt.find("<untrusted_user_input>")
-        end_tag = prompt.find("</untrusted_user_input>")
-        assert start_tag < prompt.find(query) < end_tag
-
-        # Patient context XML wrapper
-        assert "<patient_context>" in prompt
-        assert "</patient_context>" in prompt
-        assert '"lisinopril"' in prompt
-
-        # Clinical evidence XML wrapper
-        assert "<clinical_evidence>" in prompt
-        assert "</clinical_evidence>" in prompt
-        assert '<chunk id="chunk_1" source="AHA_ACC_2025" section="Drug Interactions">' in prompt
-        assert "NSAIDs like ibuprofen" in prompt
+        start = prompt.find("<untrusted_user_input>")
+        end = prompt.find("</untrusted_user_input>")
+        assert start < prompt.find(query) < end
+        assert "<patient_context>" in prompt and '"lisinopril"' in prompt
+        assert "<clinical_evidence>" in prompt and "</clinical_evidence>" in prompt
+        assert '<chunk index="1" source="AHA_ACC_2025" section="Drug Interactions" page="35">' in prompt
+        assert "NSAIDs may blunt ACE inhibitors." in prompt
+        assert "<user_query>" in prompt
 
     def test_top_5_chunk_truncation(self) -> None:
-        """Verify that at most Top-5 chunks are included even if more are passed."""
-        chunks = [
-            RetrievedChunk(
-                chunk_id=f"chunk_{i}",
-                chunk_text=f"Evidence text number {i}",
-                guideline_id="GUIDELINE",
-                section_title="Section",
-                page_number=i,
-                source_url="",
-                score=1.0 - (i * 0.1),
-            )
-            for i in range(1, 9)  # 8 chunks
-        ]
-        prompt = _build_user_prompt(chunks, {}, "query")
-
-        # Top-5 should be present
+        prompt = _build_user_prompt([_chunk(i) for i in range(1, 9)], {}, "query")
         for i in range(1, 6):
-            assert f'chunk id="chunk_{i}"' in prompt
-            assert f"Evidence text number {i}" in prompt
-
-        # Chunks 6, 7, 8 must be omitted
+            assert f'chunk index="{i}"' in prompt and f"Evidence text number {i}" in prompt
         for i in range(6, 9):
-            assert f'chunk id="chunk_{i}"' not in prompt
-            assert f"Evidence text number {i}" not in prompt
+            assert f'chunk index="{i}"' not in prompt and f"Evidence text number {i}" not in prompt
 
     def test_empty_chunks_handling(self) -> None:
-        prompt = _build_user_prompt([], {}, "query")
-        assert "No clinical evidence available." in prompt
+        assert "No clinical evidence available." in _build_user_prompt([], {}, "query")
 
     def test_format_chunks_with_dicts_tuples_and_strings(self) -> None:
-        chunks = [
-            {"chunk_id": "c_dict", "guideline_id": "ACC", "section_title": "SecA", "chunk_text": "Dict chunk text"},
+        formatted = _format_chunks([
+            {"chunk_id": "c_dict", "guideline_id": "ACC", "section_title": "SecA", "chunk_text": "Dict"},
             ("Tuple chunk text", 0.85),
             "Raw string chunk text",
-        ]
-        formatted = _format_chunks(chunks)
-        assert 'chunk id="c_dict"' in formatted
-        assert "Dict chunk text" in formatted
-        assert "Tuple chunk text" in formatted
-        assert "Raw string chunk text" in formatted
+        ])
+        assert '<chunk index="1" source="ACC" section="SecA">' in formatted
+        assert '<chunk index="2" source="Clinical guideline" section="General">' in formatted
+        assert "Tuple chunk text" in formatted and "Raw string chunk text" in formatted
+
+    def test_rich_source_label_from_contract_fields(self) -> None:
+        chunk = {"chunk_text": "t", "guideline_id": "ESC_2024", "section_title": "Targets",
+                 "org": "ESC", "year": 2024, "doc_title": "Elevated BP and Hypertension",
+                 "page_number": 10, "page_end": 11}
+        assert ('source="ESC 2024 — Elevated BP and Hypertension" section="Targets" page="10–11"'
+                in _format_chunks([chunk]))
+
+
+class TestEvidenceGateSystemPrompt:
+    def test_rules_cover_edge_cases(self) -> None:
+        for phrase in ("outside cardiovascular care", "does not appear in the", "false belief",
+                       "children", "pregnancy", "dose", "ESCALATE", "GENERALIZE"):
+            assert phrase in SYSTEM_PROMPT
+
+    def test_few_shot_examples_present_for_all_actions(self) -> None:
+        for action in ("ANSWER", "GENERALIZE", "ABSTAIN", "ESCALATE"):
+            assert f'"action": "{action}"' in SYSTEM_PROMPT
+        assert "Cardiozepam" in SYSTEM_PROMPT
+
+    def test_scope_is_broad_cardiology(self) -> None:
+        for topic in ("heart failure", "atrial fibrillation", "coronary", "cholesterol", "pregnancy"):
+            assert topic in SYSTEM_PROMPT
 
 
 # ---------------------------------------------------------------------------
 # Schema validation
 # ---------------------------------------------------------------------------
 
+
 class TestEvidenceGateOutputSchema:
-    """Test validation of EvidenceGateOutput Pydantic schema."""
+    @pytest.mark.parametrize("action", ["ANSWER", "GENERALIZE", "ABSTAIN", "ESCALATE"])
+    def test_valid_actions(self, action: str) -> None:
+        output = EvidenceGateOutput(action=action, evidence_sufficient=action == "ANSWER", rationale="r")
+        assert output.action == action and output.evidence_used == []
 
-    def test_valid_answer_schema(self) -> None:
-        output = EvidenceGateOutput(
-            action="ANSWER",
-            evidence_sufficient=True,
-            rationale="Retrieved guidelines directly address patient's medication inquiry.",
-        )
-        assert output.action == "ANSWER"
-        assert output.evidence_sufficient is True
-
-    def test_valid_generalize_schema(self) -> None:
-        output = EvidenceGateOutput(
-            action="GENERALIZE",
-            evidence_sufficient=False,
-            rationale="Evidence covers hypertension treatment generally but not this specific drug combination.",
-        )
-        assert output.action == "GENERALIZE"
-        assert output.evidence_sufficient is False
-
-    def test_valid_abstain_schema(self) -> None:
-        output = EvidenceGateOutput(
-            action="ABSTAIN",
-            evidence_sufficient=False,
-            rationale="Query regarding pediatric oncology is outside cardiovascular knowledge base domain.",
-        )
-        assert output.action == "ABSTAIN"
-        assert output.evidence_sufficient is False
-
-    def test_valid_escalate_schema(self) -> None:
-        output = EvidenceGateOutput(
-            action="ESCALATE",
-            evidence_sufficient=False,
-            rationale="Symptoms of acute chest pain and hypertensive emergency mandate emergency department care.",
-        )
-        assert output.action == "ESCALATE"
-
-    def test_invalid_action_rejected(self) -> None:
+    @pytest.mark.parametrize("action", ["SOFT-ASK", "PROCEED"])
+    def test_invalid_action_rejected(self, action: str) -> None:
         with pytest.raises(ValidationError):
-            EvidenceGateOutput.model_validate({
-                "action": "SOFT-ASK",  # SOFT-ASK is Context Gate only, not Evidence Gate
-                "evidence_sufficient": True,
-                "rationale": "Invalid action for evidence gate",
-            })
+            EvidenceGateOutput.model_validate({"action": action, "evidence_sufficient": True})
 
-        with pytest.raises(ValidationError):
-            EvidenceGateOutput.model_validate({
-                "action": "PROCEED",  # PROCEED is Context Gate only
-                "evidence_sufficient": True,
-                "rationale": "Invalid action for evidence gate",
-            })
+    def test_evidence_used_and_rationale_first(self) -> None:
+        output = EvidenceGateOutput.model_validate(
+            {"action": "ANSWER", "evidence_sufficient": True, "evidence_used": [1, 3]}
+        )
+        assert output.evidence_used == [1, 3] and output.rationale == ""
+        assert list(EvidenceGateOutput.model_fields)[0] == "rationale"
 
 
 # ---------------------------------------------------------------------------
-# Clinical Vignettes & Routing Evaluation (ADL-024)
+# Evaluation logic
 # ---------------------------------------------------------------------------
+
 
 class TestEvidenceGateEvaluation:
-    """Test evaluation logic across standard clinical routing vignettes."""
-
-    @pytest.mark.asyncio
-    async def test_evaluate_answer_vignette(self) -> None:
-        """Vignette 1: Evidence directly matches patient clinical parameters -> ANSWER."""
+    async def test_evaluate_passes_deterministic_parameters(self) -> None:
+        expected = EvidenceGateOutput(action="ANSWER", evidence_sufficient=True, rationale="Direct.")
         mock_llm = MagicMock()
-        expected = EvidenceGateOutput(
-            action="ANSWER",
-            evidence_sufficient=True,
-            rationale="AHA/ACC 2025 guidelines directly specify thiazide diuretics as first-line for Stage 1 HTN.",
-        )
         mock_llm.call = AsyncMock(return_value=expected)
-
-        gate = EvidenceGate(llm=mock_llm)
-        snapshot = {
-            "demographics": {"age": 58, "race_ethnicity": "non-black"},
-            "diagnoses": ["Stage 1 Hypertension"],
-            "recent_bp_readings": [{"systolic": 142, "diastolic": 92}],
-        }
-        chunks = [
-            RetrievedChunk(
-                chunk_id="aha_2025_s1",
-                chunk_text="First-line therapy for Stage 1 hypertension in non-black patients includes thiazide diuretics, CCBs, and ACE inhibitors.",
-                guideline_id="AHA_ACC_2025",
-                section_title="First-Line Therapy",
-                page_number=24,
-                source_url="https://guidelines.acc.org/htn2025",
-                score=0.95,
-            )
-        ]
-
-        result = await gate.evaluate(
-            chunks=chunks,
-            snapshot=snapshot,
-            query="What is the recommended first-line medication for my Stage 1 high blood pressure?",
+        result = await EvidenceGate(llm=mock_llm).evaluate(
+            chunks=[_chunk(1)], snapshot={}, query="first-line medication for stage 1?"
         )
-
         assert result == expected
-        assert result.action == "ANSWER"
-        assert result.evidence_sufficient is True
+        kwargs = mock_llm.call.call_args.kwargs
+        assert kwargs["call_name"] == "evidence_gate"
+        assert kwargs["system_prompt"] == SYSTEM_PROMPT
+        assert kwargs["output_schema"] is EvidenceGateOutput
+        assert kwargs["temperature"] == 0.0  # NON-NEGOTIABLE #3
+        assert kwargs["max_tokens"] == get_settings().LLM_MAX_TOKENS_GATES
+        assert kwargs["model"] == get_settings().gates_model
 
-        mock_llm.call.assert_called_once()
-        call_kwargs = mock_llm.call.call_args.kwargs
-        assert call_kwargs["call_name"] == "evidence_gate"
-        assert call_kwargs["system_prompt"] == SYSTEM_PROMPT
-        assert call_kwargs["output_schema"] == EvidenceGateOutput
-        assert call_kwargs["temperature"] == 0.0  # Deterministic gate inference (ADL-026)
-        assert call_kwargs["max_tokens"] == 512
-
-    @pytest.mark.asyncio
-    async def test_evaluate_generalize_vignette(self) -> None:
-        """Vignette 2: Evidence covers general topic but lacks specific scenario detail -> GENERALIZE."""
+    @pytest.mark.parametrize("action", ["GENERALIZE", "ABSTAIN", "ESCALATE"])
+    async def test_evaluate_returns_gate_decision(self, action: str) -> None:
         mock_llm = MagicMock()
-        expected = EvidenceGateOutput(
-            action="GENERALIZE",
-            evidence_sufficient=False,
-            rationale="Guideline covers amlodipine dosing generally, but contains no evidence on interactions with St. John's Wort.",
+        mock_llm.call = AsyncMock(
+            return_value=EvidenceGateOutput(action=action, evidence_sufficient=False, rationale="r")
         )
-        mock_llm.call = AsyncMock(return_value=expected)
+        result = await EvidenceGate(llm=mock_llm).evaluate([_chunk(1)], {}, query="q")
+        assert result is not None and result.action == action
 
-        gate = EvidenceGate(llm=mock_llm)
-        snapshot = {
-            "current_medications": [{"drug": "amlodipine", "dosage": "5mg"}],
-        }
-        chunks = [
-            RetrievedChunk(
-                chunk_id="aha_2025_ccb",
-                chunk_text="Amlodipine is a dihydropyridine calcium channel blocker administered 2.5mg to 10mg once daily.",
-                guideline_id="AHA_ACC_2025",
-                section_title="Dihydropyridine CCBs",
-                page_number=30,
-                source_url="https://guidelines.acc.org/htn2025",
-                score=0.72,
-            )
-        ]
-
-        result = await gate.evaluate(
-            chunks=chunks,
-            snapshot=snapshot,
-            query="Can I safely take my amlodipine with St. John's Wort herbal supplement?",
-        )
-
-        assert result == expected
-        assert result.action == "GENERALIZE"
-        assert result.evidence_sufficient is False
-
-    @pytest.mark.asyncio
-    async def test_evaluate_abstain_vignette(self) -> None:
-        """Vignette 3: Query is outside knowledge base domain (e.g. pediatric oncology) -> ABSTAIN."""
-        mock_llm = MagicMock()
-        expected = EvidenceGateOutput(
-            action="ABSTAIN",
-            evidence_sufficient=False,
-            rationale="Query regarding pediatric oncology protocols is outside the adult cardiovascular guideline knowledge base.",
-        )
-        mock_llm.call = AsyncMock(return_value=expected)
-
-        gate = EvidenceGate(llm=mock_llm)
-        chunks = [
-            RetrievedChunk(
-                chunk_id="aha_2025_s1",
-                chunk_text="Adult hypertension diagnostic thresholds and pharmacotherapy.",
-                guideline_id="AHA_ACC_2025",
-                section_title="Adult HTN",
-                page_number=1,
-                source_url="",
-                score=0.2,
-            )
-        ]
-
-        result = await gate.evaluate(
-            chunks=chunks,
-            snapshot={},
-            query="What chemotherapy protocol is recommended for pediatric neuroblastoma?",
-        )
-
-        assert result == expected
-        assert result.action == "ABSTAIN"
-        assert result.evidence_sufficient is False
-
-    @pytest.mark.asyncio
-    async def test_evaluate_escalate_vignette(self) -> None:
-        """Vignette 4: Patient exhibits acute clinical danger / hypertensive emergency -> ESCALATE."""
-        mock_llm = MagicMock()
-        expected = EvidenceGateOutput(
-            action="ESCALATE",
-            evidence_sufficient=False,
-            rationale="Blood pressure 210/125 with acute severe chest pain and dyspnea represents a hypertensive emergency.",
-        )
-        mock_llm.call = AsyncMock(return_value=expected)
-
-        gate = EvidenceGate(llm=mock_llm)
-        snapshot = {
-            "recent_bp_readings": [{"systolic": 210, "diastolic": 125}],
-        }
-        chunks = [
-            RetrievedChunk(
-                chunk_id="aha_2025_emergencies",
-                chunk_text="Hypertensive emergencies are defined as severe elevations in BP (>180/120 mm Hg) associated with evidence of new or worsening target organ damage.",
-                guideline_id="AHA_ACC_2025",
-                section_title="Hypertensive Crises and Emergencies",
-                page_number=55,
-                source_url="https://guidelines.acc.org/htn2025",
-                score=0.98,
-            )
-        ]
-
-        result = await gate.evaluate(
-            chunks=chunks,
-            snapshot=snapshot,
-            query="My BP is 210/125 and I have crushing chest pain radiating to my arm. What pill should I take?",
-        )
-
-        assert result == expected
-        assert result.action == "ESCALATE"
-
-    @pytest.mark.asyncio
     async def test_evaluate_returns_none_on_permanent_failure(self) -> None:
-        """When LLM call permanently fails, evaluate() logs error and returns None."""
         mock_llm = MagicMock()
         mock_llm.call = AsyncMock(return_value=None)
+        assert await EvidenceGate(llm=mock_llm).evaluate([], {}, query="General question") is None
 
-        gate = EvidenceGate(llm=mock_llm)
-        result = await gate.evaluate(
-            chunks=[],
-            snapshot={},
-            query="General question",
-        )
-
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_message_alias_supported(self) -> None:
-        """Verify keyword argument `message` works as an alias for `query`."""
+    async def test_message_alias_supported_and_preferred(self) -> None:
         mock_llm = MagicMock()
-        mock_llm.call = AsyncMock(return_value=EvidenceGateOutput(
-            action="ANSWER",
-            evidence_sufficient=True,
-            rationale="Direct match",
-        ))
-
-        gate = EvidenceGate(llm=mock_llm)
-        result = await gate.evaluate(
-            chunks=[],
-            snapshot={},
-            message="Alternative kwarg parameter",
+        mock_llm.call = AsyncMock(
+            return_value=EvidenceGateOutput(action="ANSWER", evidence_sufficient=True)
         )
-
-        assert result is not None
-        assert result.action == "ANSWER"
+        gate = EvidenceGate(llm=mock_llm)
+        await gate.evaluate(chunks=[], snapshot={}, message="Alternative kwarg parameter")
+        assert "Alternative kwarg parameter" in mock_llm.call.call_args.kwargs["user_prompt"]
+        await gate.evaluate([], {}, query="cardiozepam dosing", message="Should I take Cardiozepam?")
+        prompt = mock_llm.call.call_args.kwargs["user_prompt"]
+        assert "Should I take Cardiozepam?" in prompt and "cardiozepam dosing" not in prompt
 
     def test_factory_function(self) -> None:
-        gate = get_evidence_gate()
-        assert isinstance(gate, EvidenceGate)
+        assert isinstance(get_evidence_gate(), EvidenceGate)

@@ -1,3 +1,4 @@
+"""Response Generator (LLM Call 4) output schema."""
 from pydantic import BaseModel, Field
 
 
@@ -12,10 +13,21 @@ class GeneratedCitation(BaseModel):
 
 
 class ResponseGeneratorOutput(BaseModel):
-    """Output schema for Response Generator (LLM Call 4, ADL-025)."""
+    """Output schema for Response Generator (LLM Call 4, ADL-025).
 
-    response_text: str = Field(..., description="Generated clinical response with inline [1], [2] citation markers")
+    The model only writes ``response_text`` with inline ``[n]`` markers (n = the
+    evidence chunk index); the server rebuilds citations from the markers, so
+    ``citations`` is optional and is not requested from the model
+    (``llm_omit`` removes it from the structured-output schema).
+    """
+
+    response_text: str = Field(
+        ...,
+        min_length=1,
+        description="Patient-facing markdown answer with inline [n] citation markers",
+    )
     citations: list[GeneratedCitation] = Field(
         default_factory=list,
-        description="List of citation references matching inline markers in response_text",
+        description="Optional citation references matching inline markers in response_text",
+        json_schema_extra={"llm_omit": True},
     )
