@@ -1,0 +1,264 @@
+"""
+Unit tests for the curated corpus manifest, corpus statistics and the
+``scripts/download_corpus.py`` helper. Hermetic: no network, no Qdrant.
+"""
+import importlib.util
+import json
+import sys
+import urllib.error
+from collections import Counter
+from pathlib import Path
+
+import pytest
+
+from medbridge.ingestion.manifest import (
+    ALLOWED_TOPICS,
+    CorpusDocument,
+    CorpusManifest,
+    ManifestError,
+    check_files,
+    load_manifest,
+    save_manifest,
+    sha256_file,
+)
+from medbridge.ingestion.state import IngestState, RunSummary
+from medbridge.ingestion.stats import build_corpus_stats, render_markdown, write_reports
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+MANIFEST_PATH = REPO_ROOT / "data" / "corpus_manifest.json"
+
+
+def _entry(**overrides) -> dict:
+    entry = {
+        "guideline_id": "WHO_HTN_PHARM_2021",
+        "title": "Guideline for the pharmacological treatment of hypertension in adults",
+        "short_title": "WHO Hypertension Pharmacotherapy",
+        "org": "WHO",
+        "year": 2021,
+        "doc_type": "guideline",
+        "url": "https://iris.who.int/handle/10665/344424",
+        "licence": "CC BY-NC-SA 3.0 IGO",
+        "file": "data/guidelines/who_htn_pharm_2021.pdf",
+        "topics": ["hypertension", "medication"],
+    }
+    entry.update(overrides)
+    return entry
+
+
+# ---------------------------------------------------------------------------
+# The real, committed manifest
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def manifest() -> CorpusManifest:
+    return load_manifest(MANIFEST_PATH)
+
+
+class TestCommittedManifest:
+    """The curated manifest satisfies the corpus requirements."""
+
+    def test_at_least_fifteen_curated_documents(self, manifest: CorpusManifest) -> None:
+        assert len(manifest.documents) >= 15
+
+    def test_original_three_sources_retained(self, manifest: CorpusManifest) -> None:
+        ids = set(manifest.by_id())
+        assert {"AHA_ACC_HTN_2025", "ESC_HTN_2024", "NICE_NG136"} <= ids
+
+    def test_every_topic_and_doc_type_covered(self, manifest: CorpusManifest) -> None:
+        covered = {t for d in manifest.documents for t in d.topics}
+        assert covered == ALLOWED_TOPICS
+        assert {d.doc_type for d in manifest.documents} == {"guideline", "patient_info", "review"}
+
+    def test_metadata_complete(self, manifest: CorpusManifest) -> None:
+        for doc in manifest.documents:
+            assert doc.url.startswith("https://")
+            assert doc.licence and doc.org and doc.short_title
+            assert len(doc.sha256) == 64
+            if doc.source_format == "html":
+                assert doc.html_root, f"{doc.guideline_id} needs an html_root selector"
+        assert manifest.chunking.get("chunk_size") == 400
+        assert manifest.chunking.get("chunk_overlap") == 60
+
+    def test_files_match_hashes_when_downloaded(self, manifest: CorpusManifest) -> None:
+        if not any(d.resolve_path(REPO_ROOT).exists() for d in manifest.documents):
+            pytest.skip("corpus not downloaded (data/ is git-ignored)")
+        assert check_files(manifest, REPO_ROOT) == []
+
+    def test_only_authoritative_sources(self, manifest: CorpusManifest) -> None:
+        # No scraped / aggregator domains: every document comes from a society,
+        # a government body, PMC or the publisher's DOI.
+        allowed_hosts = ("doi.org", "nice.org.uk", "iris.who.int", "pmc.ncbi.nlm.nih.gov",
+                         "medlineplus.gov", "nhlbi.nih.gov", "kdigo.org")
+        for doc in manifest.documents:
+            assert any(host in doc.url for host in allowed_hosts), doc.url
+
+
+# ---------------------------------------------------------------------------
+# Validation rules
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"guideline_id": "who-htn"},
+        {"topics": ["hypertension", "astrology"]},
+        {"topics": ["hypertension", "hypertension"]},
+        {"topics": []},
+        {"doc_type": "blog"},
+        {"url": "http://insecure.example.org"},
+        {"sha256": "abc"},
+        {"year": 1850},
+        {"file": "data/guidelines/notes.docx"},
+        {"source_format": "html"},
+    ],
+)
+def test_invalid_entries_rejected(overrides: dict) -> None:
+    with pytest.raises(ValueError):
+        CorpusDocument.model_validate(_entry(**overrides))
+
+
+def test_duplicate_ids_and_files_rejected() -> None:
+    with pytest.raises(ValueError):
+        CorpusManifest.model_validate({"documents": [_entry(), _entry()]})
+    with pytest.raises(ValueError):
+        CorpusManifest.model_validate(
+            {"documents": [_entry(), _entry(guideline_id="OTHER_DOC")]}
+        )
+
+
+def test_load_manifest_errors(tmp_path: Path) -> None:
+    with pytest.raises(ManifestError):
+        load_manifest(tmp_path / "missing.json")
+    bad = tmp_path / "bad.json"
+    bad.write_text("{oops", encoding="utf-8")
+    with pytest.raises(ManifestError):
+        load_manifest(bad)
+    invalid = tmp_path / "invalid.json"
+    invalid.write_text(json.dumps({"documents": [_entry(topics=["nope"])]}), encoding="utf-8")
+    with pytest.raises(ManifestError):
+        load_manifest(invalid)
+
+
+def test_roundtrip_and_check_files(tmp_path: Path) -> None:
+    doc_file = tmp_path / "data" / "guidelines" / "who_htn_pharm_2021.pdf"
+    doc_file.parent.mkdir(parents=True)
+    doc_file.write_bytes(b"%PDF-1.7 synthetic")
+    manifest = CorpusManifest(documents=[CorpusDocument.model_validate(
+        _entry(sha256=sha256_file(doc_file)))])
+    path = tmp_path / "manifest.json"
+    save_manifest(manifest, path)
+    reloaded = load_manifest(path)
+    assert reloaded == manifest
+    assert check_files(reloaded, tmp_path) == []
+    doc_file.write_bytes(b"%PDF-1.7 changed")
+    assert "sha256 mismatch" in check_files(reloaded, tmp_path)[0]
+    doc_file.unlink()
+    assert "missing file" in check_files(reloaded, tmp_path)[0]
+
+
+# ---------------------------------------------------------------------------
+# Corpus statistics
+# ---------------------------------------------------------------------------
+
+def _small_manifest() -> CorpusManifest:
+    return CorpusManifest(chunking={"chunk_size": 400, "chunk_overlap": 60}, documents=[
+        CorpusDocument.model_validate(_entry(pages=61, chunk_count=90, table_chunk_count=1)),
+        CorpusDocument.model_validate(_entry(
+            guideline_id="MEDLINEPLUS_HIGH_BP", short_title="MedlinePlus: High BP",
+            org="NLM MedlinePlus", year=2026, doc_type="patient_info",
+            url="https://medlineplus.gov/highbloodpressure.html", licence="Public domain",
+            file="data/guidelines/mp.html", source_format="html", html_root="#topsum_section",
+            topics=["hypertension", "lifestyle"], pages=5, chunk_count=6)),
+    ])
+
+
+def test_build_stats_prefers_qdrant_counts() -> None:
+    stats = build_corpus_stats(
+        _small_manifest(),
+        qdrant_counts={"WHO_HTN_PHARM_2021": Counter(text=80, table=2),
+                       "MEDLINEPLUS_HIGH_BP": Counter(text=6)},
+        token_counts=[100, 200, 300, 400],
+        collection="clinical_guidelines",
+    )
+    assert stats["source"] == "qdrant"
+    assert stats["totals"]["chunks"] == 88 and stats["totals"]["table_chunks"] == 2
+    assert stats["totals"]["documents"] == 2 and stats["totals"]["html_documents"] == 1
+    assert stats["topics"]["hypertension"] == {"documents": 2, "chunks": 88}
+    assert stats["topics"]["ckd"] == {"documents": 0, "chunks": 0}
+    assert stats["totals"]["chunk_tokens"]["max"] == 400
+    assert stats["by_doc_type"]["patient_info"]["documents"] == 1
+
+
+def test_build_stats_falls_back_to_manifest_and_renders(tmp_path: Path) -> None:
+    state = IngestState(last_full_build=RunSummary(mode="recreate", documents_indexed=2,
+                                                   chunks_indexed=96, seconds=12.5,
+                                                   finished_at="2026-10-09T00:00:00+00:00"))
+    stats = build_corpus_stats(_small_manifest(), state=state)
+    assert stats["source"] == "manifest" and stats["totals"]["chunks"] == 96
+    markdown = render_markdown(stats)
+    assert "| Last full rebuild | recreate: 2 documents indexed" in markdown
+    assert "| 1 | `WHO_HTN_PHARM_2021` |" in markdown
+    assert "## Topic coverage" in markdown
+    written = write_reports(stats, tmp_path / "reports")
+    assert all(p.exists() and p.stat().st_size > 0 for p in written)
+    assert json.loads((tmp_path / "reports" / "corpus_stats.json").read_text())["totals"]
+
+
+# ---------------------------------------------------------------------------
+# scripts/download_corpus.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def downloader():
+    spec = importlib.util.spec_from_file_location(
+        "download_corpus", REPO_ROOT / "scripts" / "download_corpus.py")
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules["download_corpus"] = module  # dataclasses resolve their module here
+    spec.loader.exec_module(module)
+    yield module
+    sys.modules.pop("download_corpus", None)
+
+
+def test_downloader_rejects_challenge_pages(downloader) -> None:
+    assert downloader._looks_valid(b"%PDF-1.7 ...", "pdf")
+    assert not downloader._looks_valid(b"<html><title>Just a moment...</title>", "html")
+    assert not downloader._looks_valid(b"<html>Preparing to download ...</html>", "pdf")
+    assert downloader._looks_valid(b"<!DOCTYPE html><html><body>ok</body></html>", "html")
+
+
+def test_downloader_reports_manual_downloads(downloader, monkeypatch, tmp_path: Path) -> None:
+    def forbidden(request, timeout):
+        raise urllib.error.HTTPError(request.full_url, 403, "Forbidden", {}, None)
+
+    monkeypatch.setattr(downloader.urllib.request, "urlopen", forbidden)
+    monkeypatch.setattr(downloader.time, "sleep", lambda s: None)
+    with pytest.raises(downloader.DownloadError, match="HTTP 403"):
+        downloader.fetch("https://example.org/x.pdf", timeout=1, retries=3)
+
+    monkeypatch.setattr(downloader, "REPO_ROOT", tmp_path)
+    doc = CorpusDocument.model_validate(_entry(download_url=""))
+    args = downloader.build_parser().parse_args(["--verify-only"])
+    assert downloader.process(doc, args).status == "manual"
+    args = downloader.build_parser().parse_args([])
+    outcome = downloader.process(doc, args)
+    assert outcome.status == "manual" and "no automatic download URL" in outcome.detail
+
+
+def test_downloader_downloads_and_verifies(downloader, monkeypatch, tmp_path: Path) -> None:
+    content = b"%PDF-1.7 synthetic guideline"
+    monkeypatch.setattr(downloader, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(downloader, "fetch", lambda url, timeout, retries: content)
+    import hashlib
+
+    doc = CorpusDocument.model_validate(_entry(
+        download_url="https://iris.who.int/x", sha256=hashlib.sha256(content).hexdigest()))
+    args = downloader.build_parser().parse_args([])
+    assert downloader.process(doc, args).status == "downloaded"
+    assert (tmp_path / doc.file).read_bytes() == content
+    assert downloader.process(doc, args).status == "ok"  # already present
+
+    volatile = CorpusDocument.model_validate(_entry(sha256="0" * 64, volatile=True))
+    assert downloader.check_hash(volatile).status == "drift"
+    pinned = CorpusDocument.model_validate(_entry(sha256="0" * 64))
+    assert downloader.check_hash(pinned).status == "mismatch"

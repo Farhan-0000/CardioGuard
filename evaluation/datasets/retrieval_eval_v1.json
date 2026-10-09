@@ -1,0 +1,1474 @@
+{
+  "name": "MedBridge-RetrievalEval",
+  "version": "1.0",
+  "created": "2026-10-09",
+  "description": "Labelled retrieval queries over the curated MedBridge corpus (data/corpus_manifest.json). Mix of clinical and lay phrasing across all 13 manifest topics. Used by evaluation/retrieval_eval.py for Recall@5/@20, MRR and nDCG@5 of dense, sparse, hybrid and hybrid+rerank retrieval.",
+  "relevance_rule": "A retrieved chunk is relevant to a labelled span when its guideline_id equals the span's guideline_id and its page range [page_number, page_end] overlaps one of the span's pages. For HTML sources a 'page' is the 1-based index of the h1-h3 section (virtual page) produced by medbridge.ingestion.html_parser.",
+  "label_method": "Labels were found by regex search over the PARSED document text (medbridge.ingestion.parser.parse_document output, same page numbering as the index), never by running the MedBridge retriever, to avoid biasing the evaluation towards the system under test. Each span keeps the evidence_pattern that matched its page(s); every label is checked to match the parsed text and to be covered by at least one indexed chunk. Each query has 1-3 relevant spans; a query is answered if any span is retrieved.",
+  "chunking": "400 model tokens, 60 overlap (BAAI/bge-small-en-v1.5 tokenizer)",
+  "queries": [
+    {
+      "id": "R001",
+      "query": "What blood pressure range defines stage 1 hypertension in adults?",
+      "style": "clinical",
+      "topic": "hypertension",
+      "relevant": [
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            11
+          ],
+          "evidence_pattern": "Stage 1 \\| 130 to 139"
+        },
+        {
+          "guideline_id": "AHA_BP_MEASUREMENT_2019",
+          "pages": [
+            6
+          ],
+          "evidence_pattern": "Stage 1 \\| 130–139"
+        },
+        {
+          "guideline_id": "MEDLINEPLUS_HIGH_BP",
+          "pages": [
+            2
+          ],
+          "evidence_pattern": "Stage 1 \\| 130 - 139"
+        }
+      ],
+      "notes": "BP category tables: stage 1 = 130-139 / 80-89 mm Hg."
+    },
+    {
+      "id": "R002",
+      "query": "my blood pressure was 126 over 78 at the pharmacy, is that normal or high?",
+      "style": "lay",
+      "topic": "hypertension",
+      "relevant": [
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            11
+          ],
+          "evidence_pattern": "Elevated \\| 120 to 129"
+        },
+        {
+          "guideline_id": "MEDLINEPLUS_HIGH_BP",
+          "pages": [
+            2
+          ],
+          "evidence_pattern": "Elevated \\| 120 - 129"
+        },
+        {
+          "guideline_id": "NHLBI_HIGH_BP",
+          "pages": [
+            3
+          ],
+          "evidence_pattern": "Elevated \\| 120 to 129"
+        }
+      ],
+      "notes": "120-129 systolic with <80 diastolic is the 'elevated' category."
+    },
+    {
+      "id": "R003",
+      "query": "When should ambulatory blood pressure monitoring be offered to confirm a diagnosis of hypertension?",
+      "style": "clinical",
+      "topic": "bp_measurement",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG136",
+          "pages": [
+            7,
+            8
+          ],
+          "evidence_pattern": "offer ambulatory blood pressure monitoring \\(ABPM\\) to confirm|135/85"
+        }
+      ],
+      "notes": "NICE 1.2.3: clinic BP 140/90-180/120 -> offer ABPM to confirm; diagnosis thresholds 1.2.8."
+    },
+    {
+      "id": "R004",
+      "query": "do I need more than one blood pressure reading before I'm told I have high blood pressure?",
+      "style": "lay",
+      "topic": "hypertension",
+      "relevant": [
+        {
+          "guideline_id": "MEDLINEPLUS_HIGH_BP",
+          "pages": [
+            2
+          ],
+          "evidence_pattern": "two or more readings at separate appointments"
+        },
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            11
+          ],
+          "evidence_pattern": "average of ≥2 careful readings obtained on ≥2 occasions"
+        },
+        {
+          "guideline_id": "NICE_NG136",
+          "pages": [
+            7
+          ],
+          "evidence_pattern": "to confirm the diagnosis of hypertension"
+        }
+      ],
+      "notes": "Diagnosis needs two or more readings on separate occasions (or out-of-office confirmation)."
+    },
+    {
+      "id": "R005",
+      "query": "What clinic blood pressure target does NICE recommend for treated adults under 80?",
+      "style": "clinical",
+      "topic": "hypertension",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG136",
+          "pages": [
+            16
+          ],
+          "evidence_pattern": "reduce clinic blood pressure to below 140/90"
+        }
+      ],
+      "notes": "NICE 1.4.20: below 140/90 mmHg under 80; 150/90 at 80 and over."
+    },
+    {
+      "id": "R006",
+      "query": "what should my blood pressure be once I'm on blood pressure tablets?",
+      "style": "lay",
+      "topic": "hypertension",
+      "relevant": [
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            3,
+            41
+          ],
+          "evidence_pattern": "treatment goal is <130/80|5\\.2\\.7\\. BP Goal"
+        },
+        {
+          "guideline_id": "WHO_HTN_PHARM_2021",
+          "pages": [
+            10,
+            28
+          ],
+          "evidence_pattern": "target blood pressure treatment goal of <140/90"
+        },
+        {
+          "guideline_id": "NICE_NG136",
+          "pages": [
+            16
+          ],
+          "evidence_pattern": "below 140/90"
+        }
+      ],
+      "notes": "Treatment goals: AHA/ACC <130/80; WHO <140/90 without comorbidities; NICE <140/90 under 80."
+    },
+    {
+      "id": "R007",
+      "query": "How is resistant hypertension defined?",
+      "style": "clinical",
+      "topic": "hypertension",
+      "relevant": [
+        {
+          "guideline_id": "AHA_RESISTANT_HTN_2018",
+          "pages": [
+            1
+          ],
+          "evidence_pattern": "Resistant hypertension \\(RH\\) is defined"
+        },
+        {
+          "guideline_id": "ESC_HTN_2024",
+          "pages": [
+            69
+          ],
+          "evidence_pattern": "Resistant hypertension is defined"
+        },
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            63
+          ],
+          "evidence_pattern": "Resistant hypertension is defined"
+        }
+      ],
+      "notes": "BP above goal despite >=3 drugs of different classes including a diuretic at optimal doses."
+    },
+    {
+      "id": "R008",
+      "query": "my BP is still high even though I take three different blood pressure pills, what does that mean?",
+      "style": "lay",
+      "topic": "hypertension",
+      "relevant": [
+        {
+          "guideline_id": "AHA_RESISTANT_HTN_2018",
+          "pages": [
+            1
+          ],
+          "evidence_pattern": "Resistant hypertension \\(RH\\) is defined"
+        },
+        {
+          "guideline_id": "ESC_HTN_2024",
+          "pages": [
+            69
+          ],
+          "evidence_pattern": "Resistant hypertension is defined"
+        },
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            63
+          ],
+          "evidence_pattern": "Resistant hypertension is defined"
+        }
+      ],
+      "notes": "Lay phrasing of resistant hypertension."
+    },
+    {
+      "id": "R009",
+      "query": "How is a hypertensive emergency defined?",
+      "style": "clinical",
+      "topic": "hypertensive_emergency",
+      "relevant": [
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            67
+          ],
+          "evidence_pattern": "Hypertensive emergencies are defined as"
+        },
+        {
+          "guideline_id": "ESC_HTN_2024",
+          "pages": [
+            72
+          ],
+          "evidence_pattern": "Hypertensive emergency is defined as"
+        },
+        {
+          "guideline_id": "ISH_HTN_2020",
+          "pages": [
+            15
+          ],
+          "evidence_pattern": "A hypertensive emergency is the association"
+        }
+      ],
+      "notes": "Severe BP elevation (>180/120 or >=180/110) with acute (hypertension-mediated) organ damage."
+    },
+    {
+      "id": "R010",
+      "query": "Which intravenous drugs are recommended for hypertensive emergencies, e.g. labetalol or nicardipine?",
+      "style": "clinical",
+      "topic": "hypertensive_emergency",
+      "relevant": [
+        {
+          "guideline_id": "ESC_HTN_EMERGENCIES_2019",
+          "pages": [
+            10,
+            11
+          ],
+          "evidence_pattern": "Nicardipine|nicardipine"
+        },
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            68,
+            69,
+            70
+          ],
+          "evidence_pattern": "[Nn]icardipine|[Cc]levidipine"
+        }
+      ],
+      "notes": "Drug tables for IV treatment by type of emergency."
+    },
+    {
+      "id": "R011",
+      "query": "How quickly should blood pressure be lowered in a hypertensive emergency without a compelling condition?",
+      "style": "clinical",
+      "topic": "hypertensive_emergency",
+      "relevant": [
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            67,
+            68
+          ],
+          "evidence_pattern": "no more than 25% within the first hour|25% reduction in the first hour"
+        },
+        {
+          "guideline_id": "ESC_HTN_EMERGENCIES_2019",
+          "pages": [
+            10
+          ],
+          "evidence_pattern": "MAP −20% to −25%"
+        }
+      ],
+      "notes": "AHA: reduce SBP by no more than 25% in the first hour, then <160/100 over 2-6 h; ESC: MAP reduction targets by condition."
+    },
+    {
+      "id": "R012",
+      "query": "my blood pressure is 190 over 125 and I have a terrible headache and blurry vision, what should I do?",
+      "style": "lay",
+      "topic": "hypertensive_emergency",
+      "relevant": [
+        {
+          "guideline_id": "MEDLINEPLUS_HIGH_BP",
+          "pages": [
+            2
+          ],
+          "evidence_pattern": "Hypertensive Crisis \\(dangerously high blood pressure - seek medical care right away\\)"
+        },
+        {
+          "guideline_id": "NHLBI_HIGH_BP",
+          "pages": [
+            3
+          ],
+          "evidence_pattern": "Contact your provider immediately"
+        },
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            67
+          ],
+          "evidence_pattern": "Hypertensive emergencies are defined as"
+        }
+      ],
+      "notes": "Hypertensive crisis (>180/120): seek medical care immediately."
+    },
+    {
+      "id": "R013",
+      "query": "How should severe hypertension without acute target organ damage (formerly hypertensive urgency) be managed?",
+      "style": "clinical",
+      "topic": "hypertensive_emergency",
+      "relevant": [
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            67
+          ],
+          "evidence_pattern": "previously called hypertensive urgency"
+        },
+        {
+          "guideline_id": "ESC_HTN_EMERGENCIES_2019",
+          "pages": [
+            3
+          ],
+          "evidence_pattern": "[Hh]ypertensive urgenc"
+        }
+      ],
+      "notes": "No aggressive short-term lowering or parenteral therapy; reinstitute/intensify oral therapy."
+    },
+    {
+      "id": "R014",
+      "query": "Which drugs treat severe hypertension in pregnancy in a critical care setting?",
+      "style": "clinical",
+      "topic": "pregnancy",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG133",
+          "pages": [
+            32
+          ],
+          "evidence_pattern": "labetalol \\(oral or intravenous\\)"
+        }
+      ],
+      "notes": "NICE 1.8: labetalol (oral/IV), oral nifedipine or IV hydralazine."
+    },
+    {
+      "id": "R015",
+      "query": "what is heart failure? does it mean my heart has stopped?",
+      "style": "lay",
+      "topic": "heart_failure",
+      "relevant": [
+        {
+          "guideline_id": "MEDLINEPLUS_HEART_FAILURE",
+          "pages": [
+            1
+          ],
+          "evidence_pattern": "doesn't mean that your heart has stopped"
+        }
+      ],
+      "notes": "Heart can't pump enough blood; it does not mean the heart has stopped."
+    },
+    {
+      "id": "R016",
+      "query": "What is first-line treatment for heart failure with reduced ejection fraction?",
+      "style": "clinical",
+      "topic": "heart_failure",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG106",
+          "pages": [
+            13
+          ],
+          "evidence_pattern": "1\\.4\\.1 Offer an angiotensin-converting enzyme"
+        }
+      ],
+      "notes": "NICE 1.4.1: ACE inhibitor (or ARNI/ARB), beta-blocker, MRA and SGLT2 inhibitor."
+    },
+    {
+      "id": "R017",
+      "query": "Should NT-proBNP be measured in people with suspected heart failure?",
+      "style": "clinical",
+      "topic": "heart_failure",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG106",
+          "pages": [
+            10
+          ],
+          "evidence_pattern": "Measure N-terminal pro-B-type natriuretic peptide"
+        }
+      ],
+      "notes": "NICE 1.2.2: measure NT-proBNP; very high levels -> urgent referral."
+    },
+    {
+      "id": "R018",
+      "query": "should I cut down on salt and drink less water if I have heart failure?",
+      "style": "lay",
+      "topic": "heart_failure",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG106",
+          "pages": [
+            30
+          ],
+          "evidence_pattern": "Do not routinely advise people with heart failure to restrict"
+        },
+        {
+          "guideline_id": "MEDLINEPLUS_HEART_FAILURE",
+          "pages": [
+            7
+          ],
+          "evidence_pattern": "Eating less sodium and drinking less liquid"
+        }
+      ],
+      "notes": "NICE 1.9.10: do not routinely restrict sodium or fluid; MedlinePlus: less sodium/liquid in many plans."
+    },
+    {
+      "id": "R019",
+      "query": "Which calcium-channel blockers should be avoided in heart failure with reduced ejection fraction?",
+      "style": "clinical",
+      "topic": "heart_failure",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG106",
+          "pages": [
+            19
+          ],
+          "evidence_pattern": "Avoid verapamil, diltiazem"
+        }
+      ],
+      "notes": "NICE 1.4.12: avoid verapamil, diltiazem and short-acting dihydropyridines."
+    },
+    {
+      "id": "R020",
+      "query": "what symptoms does heart failure cause, like swelling or getting out of breath?",
+      "style": "lay",
+      "topic": "heart_failure",
+      "relevant": [
+        {
+          "guideline_id": "MEDLINEPLUS_HEART_FAILURE",
+          "pages": [
+            4
+          ],
+          "evidence_pattern": "fluid buildup"
+        }
+      ],
+      "notes": "Symptoms from reduced blood flow and fluid build-up."
+    },
+    {
+      "id": "R021",
+      "query": "Which score is used to assess stroke risk in atrial fibrillation?",
+      "style": "clinical",
+      "topic": "atrial_fibrillation",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG196",
+          "pages": [
+            7,
+            8
+          ],
+          "evidence_pattern": "CHA2DS2"
+        }
+      ],
+      "notes": "NICE 1.2.1: CHA2DS2-VASc; anticoagulate at score >=2."
+    },
+    {
+      "id": "R022",
+      "query": "what is AFib and why does it put me at risk of a stroke?",
+      "style": "lay",
+      "topic": "atrial_fibrillation",
+      "relevant": [
+        {
+          "guideline_id": "MEDLINEPLUS_AFIB",
+          "pages": [
+            1,
+            5
+          ],
+          "evidence_pattern": "risk for stroke|Stroke"
+        }
+      ],
+      "notes": "AFib is an irregular heartbeat that can lead to stroke if untreated."
+    },
+    {
+      "id": "R023",
+      "query": "Should a DOAC or warfarin be used for stroke prevention in atrial fibrillation?",
+      "style": "clinical",
+      "topic": "atrial_fibrillation",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG196",
+          "pages": [
+            15
+          ],
+          "evidence_pattern": "Offer anticoagulation with a direct‐acting oral anticoagulant"
+        },
+        {
+          "guideline_id": "ACC_AHA_AF_2023",
+          "pages": [
+            31
+          ],
+          "evidence_pattern": "DOACs are recommended over warfarin"
+        }
+      ],
+      "notes": "DOACs (apixaban, dabigatran, edoxaban, rivaroxaban) recommended over warfarin."
+    },
+    {
+      "id": "R024",
+      "query": "is taking a baby aspirin enough to prevent a stroke if I have atrial fibrillation?",
+      "style": "lay",
+      "topic": "atrial_fibrillation",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG196",
+          "pages": [
+            20
+          ],
+          "evidence_pattern": "Do not offer aspirin monotherapy"
+        },
+        {
+          "guideline_id": "ACC_AHA_AF_2023",
+          "pages": [
+            31
+          ],
+          "evidence_pattern": "aspirin monotherapy for prevention of thromboembolic events is of no benefit"
+        }
+      ],
+      "notes": "Aspirin monotherapy is not recommended / of no benefit for AF stroke prevention."
+    },
+    {
+      "id": "R025",
+      "query": "What is the first-line rate control strategy in atrial fibrillation?",
+      "style": "clinical",
+      "topic": "atrial_fibrillation",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG196",
+          "pages": [
+            21,
+            22
+          ],
+          "evidence_pattern": "Offer rate control as the first‐line|digoxin monotherapy"
+        },
+        {
+          "guideline_id": "ACC_AHA_AF_2023",
+          "pages": [
+            37,
+            38
+          ],
+          "evidence_pattern": "Rate Control"
+        }
+      ],
+      "notes": "Beta-blocker or rate-limiting CCB; digoxin in sedentary people."
+    },
+    {
+      "id": "R026",
+      "query": "what treatments are there for AFib, do I need a blood thinner?",
+      "style": "lay",
+      "topic": "atrial_fibrillation",
+      "relevant": [
+        {
+          "guideline_id": "MEDLINEPLUS_AFIB",
+          "pages": [
+            7
+          ],
+          "evidence_pattern": "Blood thinner medicines"
+        }
+      ],
+      "notes": "Blood thinners, rate/rhythm medicines, lifestyle changes."
+    },
+    {
+      "id": "R027",
+      "query": "what are the warning signs of a heart attack?",
+      "style": "lay",
+      "topic": "coronary_disease",
+      "relevant": [
+        {
+          "guideline_id": "MEDLINEPLUS_HEART_ATTACK",
+          "pages": [
+            1,
+            5
+          ],
+          "evidence_pattern": "symptoms of a heart attack|What are the symptoms of a heart attack"
+        }
+      ],
+      "notes": "Symptoms of a heart attack; call 911."
+    },
+    {
+      "id": "R028",
+      "query": "Which P2Y12 inhibitor should be used as part of dual antiplatelet therapy for NSTEMI?",
+      "style": "clinical",
+      "topic": "coronary_disease",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG185",
+          "pages": [
+            18,
+            19
+          ],
+          "evidence_pattern": "as part of dual antiplatelet therapy with aspirin"
+        }
+      ],
+      "notes": "Prasugrel or ticagrelor with aspirin if angiography; ticagrelor when PCI not indicated."
+    },
+    {
+      "id": "R029",
+      "query": "What drugs should be offered for secondary prevention after a myocardial infarction?",
+      "style": "clinical",
+      "topic": "coronary_disease",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG185",
+          "pages": [
+            23
+          ],
+          "evidence_pattern": "1\\.4\\.1 For secondary prevention, offer people who have had MI"
+        }
+      ],
+      "notes": "NICE 1.4.1: ACE inhibitor, dual antiplatelet therapy, beta-blocker, statin."
+    },
+    {
+      "id": "R030",
+      "query": "Should everyone be offered cardiac rehabilitation after a heart attack?",
+      "style": "clinical",
+      "topic": "coronary_disease",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG185",
+          "pages": [
+            32
+          ],
+          "evidence_pattern": "Cardiac rehabilitation after an MI 1\\.8\\.1"
+        }
+      ],
+      "notes": "NICE 1.8.1: offer cardiac rehabilitation to all regardless of age."
+    },
+    {
+      "id": "R031",
+      "query": "Which antianginal medications are used first in chronic coronary disease?",
+      "style": "clinical",
+      "topic": "coronary_disease",
+      "relevant": [
+        {
+          "guideline_id": "CCD_GUIDELINE_REVIEW_2024",
+          "pages": [
+            11
+          ],
+          "evidence_pattern": "antianginal medications, such as beta blockers"
+        }
+      ],
+      "notes": "Beta blockers, calcium channel blockers or long-acting nitrates."
+    },
+    {
+      "id": "R032",
+      "query": "Are SGLT2 inhibitors recommended for patients with chronic coronary disease?",
+      "style": "clinical",
+      "topic": "coronary_disease",
+      "relevant": [
+        {
+          "guideline_id": "CCD_GUIDELINE_REVIEW_2024",
+          "pages": [
+            15,
+            17
+          ],
+          "evidence_pattern": "SGLT2"
+        }
+      ],
+      "notes": "SGLT2 inhibitors reduce MACE/HF outcomes; recommended in CCD with diabetes/HF."
+    },
+    {
+      "id": "R033",
+      "query": "what is LDL cholesterol and why do people call it bad cholesterol?",
+      "style": "lay",
+      "topic": "dyslipidaemia",
+      "relevant": [
+        {
+          "guideline_id": "MEDLINEPLUS_CHOLESTEROL",
+          "pages": [
+            2,
+            3
+          ],
+          "evidence_pattern": "What are HDL, LDL, and VLDL|LDL \\(bad\\) cholesterol"
+        }
+      ],
+      "notes": "LDL is a lipoprotein; saturated fat raises LDL (bad) cholesterol."
+    },
+    {
+      "id": "R034",
+      "query": "What statin intensity is recommended for patients with clinical ASCVD?",
+      "style": "clinical",
+      "topic": "dyslipidaemia",
+      "relevant": [
+        {
+          "guideline_id": "AHA_ACC_CHOLESTEROL_2018",
+          "pages": [
+            2,
+            8
+          ],
+          "evidence_pattern": "high-intensity statin therapy|High-intensity statin therapy typically lowers"
+        }
+      ],
+      "notes": "High-intensity or maximally tolerated statin; >=50% LDL-C reduction."
+    },
+    {
+      "id": "R035",
+      "query": "When should atorvastatin be offered for primary prevention of cardiovascular disease?",
+      "style": "clinical",
+      "topic": "dyslipidaemia",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG238",
+          "pages": [
+            22
+          ],
+          "evidence_pattern": "Offer atorvastatin 20 mg for the primary prevention"
+        }
+      ],
+      "notes": "NICE 1.6.7: atorvastatin 20 mg if 10-year QRISK3 >= 10%."
+    },
+    {
+      "id": "R036",
+      "query": "What LDL cholesterol level should be aimed for in secondary prevention of CVD?",
+      "style": "clinical",
+      "topic": "dyslipidaemia",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG238",
+          "pages": [
+            26
+          ],
+          "evidence_pattern": "aim for LDL cholesterol levels of 2\\.0 mmol"
+        }
+      ],
+      "notes": "NICE 1.7.1: LDL-C <= 2.0 mmol/L or non-HDL-C <= 2.6 mmol/L."
+    },
+    {
+      "id": "R037",
+      "query": "my statin gives me muscle aches, what should I do?",
+      "style": "lay",
+      "topic": "dyslipidaemia",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG238",
+          "pages": [
+            20,
+            41
+          ],
+          "evidence_pattern": "muscle symptoms|muscle pain"
+        },
+        {
+          "guideline_id": "AHA_ACC_CHOLESTEROL_2018",
+          "pages": [
+            13
+          ],
+          "evidence_pattern": "statin-associated side effects"
+        }
+      ],
+      "notes": "Seek advice; measure creatine kinase; statin-associated side effects are mostly manageable."
+    },
+    {
+      "id": "R038",
+      "query": "Should adults aged 40 to 75 with diabetes take a statin?",
+      "style": "clinical",
+      "topic": "diabetes",
+      "relevant": [
+        {
+          "guideline_id": "AHA_ACC_CHOLESTEROL_2018",
+          "pages": [
+            2,
+            11
+          ],
+          "evidence_pattern": "diabetes mellitus.{0,80}moderate-intensity statin|start with a moderate-intensity statin"
+        },
+        {
+          "guideline_id": "ACC_AHA_PREVENTION_2019",
+          "pages": [
+            16
+          ],
+          "evidence_pattern": "moderate-intensity statin therapy is indicated for primary prevention in patients 40 to 75 years of age with diabetes"
+        }
+      ],
+      "notes": "Moderate-intensity statin without calculating 10-year risk."
+    },
+    {
+      "id": "R039",
+      "query": "What systolic blood pressure target is recommended for adults with CKD not on dialysis?",
+      "style": "clinical",
+      "topic": "ckd",
+      "relevant": [
+        {
+          "guideline_id": "KDIGO_BP_CKD_2021",
+          "pages": [
+            29,
+            42
+          ],
+          "evidence_pattern": "Recommendation 3\\.1\\.1"
+        }
+      ],
+      "notes": "KDIGO 3.1.1: SBP <120 mm Hg when tolerated, with standardized office measurement."
+    },
+    {
+      "id": "R040",
+      "query": "Should ACE inhibitors or ARBs be started in CKD with albuminuria?",
+      "style": "clinical",
+      "topic": "ckd",
+      "relevant": [
+        {
+          "guideline_id": "KDIGO_BP_CKD_2021",
+          "pages": [
+            51,
+            54
+          ],
+          "evidence_pattern": "Recommendation 3\\.2\\.[12]"
+        }
+      ],
+      "notes": "KDIGO 3.2.1/3.2.2: start RASi for high BP + CKD with albuminuria."
+    },
+    {
+      "id": "R041",
+      "query": "How much sodium should patients with CKD and high blood pressure eat?",
+      "style": "clinical",
+      "topic": "ckd",
+      "relevant": [
+        {
+          "guideline_id": "KDIGO_BP_CKD_2021",
+          "pages": [
+            28,
+            37
+          ],
+          "evidence_pattern": "sodium intake <2 g of sodium per day"
+        }
+      ],
+      "notes": "KDIGO 2.1.1: <2 g sodium/day (<90 mmol, <5 g salt)."
+    },
+    {
+      "id": "R042",
+      "query": "can high blood pressure damage my kidneys?",
+      "style": "lay",
+      "topic": "ckd",
+      "relevant": [
+        {
+          "guideline_id": "MEDLINEPLUS_HIGH_BP",
+          "pages": [
+            4
+          ],
+          "evidence_pattern": "kidney failure"
+        },
+        {
+          "guideline_id": "NHLBI_HIGH_BP",
+          "pages": [
+            3
+          ],
+          "evidence_pattern": "chronic kidney disease"
+        }
+      ],
+      "notes": "Uncontrolled high BP can lead to (chronic) kidney disease / failure."
+    },
+    {
+      "id": "R043",
+      "query": "Can an ACE inhibitor be combined with an ARB to treat hypertension?",
+      "style": "clinical",
+      "topic": "medication",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG136",
+          "pages": [
+            20
+          ],
+          "evidence_pattern": "Do not combine an ACE inhibitor with an ARB"
+        },
+        {
+          "guideline_id": "ESC_HTN_2024",
+          "pages": [
+            65
+          ],
+          "evidence_pattern": "combination of an ACE inhibitor and an ARB is not recommended"
+        },
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            51
+          ],
+          "evidence_pattern": "combined use of an ACEi and an ARB should be avoided"
+        }
+      ],
+      "notes": "Dual RAS blockade is not recommended (harm)."
+    },
+    {
+      "id": "R044",
+      "query": "What is the step 1 antihypertensive for adults with type 2 diabetes?",
+      "style": "clinical",
+      "topic": "diabetes",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG136",
+          "pages": [
+            20,
+            42
+          ],
+          "evidence_pattern": "do not have type 2 diabetes|adults with type 2 diabetes of any age should start on an angiotensin-converting enzyme"
+        }
+      ],
+      "notes": "NICE: ACE inhibitor or ARB as step 1 for type 2 diabetes (CCB for >=55 without diabetes)."
+    },
+    {
+      "id": "R045",
+      "query": "I have type 2 diabetes, which blood pressure medicine is usually started first?",
+      "style": "lay",
+      "topic": "diabetes",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG136",
+          "pages": [
+            20,
+            42
+          ],
+          "evidence_pattern": "do not have type 2 diabetes|adults with type 2 diabetes of any age should start on an angiotensin-converting enzyme"
+        }
+      ],
+      "notes": "Lay phrasing of step 1 treatment in type 2 diabetes."
+    },
+    {
+      "id": "R046",
+      "query": "What is the first-line glucose-lowering drug in the WHO HEARTS diabetes protocol?",
+      "style": "clinical",
+      "topic": "diabetes",
+      "relevant": [
+        {
+          "guideline_id": "WHO_HEARTS_PROTOCOLS_2018",
+          "pages": [
+            35,
+            37
+          ],
+          "evidence_pattern": "Metformin is recommended as the first-line|BEGIN METFORMIN"
+        }
+      ],
+      "notes": "Metformin first line; sulfonylurea second line."
+    },
+    {
+      "id": "R047",
+      "query": "Which antihypertensive is recommended first for chronic hypertension in pregnancy?",
+      "style": "clinical",
+      "topic": "pregnancy",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG133",
+          "pages": [
+            12
+          ],
+          "evidence_pattern": "Consider labetalol to treat chronic hypertension in pregnant women"
+        },
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            62
+          ],
+          "evidence_pattern": "Table 22"
+        }
+      ],
+      "notes": "Labetalol; nifedipine if unsuitable; methyldopa as alternative."
+    },
+    {
+      "id": "R048",
+      "query": "is it safe to keep taking my ACE inhibitor now that I'm pregnant?",
+      "style": "lay",
+      "topic": "pregnancy",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG133",
+          "pages": [
+            10,
+            11
+          ],
+          "evidence_pattern": "Advise women who take angiotensin-converting enzyme|Stop antihypertensive treatment in women taking ACE inhibitors"
+        }
+      ],
+      "notes": "Stop ACE inhibitors/ARBs within 2 working days of pregnancy notification and switch."
+    },
+    {
+      "id": "R049",
+      "query": "Should pregnant women with chronic hypertension take aspirin to prevent pre-eclampsia?",
+      "style": "clinical",
+      "topic": "pregnancy",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG133",
+          "pages": [
+            12
+          ],
+          "evidence_pattern": "aspirin 75 mg to 150 mg once daily from 12 weeks"
+        }
+      ],
+      "notes": "Aspirin 75-150 mg daily from 12 weeks."
+    },
+    {
+      "id": "R050",
+      "query": "What blood pressure target should be used when treating hypertension in pregnancy?",
+      "style": "clinical",
+      "topic": "pregnancy",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG133",
+          "pages": [
+            12
+          ],
+          "evidence_pattern": "aim for a target blood pressure of 135/85"
+        }
+      ],
+      "notes": "Target 135/85 mmHg."
+    },
+    {
+      "id": "R051",
+      "query": "which blood pressure medicines can I take while breastfeeding?",
+      "style": "lay",
+      "topic": "pregnancy",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG133",
+          "pages": [
+            35,
+            36
+          ],
+          "evidence_pattern": "during breastfeeding|transfer into breast milk"
+        }
+      ],
+      "notes": "Postnatal treatment incl. breastfeeding: enalapril, nifedipine/amlodipine, atenolol/labetalol; monitor babies."
+    },
+    {
+      "id": "R052",
+      "query": "Which features of severe pre-eclampsia should prompt considering planned early birth?",
+      "style": "clinical",
+      "topic": "pregnancy",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG133",
+          "pages": [
+            20,
+            22
+          ],
+          "evidence_pattern": "severe pre-eclampsia|features of severe preeclampsia"
+        }
+      ],
+      "notes": "Uncontrolled BP despite >=3 drug classes, falling platelets, impending eclampsia, etc."
+    },
+    {
+      "id": "R053",
+      "query": "How should 10-year ASCVD risk be estimated in adults aged 40 to 75?",
+      "style": "clinical",
+      "topic": "prevention",
+      "relevant": [
+        {
+          "guideline_id": "ACC_AHA_PREVENTION_2019",
+          "pages": [
+            11
+          ],
+          "evidence_pattern": "pooled cohort equations"
+        }
+      ],
+      "notes": "Use the pooled cohort equations (PCE)."
+    },
+    {
+      "id": "R054",
+      "query": "Should low-dose aspirin be used for primary prevention of cardiovascular disease?",
+      "style": "clinical",
+      "topic": "prevention",
+      "relevant": [
+        {
+          "guideline_id": "ACC_AHA_PREVENTION_2019",
+          "pages": [
+            19
+          ],
+          "evidence_pattern": "Low-dose aspirin \\(75-100 mg orally daily\\) might be considered"
+        },
+        {
+          "guideline_id": "NICE_NG238",
+          "pages": [
+            13
+          ],
+          "evidence_pattern": "Do not routinely offer aspirin for primary prevention"
+        }
+      ],
+      "notes": "ACC/AHA IIb for select 40-70; NICE: do not routinely offer."
+    },
+    {
+      "id": "R055",
+      "query": "what is the most important thing I can do to avoid heart disease?",
+      "style": "lay",
+      "topic": "prevention",
+      "relevant": [
+        {
+          "guideline_id": "ACC_AHA_PREVENTION_2019",
+          "pages": [
+            1,
+            3
+          ],
+          "evidence_pattern": "most important way to prevent"
+        }
+      ],
+      "notes": "Promote a healthy lifestyle throughout life (top take-home message)."
+    },
+    {
+      "id": "R056",
+      "query": "Which tool does NICE recommend to estimate 10-year cardiovascular risk?",
+      "style": "clinical",
+      "topic": "prevention",
+      "relevant": [
+        {
+          "guideline_id": "NICE_NG238",
+          "pages": [
+            5,
+            6
+          ],
+          "evidence_pattern": "Use the QRISK3 tool"
+        }
+      ],
+      "notes": "QRISK3 for ages 25-84 without CVD."
+    },
+    {
+      "id": "R057",
+      "query": "how much salt can I eat in a day if I have high blood pressure?",
+      "style": "lay",
+      "topic": "lifestyle",
+      "relevant": [
+        {
+          "guideline_id": "WHO_HEARTS_LIFESTYLE_2018",
+          "pages": [
+            11
+          ],
+          "evidence_pattern": "less than 5 g of salt per day"
+        },
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            28
+          ],
+          "evidence_pattern": "no more than 2300 mg of sodium"
+        },
+        {
+          "guideline_id": "ESC_HTN_2024",
+          "pages": [
+            47
+          ],
+          "evidence_pattern": "about a teaspoon or less"
+        }
+      ],
+      "notes": "Less than 5 g salt/day (about a teaspoon); AHA: <=2300 mg sodium."
+    },
+    {
+      "id": "R058",
+      "query": "How effective is the DASH eating plan for lowering blood pressure?",
+      "style": "clinical",
+      "topic": "lifestyle",
+      "relevant": [
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            29
+          ],
+          "evidence_pattern": "DASH eating plan ranked as the most effective"
+        },
+        {
+          "guideline_id": "NHLBI_HIGH_BP_TREATMENT",
+          "pages": [
+            4
+          ],
+          "evidence_pattern": "DASH combined with a low-salt eating plan"
+        }
+      ],
+      "notes": "DASH ranked most effective lifestyle intervention; DASH + low salt comparable to medicines."
+    },
+    {
+      "id": "R059",
+      "query": "does drinking alcohol raise my blood pressure?",
+      "style": "lay",
+      "topic": "lifestyle",
+      "relevant": [
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            28,
+            29
+          ],
+          "evidence_pattern": "Intake of any alcohol is associated with higher SBP|Reduced alcohol intake"
+        },
+        {
+          "guideline_id": "ESC_HTN_2024",
+          "pages": [
+            46
+          ],
+          "evidence_pattern": "8\\.2\\.4\\. Alcohol, coffee, and soft drinks"
+        }
+      ],
+      "notes": "Any alcohol associated with higher SBP; reduce or abstain."
+    },
+    {
+      "id": "R060",
+      "query": "How much aerobic physical activity per week is recommended for adults?",
+      "style": "clinical",
+      "topic": "lifestyle",
+      "relevant": [
+        {
+          "guideline_id": "ACC_AHA_PREVENTION_2019",
+          "pages": [
+            13
+          ],
+          "evidence_pattern": "at least 150 minutes per week"
+        },
+        {
+          "guideline_id": "ESC_HTN_2024",
+          "pages": [
+            13
+          ],
+          "evidence_pattern": "≥150 min/week"
+        },
+        {
+          "guideline_id": "WHO_HEARTS_LIFESTYLE_2018",
+          "pages": [
+            12
+          ],
+          "evidence_pattern": "at least 150 minutes of moderate physical activity"
+        }
+      ],
+      "notes": ">=150 min/week moderate or 75 min/week vigorous."
+    },
+    {
+      "id": "R061",
+      "query": "how can my doctor help me stop smoking?",
+      "style": "lay",
+      "topic": "lifestyle",
+      "relevant": [
+        {
+          "guideline_id": "WHO_HEARTS_LIFESTYLE_2018",
+          "pages": [
+            22,
+            13
+          ],
+          "evidence_pattern": "5As brief intervention to quit tobacco|benefits of quitting tobacco"
+        }
+      ],
+      "notes": "5As brief intervention for tobacco cessation; benefits of quitting."
+    },
+    {
+      "id": "R062",
+      "query": "Which drug classes are recommended as first-line antihypertensive agents?",
+      "style": "clinical",
+      "topic": "medication",
+      "relevant": [
+        {
+          "guideline_id": "WHO_HTN_PHARM_2021",
+          "pages": [
+            10
+          ],
+          "evidence_pattern": "RECOMMENDATION ON DRUG CLASSES TO BE USED AS FIRST-LINE"
+        },
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            36
+          ],
+          "evidence_pattern": "2 first-line agents of different classes"
+        }
+      ],
+      "notes": "Thiazide(-like) diuretics, ACEi/ARB, long-acting dihydropyridine CCBs."
+    },
+    {
+      "id": "R063",
+      "query": "Should treatment start with a single-pill combination?",
+      "style": "clinical",
+      "topic": "medication",
+      "relevant": [
+        {
+          "guideline_id": "WHO_HTN_PHARM_2021",
+          "pages": [
+            10
+          ],
+          "evidence_pattern": "preferably with a single-pill combination"
+        },
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            36,
+            42
+          ],
+          "evidence_pattern": "single-pill combination \\(SPC\\)|Single-Pill Combinations"
+        }
+      ],
+      "notes": "WHO suggests combination therapy, preferably SPC, as initial treatment; AHA: 2 agents in SPC for stage 2."
+    },
+    {
+      "id": "R064",
+      "query": "what does a water pill do for blood pressure?",
+      "style": "lay",
+      "topic": "medication",
+      "relevant": [
+        {
+          "guideline_id": "NHLBI_HIGH_BP_TREATMENT",
+          "pages": [
+            5
+          ],
+          "evidence_pattern": "Diuretics remove extra water and sodium"
+        }
+      ],
+      "notes": "Diuretics remove extra water and sodium, lowering blood volume."
+    },
+    {
+      "id": "R065",
+      "query": "Is spironolactone recommended as add-on therapy for resistant hypertension?",
+      "style": "clinical",
+      "topic": "medication",
+      "relevant": [
+        {
+          "guideline_id": "ESC_HTN_2024",
+          "pages": [
+            13,
+            16
+          ],
+          "evidence_pattern": "spironolactone"
+        },
+        {
+          "guideline_id": "AHA_RESISTANT_HTN_2018",
+          "pages": [
+            45
+          ],
+          "evidence_pattern": "mineralocorticoid receptor antagonists \\(spironolactone or eplerenone\\)"
+        }
+      ],
+      "notes": "Add low-dose spironolactone (MRA) as the fourth drug."
+    },
+    {
+      "id": "R066",
+      "query": "I keep forgetting to take my blood pressure pills, does that really matter?",
+      "style": "lay",
+      "topic": "medication",
+      "relevant": [
+        {
+          "guideline_id": "ISH_HTN_2020",
+          "pages": [
+            8,
+            11
+          ],
+          "evidence_pattern": "8\\.3 Adherence to Antihypertensive Treatment|Recommendations: Adherence"
+        }
+      ],
+      "notes": "Adherence to antihypertensive treatment; assess at each visit."
+    },
+    {
+      "id": "R067",
+      "query": "how do I measure my blood pressure properly at home?",
+      "style": "lay",
+      "topic": "bp_measurement",
+      "relevant": [
+        {
+          "guideline_id": "AHA_BP_MEASUREMENT_2019",
+          "pages": [
+            15
+          ],
+          "evidence_pattern": "Best practices for the patient"
+        },
+        {
+          "guideline_id": "WHO_HEARTS_PROTOCOLS_2018",
+          "pages": [
+            12
+          ],
+          "evidence_pattern": "How to measure blood pressure"
+        },
+        {
+          "guideline_id": "ESC_HTN_2024",
+          "pages": [
+            21
+          ],
+          "evidence_pattern": "Home-based blood pressure measurement"
+        }
+      ],
+      "notes": "Home BP technique: rest 5 min, seated, back supported, arm at heart level, validated device."
+    },
+    {
+      "id": "R068",
+      "query": "How do you choose the right cuff size for office blood pressure measurement?",
+      "style": "clinical",
+      "topic": "bp_measurement",
+      "relevant": [
+        {
+          "guideline_id": "AHA_BP_MEASUREMENT_2019",
+          "pages": [
+            5
+          ],
+          "evidence_pattern": "determining the appropriate cuff size"
+        },
+        {
+          "guideline_id": "AHA_ACC_HTN_2025",
+          "pages": [
+            13
+          ],
+          "evidence_pattern": "3\\.1\\.1\\. Accurate Measurement of In-Office BP"
+        }
+      ],
+      "notes": "Determine cuff size from arm circumference (tables 2-3)."
+    },
+    {
+      "id": "R069",
+      "query": "What are white-coat hypertension and masked hypertension?",
+      "style": "clinical",
+      "topic": "bp_measurement",
+      "relevant": [
+        {
+          "guideline_id": "AHA_BP_MEASUREMENT_2019",
+          "pages": [
+            10
+          ],
+          "evidence_pattern": "White-Coat Hypertension and White-Coat Effect"
+        },
+        {
+          "guideline_id": "NICE_NG136",
+          "pages": [
+            25,
+            26
+          ],
+          "evidence_pattern": "Masked hypertension|White-coat effect"
+        }
+      ],
+      "notes": "Office vs out-of-office discrepancy phenotypes."
+    },
+    {
+      "id": "R070",
+      "query": "why is my blood pressure always higher at the doctor's office than at home?",
+      "style": "lay",
+      "topic": "bp_measurement",
+      "relevant": [
+        {
+          "guideline_id": "AHA_BP_MEASUREMENT_2019",
+          "pages": [
+            10
+          ],
+          "evidence_pattern": "White-Coat Hypertension and White-Coat Effect"
+        },
+        {
+          "guideline_id": "NICE_NG136",
+          "pages": [
+            26
+          ],
+          "evidence_pattern": "White-coat effect"
+        }
+      ],
+      "notes": "White-coat effect."
+    }
+  ]
+}

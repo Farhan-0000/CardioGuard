@@ -1,0 +1,622 @@
+{
+  "collection": "clinical_guidelines",
+  "source": "qdrant",
+  "chunking": {
+    "chunk_size": 400,
+    "chunk_overlap": 60,
+    "tokenizer": "BAAI/bge-small-en-v1.5",
+    "ingest_version": 3
+  },
+  "documents": [
+    {
+      "guideline_id": "AHA_ACC_HTN_2025",
+      "short_title": "AHA/ACC High BP Guideline",
+      "title": "2025 AHA/ACC/AANP/AAPA/ABC/ACCP/ACPM/AGS/AMA/ASPC/NMA/PCNA/SGIM Guideline for the Prevention, Detection, Evaluation and Management of High Blood Pressure in Adults",
+      "org": "AHA/ACC",
+      "year": 2025,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 105,
+      "chunks": 311,
+      "table_chunks": 105,
+      "topics": [
+        "hypertension",
+        "bp_measurement",
+        "medication",
+        "lifestyle",
+        "hypertensive_emergency",
+        "pregnancy",
+        "ckd",
+        "diabetes",
+        "prevention"
+      ],
+      "licence": "© 2025 American Heart Association, Inc. and American College of Cardiology Foundation — publisher free access, not redistributable"
+    },
+    {
+      "guideline_id": "ESC_HTN_2024",
+      "short_title": "ESC Elevated BP & Hypertension",
+      "title": "2024 ESC Guidelines for the management of elevated blood pressure and hypertension",
+      "org": "ESC",
+      "year": 2024,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 107,
+      "chunks": 411,
+      "table_chunks": 97,
+      "topics": [
+        "hypertension",
+        "bp_measurement",
+        "medication",
+        "lifestyle",
+        "hypertensive_emergency",
+        "pregnancy",
+        "ckd",
+        "diabetes",
+        "prevention"
+      ],
+      "licence": "© European Society of Cardiology 2024, all rights reserved; personal and educational use only; ESC/OUP reserve text-and-data-mining and AI-training rights (EU Directive 2019/790 Art. 4(3) opt-out)"
+    },
+    {
+      "guideline_id": "NICE_NG136",
+      "short_title": "NICE NG136 Hypertension in adults",
+      "title": "Hypertension in adults: diagnosis and management (NICE guideline NG136)",
+      "org": "NICE",
+      "year": 2026,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 52,
+      "chunks": 81,
+      "table_chunks": 2,
+      "topics": [
+        "hypertension",
+        "bp_measurement",
+        "medication",
+        "lifestyle",
+        "diabetes"
+      ],
+      "licence": "© NICE — all rights reserved, subject to NICE Notice of rights; free to read, not redistributable"
+    },
+    {
+      "guideline_id": "WHO_HTN_PHARM_2021",
+      "short_title": "WHO Hypertension Pharmacotherapy",
+      "title": "Guideline for the pharmacological treatment of hypertension in adults",
+      "org": "WHO",
+      "year": 2021,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 61,
+      "chunks": 94,
+      "table_chunks": 1,
+      "topics": [
+        "hypertension",
+        "medication"
+      ],
+      "licence": "CC BY-NC-SA 3.0 IGO"
+    },
+    {
+      "guideline_id": "WHO_HEARTS_PROTOCOLS_2018",
+      "short_title": "WHO HEARTS Treatment Protocols",
+      "title": "HEARTS technical package for cardiovascular disease management in primary health care: evidence-based treatment protocols (WHO/NMH/NVI/18.2)",
+      "org": "WHO",
+      "year": 2018,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 43,
+      "chunks": 86,
+      "table_chunks": 15,
+      "topics": [
+        "hypertension",
+        "diabetes",
+        "medication",
+        "prevention",
+        "bp_measurement"
+      ],
+      "licence": "CC BY-NC-SA 3.0 IGO"
+    },
+    {
+      "guideline_id": "WHO_HEARTS_LIFESTYLE_2018",
+      "short_title": "WHO HEARTS Healthy-Lifestyle Counselling",
+      "title": "HEARTS technical package for cardiovascular disease management in primary health care: healthy-lifestyle counselling (WHO/NMH/NVI/18.1)",
+      "org": "WHO",
+      "year": 2018,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 30,
+      "chunks": 43,
+      "table_chunks": 12,
+      "topics": [
+        "lifestyle",
+        "prevention"
+      ],
+      "licence": "CC BY-NC-SA 3.0 IGO"
+    },
+    {
+      "guideline_id": "ISH_HTN_2020",
+      "short_title": "ISH Global Hypertension Guidelines",
+      "title": "2020 International Society of Hypertension Global Hypertension Practice Guidelines",
+      "org": "ISH",
+      "year": 2020,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 24,
+      "chunks": 76,
+      "table_chunks": 18,
+      "topics": [
+        "hypertension",
+        "bp_measurement",
+        "medication",
+        "lifestyle",
+        "hypertensive_emergency",
+        "pregnancy",
+        "ckd",
+        "diabetes"
+      ],
+      "licence": "© 2020 American Heart Association, Inc. — publisher free access, not redistributable"
+    },
+    {
+      "guideline_id": "KDIGO_BP_CKD_2021",
+      "short_title": "KDIGO BP in CKD",
+      "title": "KDIGO 2021 Clinical Practice Guideline for the Management of Blood Pressure in Chronic Kidney Disease",
+      "org": "KDIGO",
+      "year": 2021,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 92,
+      "chunks": 244,
+      "table_chunks": 6,
+      "topics": [
+        "ckd",
+        "hypertension",
+        "bp_measurement",
+        "medication",
+        "diabetes",
+        "lifestyle"
+      ],
+      "licence": "CC BY-NC-ND 4.0"
+    },
+    {
+      "guideline_id": "NICE_NG133",
+      "short_title": "NICE NG133 Hypertension in pregnancy",
+      "title": "Hypertension in pregnancy: diagnosis and management (NICE guideline NG133)",
+      "org": "NICE",
+      "year": 2023,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 61,
+      "chunks": 101,
+      "table_chunks": 9,
+      "topics": [
+        "pregnancy",
+        "hypertension",
+        "medication",
+        "hypertensive_emergency"
+      ],
+      "licence": "© NICE — all rights reserved, subject to NICE Notice of rights; free to read, not redistributable"
+    },
+    {
+      "guideline_id": "NICE_NG106",
+      "short_title": "NICE NG106 Chronic heart failure",
+      "title": "Chronic heart failure in adults: diagnosis and management (NICE guideline NG106)",
+      "org": "NICE",
+      "year": 2025,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 40,
+      "chunks": 61,
+      "table_chunks": 0,
+      "topics": [
+        "heart_failure",
+        "medication"
+      ],
+      "licence": "© NICE — all rights reserved, subject to NICE Notice of rights; free to read, not redistributable"
+    },
+    {
+      "guideline_id": "NICE_NG196",
+      "short_title": "NICE NG196 Atrial fibrillation",
+      "title": "Atrial fibrillation: diagnosis and management (NICE guideline NG196)",
+      "org": "NICE",
+      "year": 2021,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 50,
+      "chunks": 65,
+      "table_chunks": 0,
+      "topics": [
+        "atrial_fibrillation",
+        "medication"
+      ],
+      "licence": "© NICE — all rights reserved, subject to NICE Notice of rights; free to read, not redistributable"
+    },
+    {
+      "guideline_id": "NICE_NG238",
+      "short_title": "NICE NG238 CVD risk & lipids",
+      "title": "Cardiovascular disease: risk assessment and reduction, including lipid modification (NICE guideline NG238)",
+      "org": "NICE",
+      "year": 2023,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 52,
+      "chunks": 77,
+      "table_chunks": 0,
+      "topics": [
+        "dyslipidaemia",
+        "prevention",
+        "medication",
+        "lifestyle"
+      ],
+      "licence": "© NICE — all rights reserved, subject to NICE Notice of rights; free to read, not redistributable"
+    },
+    {
+      "guideline_id": "NICE_NG185",
+      "short_title": "NICE NG185 Acute coronary syndromes",
+      "title": "Acute coronary syndromes (NICE guideline NG185)",
+      "org": "NICE",
+      "year": 2020,
+      "doc_type": "guideline",
+      "source_format": "pdf",
+      "pages": 58,
+      "chunks": 99,
+      "table_chunks": 3,
+      "topics": [
+        "coronary_disease",
+        "medication"
+      ],
+      "licence": "© NICE — all rights reserved, subject to NICE Notice of rights; free to read, not redistributable"
+    },
+    {
+      "guideline_id": "ACC_AHA_AF_2023",
+      "short_title": "ACC/AHA Atrial Fibrillation Guideline",
+      "title": "2023 ACC/AHA/ACCP/HRS Guideline for the Diagnosis and Management of Atrial Fibrillation",
+      "org": "ACC/AHA",
+      "year": 2023,
+      "doc_type": "guideline",
+      "source_format": "html",
+      "pages": 70,
+      "chunks": 473,
+      "table_chunks": 147,
+      "topics": [
+        "atrial_fibrillation",
+        "medication",
+        "lifestyle"
+      ],
+      "licence": "PMC author manuscript (NIH Public Access Policy); © American Heart Association / American College of Cardiology Foundation — free to read, not redistributable"
+    },
+    {
+      "guideline_id": "ACC_AHA_PREVENTION_2019",
+      "short_title": "ACC/AHA Primary Prevention Guideline",
+      "title": "2019 ACC/AHA Guideline on the Primary Prevention of Cardiovascular Disease",
+      "org": "ACC/AHA",
+      "year": 2019,
+      "doc_type": "guideline",
+      "source_format": "html",
+      "pages": 25,
+      "chunks": 141,
+      "table_chunks": 44,
+      "topics": [
+        "prevention",
+        "lifestyle",
+        "hypertension",
+        "dyslipidaemia",
+        "diabetes",
+        "medication"
+      ],
+      "licence": "PMC author manuscript (NIH Public Access Policy); © American Heart Association / American College of Cardiology Foundation — free to read, not redistributable"
+    },
+    {
+      "guideline_id": "AHA_ACC_CHOLESTEROL_2018",
+      "short_title": "AHA/ACC Cholesterol Guideline (exec. summary)",
+      "title": "2018 AHA/ACC/AACVPR/AAPA/ABC/ACPM/ADA/AGS/APhA/ASPC/NLA/PCNA Guideline on the Management of Blood Cholesterol: Executive Summary",
+      "org": "AHA/ACC",
+      "year": 2018,
+      "doc_type": "guideline",
+      "source_format": "html",
+      "pages": 19,
+      "chunks": 81,
+      "table_chunks": 26,
+      "topics": [
+        "dyslipidaemia",
+        "prevention",
+        "medication"
+      ],
+      "licence": "PMC author manuscript (NIH Public Access Policy); © American Heart Association / American College of Cardiology Foundation — free to read, not redistributable"
+    },
+    {
+      "guideline_id": "AHA_BP_MEASUREMENT_2019",
+      "short_title": "AHA Statement: BP Measurement",
+      "title": "Measurement of Blood Pressure in Humans: A Scientific Statement From the American Heart Association",
+      "org": "AHA",
+      "year": 2019,
+      "doc_type": "review",
+      "source_format": "html",
+      "pages": 43,
+      "chunks": 93,
+      "table_chunks": 8,
+      "topics": [
+        "bp_measurement",
+        "hypertension"
+      ],
+      "licence": "PMC author manuscript (NIH Public Access Policy); © American Heart Association / American College of Cardiology Foundation — free to read, not redistributable"
+    },
+    {
+      "guideline_id": "AHA_RESISTANT_HTN_2018",
+      "short_title": "AHA Statement: Resistant Hypertension",
+      "title": "Resistant Hypertension: Detection, Evaluation, and Management: A Scientific Statement From the American Heart Association",
+      "org": "AHA",
+      "year": 2018,
+      "doc_type": "review",
+      "source_format": "html",
+      "pages": 51,
+      "chunks": 99,
+      "table_chunks": 5,
+      "topics": [
+        "hypertension",
+        "medication",
+        "lifestyle",
+        "bp_measurement"
+      ],
+      "licence": "PMC author manuscript (NIH Public Access Policy); © American Heart Association / American College of Cardiology Foundation — free to read, not redistributable"
+    },
+    {
+      "guideline_id": "ESC_HTN_EMERGENCIES_2019",
+      "short_title": "ESC Position: Hypertensive Emergencies",
+      "title": "ESC Council on hypertension position document on the management of hypertensive emergencies",
+      "org": "ESC",
+      "year": 2019,
+      "doc_type": "review",
+      "source_format": "html",
+      "pages": 20,
+      "chunks": 34,
+      "table_chunks": 5,
+      "topics": [
+        "hypertensive_emergency",
+        "hypertension",
+        "medication"
+      ],
+      "licence": "© The Author(s) 2018, published on behalf of the ESC; OUP Standard Journals Publication Model — free to read, not redistributable"
+    },
+    {
+      "guideline_id": "CCD_GUIDELINE_REVIEW_2024",
+      "short_title": "Review: 2023 Chronic Coronary Disease Guideline",
+      "title": "The ABCs of the 2023 AHA/ACC/ACCP/ASPC/NLA/PCNA guideline for the management of patients with chronic coronary disease",
+      "org": "Clinical Cardiology (Wiley)",
+      "year": 2024,
+      "doc_type": "review",
+      "source_format": "html",
+      "pages": 20,
+      "chunks": 35,
+      "table_chunks": 0,
+      "topics": [
+        "coronary_disease",
+        "medication",
+        "lifestyle",
+        "dyslipidaemia"
+      ],
+      "licence": "CC BY 4.0"
+    },
+    {
+      "guideline_id": "MEDLINEPLUS_HIGH_BP",
+      "short_title": "MedlinePlus: High Blood Pressure",
+      "title": "High Blood Pressure (MedlinePlus health topic summary)",
+      "org": "NLM MedlinePlus",
+      "year": 2026,
+      "doc_type": "patient_info",
+      "source_format": "html",
+      "pages": 5,
+      "chunks": 6,
+      "table_chunks": 1,
+      "topics": [
+        "hypertension",
+        "lifestyle",
+        "bp_measurement"
+      ],
+      "licence": "Public domain (US Government) — MedlinePlus health-topic summaries are not copyrighted"
+    },
+    {
+      "guideline_id": "MEDLINEPLUS_HEART_FAILURE",
+      "short_title": "MedlinePlus: Heart Failure",
+      "title": "Heart Failure (MedlinePlus health topic summary)",
+      "org": "NLM MedlinePlus",
+      "year": 2025,
+      "doc_type": "patient_info",
+      "source_format": "html",
+      "pages": 8,
+      "chunks": 8,
+      "table_chunks": 0,
+      "topics": [
+        "heart_failure",
+        "lifestyle"
+      ],
+      "licence": "Public domain (US Government) — MedlinePlus health-topic summaries are not copyrighted"
+    },
+    {
+      "guideline_id": "MEDLINEPLUS_AFIB",
+      "short_title": "MedlinePlus: Atrial Fibrillation",
+      "title": "Atrial Fibrillation (MedlinePlus health topic summary)",
+      "org": "NLM MedlinePlus",
+      "year": 2024,
+      "doc_type": "patient_info",
+      "source_format": "html",
+      "pages": 8,
+      "chunks": 8,
+      "table_chunks": 0,
+      "topics": [
+        "atrial_fibrillation"
+      ],
+      "licence": "Public domain (US Government) — MedlinePlus health-topic summaries are not copyrighted"
+    },
+    {
+      "guideline_id": "MEDLINEPLUS_CHOLESTEROL",
+      "short_title": "MedlinePlus: Cholesterol",
+      "title": "Cholesterol (MedlinePlus health topic summary)",
+      "org": "NLM MedlinePlus",
+      "year": 2025,
+      "doc_type": "patient_info",
+      "source_format": "html",
+      "pages": 7,
+      "chunks": 7,
+      "table_chunks": 0,
+      "topics": [
+        "dyslipidaemia",
+        "lifestyle"
+      ],
+      "licence": "Public domain (US Government) — MedlinePlus health-topic summaries are not copyrighted"
+    },
+    {
+      "guideline_id": "MEDLINEPLUS_HEART_ATTACK",
+      "short_title": "MedlinePlus: Heart Attack",
+      "title": "Heart Attack (MedlinePlus health topic summary)",
+      "org": "NLM MedlinePlus",
+      "year": 2026,
+      "doc_type": "patient_info",
+      "source_format": "html",
+      "pages": 7,
+      "chunks": 5,
+      "table_chunks": 0,
+      "topics": [
+        "coronary_disease"
+      ],
+      "licence": "Public domain (US Government) — MedlinePlus health-topic summaries are not copyrighted"
+    },
+    {
+      "guideline_id": "NHLBI_HIGH_BP",
+      "short_title": "NHLBI: What Is High Blood Pressure?",
+      "title": "High Blood Pressure — What Is High Blood Pressure? (NHLBI health topic)",
+      "org": "NHLBI (NIH)",
+      "year": 2024,
+      "doc_type": "patient_info",
+      "source_format": "html",
+      "pages": 3,
+      "chunks": 3,
+      "table_chunks": 1,
+      "topics": [
+        "hypertension",
+        "bp_measurement",
+        "lifestyle"
+      ],
+      "licence": "Public domain (US Government) — NHLBI website content unless noted otherwise"
+    },
+    {
+      "guideline_id": "NHLBI_HIGH_BP_TREATMENT",
+      "short_title": "NHLBI: High Blood Pressure Treatment",
+      "title": "High Blood Pressure — Treatment (NHLBI health topic)",
+      "org": "NHLBI (NIH)",
+      "year": 2024,
+      "doc_type": "patient_info",
+      "source_format": "html",
+      "pages": 5,
+      "chunks": 5,
+      "table_chunks": 0,
+      "topics": [
+        "hypertension",
+        "lifestyle",
+        "medication"
+      ],
+      "licence": "Public domain (US Government) — NHLBI website content unless noted otherwise"
+    }
+  ],
+  "by_doc_type": {
+    "guideline": {
+      "documents": 16,
+      "chunks": 2444,
+      "pages": 889
+    },
+    "review": {
+      "documents": 4,
+      "chunks": 261,
+      "pages": 134
+    },
+    "patient_info": {
+      "documents": 7,
+      "chunks": 42,
+      "pages": 43
+    }
+  },
+  "topics": {
+    "atrial_fibrillation": {
+      "documents": 3,
+      "chunks": 546
+    },
+    "bp_measurement": {
+      "documents": 10,
+      "chunks": 1410
+    },
+    "ckd": {
+      "documents": 4,
+      "chunks": 1042
+    },
+    "coronary_disease": {
+      "documents": 3,
+      "chunks": 139
+    },
+    "diabetes": {
+      "documents": 7,
+      "chunks": 1350
+    },
+    "dyslipidaemia": {
+      "documents": 5,
+      "chunks": 341
+    },
+    "heart_failure": {
+      "documents": 2,
+      "chunks": 69
+    },
+    "hypertension": {
+      "documents": 15,
+      "chunks": 1785
+    },
+    "hypertensive_emergency": {
+      "documents": 5,
+      "chunks": 933
+    },
+    "lifestyle": {
+      "documents": 16,
+      "chunks": 2020
+    },
+    "medication": {
+      "documents": 19,
+      "chunks": 2574
+    },
+    "pregnancy": {
+      "documents": 4,
+      "chunks": 899
+    },
+    "prevention": {
+      "documents": 7,
+      "chunks": 1150
+    }
+  },
+  "totals": {
+    "documents": 27,
+    "pages_or_sections": 1066,
+    "chunks": 2747,
+    "table_chunks": 505,
+    "organisations": 11,
+    "pdf_documents": 13,
+    "html_documents": 14,
+    "points_in_collection": 2747,
+    "chunk_tokens": {
+      "median": 294,
+      "mean": 263.0,
+      "p90": 388,
+      "max": 400,
+      "min": 8,
+      "over_512": 0
+    }
+  },
+  "last_full_build": {
+    "mode": "recreate",
+    "documents_indexed": 27,
+    "documents_skipped": 0,
+    "chunks_indexed": 2747,
+    "seconds": 167.0,
+    "finished_at": "2026-10-09T11:32:28+00:00"
+  },
+  "last_ingestion": {
+    "mode": "recreate",
+    "documents_indexed": 27,
+    "documents_skipped": 0,
+    "chunks_indexed": 2747,
+    "seconds": 167.0,
+    "finished_at": "2026-10-09T11:32:28+00:00"
+  }
+}

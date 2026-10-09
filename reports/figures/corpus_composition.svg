@@ -1,0 +1,859 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="864pt" height="590.4pt" viewBox="0 0 864 590.4" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-09T17:02:38.984358</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 590.4 
+L 864 590.4 
+L 864 0 
+L 0 0 
+z
+" style="fill: #fcfcfb"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 245.70125 557.858125 
+L 534.74639 557.858125 
+L 534.74639 59.912 
+L 245.70125 59.912 
+z
+" style="fill: #fcfcfb"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <path d="M 245.70125 557.858125 
+L 245.70125 59.912 
+" clip-path="url(#pae10dbdfeb)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_2"/>
+     <g id="text_1">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="245.70125" y="567.43625" transform="rotate(-0 245.70125 567.43625)">0</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_3">
+      <path d="M 303.900211 557.858125 
+L 303.900211 59.912 
+" clip-path="url(#pae10dbdfeb)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_4"/>
+     <g id="text_2">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="303.900211" y="567.43625" transform="rotate(-0 303.900211 567.43625)">100</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_5">
+      <path d="M 362.099172 557.858125 
+L 362.099172 59.912 
+" clip-path="url(#pae10dbdfeb)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_6"/>
+     <g id="text_3">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="362.099172" y="567.43625" transform="rotate(-0 362.099172 567.43625)">200</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_7">
+      <path d="M 420.298133 557.858125 
+L 420.298133 59.912 
+" clip-path="url(#pae10dbdfeb)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_8"/>
+     <g id="text_4">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="420.298133" y="567.43625" transform="rotate(-0 420.298133 567.43625)">300</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_9">
+      <path d="M 478.497094 557.858125 
+L 478.497094 59.912 
+" clip-path="url(#pae10dbdfeb)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_10"/>
+     <g id="text_5">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="478.497094" y="567.43625" transform="rotate(-0 478.497094 567.43625)">400</text>
+     </g>
+    </g>
+    <g id="text_6">
+     <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="390.22382" y="579.436875" transform="rotate(-0 390.22382 579.436875)">Chunks indexed</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_11"/>
+     <g id="text_7">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="532.991975" transform="rotate(-0 242.20125 532.991975)">NHLBI: What Is High Blood Pressure? (2024)</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_12"/>
+     <g id="text_8">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="515.98678" transform="rotate(-0 242.20125 515.98678)">MedlinePlus: Heart Attack (2026)</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_13"/>
+     <g id="text_9">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="498.981584" transform="rotate(-0 242.20125 498.981584)">NHLBI: High Blood Pressure Treatment (2024)</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_14"/>
+     <g id="text_10">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="481.976389" transform="rotate(-0 242.20125 481.976389)">MedlinePlus: High Blood Pressure (2026)</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_15"/>
+     <g id="text_11">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="464.971194" transform="rotate(-0 242.20125 464.971194)">MedlinePlus: Cholesterol (2025)</text>
+     </g>
+    </g>
+    <g id="ytick_6">
+     <g id="line2d_16"/>
+     <g id="text_12">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="447.965999" transform="rotate(-0 242.20125 447.965999)">MedlinePlus: Heart Failure (2025)</text>
+     </g>
+    </g>
+    <g id="ytick_7">
+     <g id="line2d_17"/>
+     <g id="text_13">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="430.960804" transform="rotate(-0 242.20125 430.960804)">MedlinePlus: Atrial Fibrillation (2024)</text>
+     </g>
+    </g>
+    <g id="ytick_8">
+     <g id="line2d_18"/>
+     <g id="text_14">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="413.955609" transform="rotate(-0 242.20125 413.955609)">ESC Position: Hypertensive Emergencies (2019)</text>
+     </g>
+    </g>
+    <g id="ytick_9">
+     <g id="line2d_19"/>
+     <g id="text_15">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="396.950413" transform="rotate(-0 242.20125 396.950413)">Review: 2023 Chronic Coronary Disease Guideline (2024)</text>
+     </g>
+    </g>
+    <g id="ytick_10">
+     <g id="line2d_20"/>
+     <g id="text_16">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="379.945218" transform="rotate(-0 242.20125 379.945218)">WHO HEARTS Healthy-Lifestyle Counselling (2018)</text>
+     </g>
+    </g>
+    <g id="ytick_11">
+     <g id="line2d_21"/>
+     <g id="text_17">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="362.940023" transform="rotate(-0 242.20125 362.940023)">NICE NG106 Chronic heart failure (2025)</text>
+     </g>
+    </g>
+    <g id="ytick_12">
+     <g id="line2d_22"/>
+     <g id="text_18">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="345.934828" transform="rotate(-0 242.20125 345.934828)">NICE NG196 Atrial fibrillation (2021)</text>
+     </g>
+    </g>
+    <g id="ytick_13">
+     <g id="line2d_23"/>
+     <g id="text_19">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="328.929633" transform="rotate(-0 242.20125 328.929633)">ISH Global Hypertension Guidelines (2020)</text>
+     </g>
+    </g>
+    <g id="ytick_14">
+     <g id="line2d_24"/>
+     <g id="text_20">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="311.924438" transform="rotate(-0 242.20125 311.924438)">NICE NG238 CVD risk &amp; lipids (2023)</text>
+     </g>
+    </g>
+    <g id="ytick_15">
+     <g id="line2d_25"/>
+     <g id="text_21">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="294.919242" transform="rotate(-0 242.20125 294.919242)">NICE NG136 Hypertension in adults (2026)</text>
+     </g>
+    </g>
+    <g id="ytick_16">
+     <g id="line2d_26"/>
+     <g id="text_22">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="277.914047" transform="rotate(-0 242.20125 277.914047)">AHA/ACC Cholesterol Guideline (exec. summary) (2018)</text>
+     </g>
+    </g>
+    <g id="ytick_17">
+     <g id="line2d_27"/>
+     <g id="text_23">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="260.908852" transform="rotate(-0 242.20125 260.908852)">WHO HEARTS Treatment Protocols (2018)</text>
+     </g>
+    </g>
+    <g id="ytick_18">
+     <g id="line2d_28"/>
+     <g id="text_24">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="243.903344" transform="rotate(-0 242.20125 243.903344)">AHA Statement: BP Measurement (2019)</text>
+     </g>
+    </g>
+    <g id="ytick_19">
+     <g id="line2d_29"/>
+     <g id="text_25">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="226.898462" transform="rotate(-0 242.20125 226.898462)">WHO Hypertension Pharmacotherapy (2021)</text>
+     </g>
+    </g>
+    <g id="ytick_20">
+     <g id="line2d_30"/>
+     <g id="text_26">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="209.893266" transform="rotate(-0 242.20125 209.893266)">NICE NG185 Acute coronary syndromes (2020)</text>
+     </g>
+    </g>
+    <g id="ytick_21">
+     <g id="line2d_31"/>
+     <g id="text_27">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="192.888071" transform="rotate(-0 242.20125 192.888071)">AHA Statement: Resistant Hypertension (2018)</text>
+     </g>
+    </g>
+    <g id="ytick_22">
+     <g id="line2d_32"/>
+     <g id="text_28">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="175.882876" transform="rotate(-0 242.20125 175.882876)">NICE NG133 Hypertension in pregnancy (2023)</text>
+     </g>
+    </g>
+    <g id="ytick_23">
+     <g id="line2d_33"/>
+     <g id="text_29">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="158.877681" transform="rotate(-0 242.20125 158.877681)">ACC/AHA Primary Prevention Guideline (2019)</text>
+     </g>
+    </g>
+    <g id="ytick_24">
+     <g id="line2d_34"/>
+     <g id="text_30">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="141.872486" transform="rotate(-0 242.20125 141.872486)">KDIGO BP in CKD (2021)</text>
+     </g>
+    </g>
+    <g id="ytick_25">
+     <g id="line2d_35"/>
+     <g id="text_31">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="124.867291" transform="rotate(-0 242.20125 124.867291)">AHA/ACC High BP Guideline (2025)</text>
+     </g>
+    </g>
+    <g id="ytick_26">
+     <g id="line2d_36"/>
+     <g id="text_32">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="107.862095" transform="rotate(-0 242.20125 107.862095)">ESC Elevated BP &amp; Hypertension (2024)</text>
+     </g>
+    </g>
+    <g id="ytick_27">
+     <g id="line2d_37"/>
+     <g id="text_33">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="242.20125" y="90.8569" transform="rotate(-0 242.20125 90.8569)">ACC/AHA Atrial Fibrillation Guideline (2023)</text>
+     </g>
+    </g>
+   </g>
+   <g id="patch_3">
+    <path d="M 245.70125 535.22421 
+L 247.447219 535.22421 
+L 247.447219 524.680989 
+L 245.70125 524.680989 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #1baf7a; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 245.70125 518.219015 
+L 248.611198 518.219015 
+L 248.611198 507.675794 
+L 245.70125 507.675794 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #1baf7a; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 245.70125 501.21382 
+L 248.611198 501.21382 
+L 248.611198 490.670599 
+L 245.70125 490.670599 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #1baf7a; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 245.70125 484.208625 
+L 249.193188 484.208625 
+L 249.193188 473.665404 
+L 245.70125 473.665404 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #1baf7a; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 245.70125 467.20343 
+L 249.775177 467.20343 
+L 249.775177 456.660209 
+L 245.70125 456.660209 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #1baf7a; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 245.70125 450.198234 
+L 250.357167 450.198234 
+L 250.357167 439.655013 
+L 245.70125 439.655013 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #1baf7a; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 245.70125 433.193039 
+L 250.357167 433.193039 
+L 250.357167 422.649818 
+L 245.70125 422.649818 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #1baf7a; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 245.70125 416.187844 
+L 265.488897 416.187844 
+L 265.488897 405.644623 
+L 245.70125 405.644623 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #eb6834; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 245.70125 399.182649 
+L 266.070886 399.182649 
+L 266.070886 388.639428 
+L 245.70125 388.639428 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #eb6834; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 245.70125 382.177454 
+L 270.726803 382.177454 
+L 270.726803 371.634233 
+L 245.70125 371.634233 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 245.70125 365.172259 
+L 281.202616 365.172259 
+L 281.202616 354.629038 
+L 245.70125 354.629038 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 245.70125 348.167063 
+L 283.530575 348.167063 
+L 283.530575 337.623842 
+L 245.70125 337.623842 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_15">
+    <path d="M 245.70125 331.161868 
+L 289.93246 331.161868 
+L 289.93246 320.618647 
+L 245.70125 320.618647 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 245.70125 314.156673 
+L 290.51445 314.156673 
+L 290.51445 303.613452 
+L 245.70125 303.613452 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 245.70125 297.151478 
+L 292.842408 297.151478 
+L 292.842408 286.608257 
+L 245.70125 286.608257 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 245.70125 280.146283 
+L 292.842408 280.146283 
+L 292.842408 269.603062 
+L 245.70125 269.603062 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_19">
+    <path d="M 245.70125 263.141087 
+L 295.752357 263.141087 
+L 295.752357 252.597866 
+L 245.70125 252.597866 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_20">
+    <path d="M 245.70125 246.135892 
+L 299.826284 246.135892 
+L 299.826284 235.592671 
+L 245.70125 235.592671 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #eb6834; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_21">
+    <path d="M 245.70125 229.130697 
+L 300.408273 229.130697 
+L 300.408273 218.587476 
+L 245.70125 218.587476 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_22">
+    <path d="M 245.70125 212.125502 
+L 303.318221 212.125502 
+L 303.318221 201.582281 
+L 245.70125 201.582281 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_23">
+    <path d="M 245.70125 195.120307 
+L 303.318221 195.120307 
+L 303.318221 184.577086 
+L 245.70125 184.577086 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #eb6834; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_24">
+    <path d="M 245.70125 178.115112 
+L 304.482201 178.115112 
+L 304.482201 167.571891 
+L 245.70125 167.571891 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_25">
+    <path d="M 245.70125 161.109916 
+L 327.761785 161.109916 
+L 327.761785 150.566695 
+L 245.70125 150.566695 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_26">
+    <path d="M 245.70125 144.104721 
+L 387.706715 144.104721 
+L 387.706715 133.5615 
+L 245.70125 133.5615 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_27">
+    <path d="M 245.70125 127.099526 
+L 426.700019 127.099526 
+L 426.700019 116.556305 
+L 245.70125 116.556305 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_28">
+    <path d="M 245.70125 110.094331 
+L 484.89898 110.094331 
+L 484.89898 99.55111 
+L 245.70125 99.55111 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_29">
+    <path d="M 245.70125 93.089136 
+L 520.982336 93.089136 
+L 520.982336 82.545915 
+L 245.70125 82.545915 
+z
+" clip-path="url(#pae10dbdfeb)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_30">
+    <path d="M 245.70125 557.858125 
+L 534.74639 557.858125 
+" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_34">
+    <text style="font-weight: 700; font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0b0b0b" x="245.70125" y="53.912" transform="rotate(-0 245.70125 53.912)">Chunks per document</text>
+   </g>
+   <g id="legend_1">
+    <g id="patch_31">
+     <path d="M 428.57764 524.735 
+L 444.57764 524.735 
+L 444.57764 519.135 
+L 428.57764 519.135 
+z
+" style="fill: #2a78d6; stroke: #2a78d6; stroke-linejoin: miter"/>
+    </g>
+    <g id="text_35">
+     <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0b0b0b" x="450.97764" y="524.735" transform="rotate(-0 450.97764 524.735)">Guideline</text>
+    </g>
+    <g id="patch_32">
+     <path d="M 428.57764 536.735625 
+L 444.57764 536.735625 
+L 444.57764 531.135625 
+L 428.57764 531.135625 
+z
+" style="fill: #eb6834; stroke: #eb6834; stroke-linejoin: miter"/>
+    </g>
+    <g id="text_36">
+     <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0b0b0b" x="450.97764" y="536.735625" transform="rotate(-0 450.97764 536.735625)">Statement / review</text>
+    </g>
+    <g id="patch_33">
+     <path d="M 428.57764 548.73625 
+L 444.57764 548.73625 
+L 444.57764 543.13625 
+L 428.57764 543.13625 
+z
+" style="fill: #1baf7a; stroke: #1baf7a; stroke-linejoin: miter"/>
+    </g>
+    <g id="text_37">
+     <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0b0b0b" x="450.97764" y="548.73625" transform="rotate(-0 450.97764 548.73625)">Patient information</text>
+    </g>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_34">
+    <path d="M 648.99139 557.858125 
+L 848.332866 557.858125 
+L 848.332866 59.912 
+L 648.99139 59.912 
+z
+" style="fill: #fcfcfb"/>
+   </g>
+   <g id="matplotlib.axis_3">
+    <g id="xtick_6">
+     <g id="line2d_38">
+      <path d="M 648.99139 557.858125 
+L 648.99139 59.912 
+" clip-path="url(#pe7ebe3c23a)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_39"/>
+     <g id="text_38">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="648.99139" y="567.43625" transform="rotate(-0 648.99139 567.43625)">0</text>
+     </g>
+    </g>
+    <g id="xtick_7">
+     <g id="line2d_40">
+      <path d="M 681.806746 557.858125 
+L 681.806746 59.912 
+" clip-path="url(#pe7ebe3c23a)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_41"/>
+     <g id="text_39">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="681.806746" y="567.43625" transform="rotate(-0 681.806746 567.43625)">500</text>
+     </g>
+    </g>
+    <g id="xtick_8">
+     <g id="line2d_42">
+      <path d="M 714.622103 557.858125 
+L 714.622103 59.912 
+" clip-path="url(#pe7ebe3c23a)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_43"/>
+     <g id="text_40">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="714.622103" y="567.43625" transform="rotate(-0 714.622103 567.43625)">1000</text>
+     </g>
+    </g>
+    <g id="xtick_9">
+     <g id="line2d_44">
+      <path d="M 747.437459 557.858125 
+L 747.437459 59.912 
+" clip-path="url(#pe7ebe3c23a)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_45"/>
+     <g id="text_41">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="747.437459" y="567.43625" transform="rotate(-0 747.437459 567.43625)">1500</text>
+     </g>
+    </g>
+    <g id="xtick_10">
+     <g id="line2d_46">
+      <path d="M 780.252815 557.858125 
+L 780.252815 59.912 
+" clip-path="url(#pe7ebe3c23a)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_47"/>
+     <g id="text_42">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="780.252815" y="567.43625" transform="rotate(-0 780.252815 567.43625)">2000</text>
+     </g>
+    </g>
+    <g id="xtick_11">
+     <g id="line2d_48">
+      <path d="M 813.068172 557.858125 
+L 813.068172 59.912 
+" clip-path="url(#pe7ebe3c23a)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_49"/>
+     <g id="text_43">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="813.068172" y="567.43625" transform="rotate(-0 813.068172 567.43625)">2500</text>
+     </g>
+    </g>
+    <g id="xtick_12">
+     <g id="line2d_50">
+      <path d="M 845.883528 557.858125 
+L 845.883528 59.912 
+" clip-path="url(#pe7ebe3c23a)" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linecap: square"/>
+     </g>
+     <g id="line2d_51"/>
+     <g id="text_44">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="845.883528" y="567.43625" transform="rotate(-0 845.883528 567.43625)">3000</text>
+     </g>
+    </g>
+    <g id="text_45">
+     <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #52514e" x="748.662128" y="579.436875" transform="rotate(-0 748.662128 579.436875)">Chunks from documents tagged with the topic</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_28">
+     <g id="line2d_52"/>
+     <g id="text_46">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="527.143912" transform="rotate(-0 645.49139 527.143912)">heart failure</text>
+     </g>
+    </g>
+    <g id="ytick_29">
+     <g id="line2d_53"/>
+     <g id="text_47">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="491.274" transform="rotate(-0 645.49139 491.274)">coronary disease</text>
+     </g>
+    </g>
+    <g id="ytick_30">
+     <g id="line2d_54"/>
+     <g id="text_48">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="455.404087" transform="rotate(-0 645.49139 455.404087)">dyslipidaemia</text>
+     </g>
+    </g>
+    <g id="ytick_31">
+     <g id="line2d_55"/>
+     <g id="text_49">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="419.534175" transform="rotate(-0 645.49139 419.534175)">atrial fibrillation</text>
+     </g>
+    </g>
+    <g id="ytick_32">
+     <g id="line2d_56"/>
+     <g id="text_50">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="383.66395" transform="rotate(-0 645.49139 383.66395)">pregnancy</text>
+     </g>
+    </g>
+    <g id="ytick_33">
+     <g id="line2d_57"/>
+     <g id="text_51">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="347.79435" transform="rotate(-0 645.49139 347.79435)">hypertensive emergency</text>
+     </g>
+    </g>
+    <g id="ytick_34">
+     <g id="line2d_58"/>
+     <g id="text_52">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="311.924438" transform="rotate(-0 645.49139 311.924438)">ckd</text>
+     </g>
+    </g>
+    <g id="ytick_35">
+     <g id="line2d_59"/>
+     <g id="text_53">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="276.054525" transform="rotate(-0 645.49139 276.054525)">prevention</text>
+     </g>
+    </g>
+    <g id="ytick_36">
+     <g id="line2d_60"/>
+     <g id="text_54">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="240.184613" transform="rotate(-0 645.49139 240.184613)">diabetes</text>
+     </g>
+    </g>
+    <g id="ytick_37">
+     <g id="line2d_61"/>
+     <g id="text_55">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="204.3147" transform="rotate(-0 645.49139 204.3147)">bp measurement</text>
+     </g>
+    </g>
+    <g id="ytick_38">
+     <g id="line2d_62"/>
+     <g id="text_56">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="168.444788" transform="rotate(-0 645.49139 168.444788)">hypertension</text>
+     </g>
+    </g>
+    <g id="ytick_39">
+     <g id="line2d_63"/>
+     <g id="text_57">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="132.574875" transform="rotate(-0 645.49139 132.574875)">lifestyle</text>
+     </g>
+    </g>
+    <g id="ytick_40">
+     <g id="line2d_64"/>
+     <g id="text_58">
+      <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: end; fill: #0b0b0b" x="645.49139" y="96.704963" transform="rotate(-0 645.49139 96.704963)">medication</text>
+     </g>
+    </g>
+   </g>
+   <g id="patch_35">
+    <path d="M 648.99139 535.22421 
+L 653.519909 535.22421 
+L 653.519909 512.984864 
+L 648.99139 512.984864 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_36">
+    <path d="M 648.99139 499.354298 
+L 658.114059 499.354298 
+L 658.114059 477.114952 
+L 648.99139 477.114952 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_37">
+    <path d="M 648.99139 463.484385 
+L 671.371463 463.484385 
+L 671.371463 441.24504 
+L 648.99139 441.24504 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_38">
+    <path d="M 648.99139 427.614473 
+L 684.825759 427.614473 
+L 684.825759 405.375127 
+L 648.99139 405.375127 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_39">
+    <path d="M 648.99139 391.74456 
+L 707.993401 391.74456 
+L 707.993401 369.505215 
+L 648.99139 369.505215 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_40">
+    <path d="M 648.99139 355.874648 
+L 710.224845 355.874648 
+L 710.224845 333.635302 
+L 648.99139 333.635302 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_41">
+    <path d="M 648.99139 320.004735 
+L 717.378593 320.004735 
+L 717.378593 297.76539 
+L 648.99139 297.76539 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_42">
+    <path d="M 648.99139 284.134823 
+L 724.46671 284.134823 
+L 724.46671 261.895477 
+L 648.99139 261.895477 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_43">
+    <path d="M 648.99139 248.26491 
+L 737.592852 248.26491 
+L 737.592852 226.025565 
+L 648.99139 226.025565 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_44">
+    <path d="M 648.99139 212.394998 
+L 741.530695 212.394998 
+L 741.530695 190.155652 
+L 648.99139 190.155652 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_45">
+    <path d="M 648.99139 176.525085 
+L 766.142212 176.525085 
+L 766.142212 154.28574 
+L 648.99139 154.28574 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_46">
+    <path d="M 648.99139 140.655173 
+L 781.56543 140.655173 
+L 781.56543 118.415827 
+L 648.99139 118.415827 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_47">
+    <path d="M 648.99139 104.785261 
+L 817.924844 104.785261 
+L 817.924844 82.545915 
+L 648.99139 82.545915 
+z
+" clip-path="url(#pe7ebe3c23a)" style="fill: #2a78d6; stroke: #fcfcfb; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_48">
+    <path d="M 648.99139 557.858125 
+L 848.332866 557.858125 
+" style="fill: none; stroke: #e4e3df; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_59">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="657.519909" y="526.182975" transform="rotate(-0 657.519909 526.182975)">2 docs</text>
+   </g>
+   <g id="text_60">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="662.114059" y="490.313062" transform="rotate(-0 662.114059 490.313062)">3 docs</text>
+   </g>
+   <g id="text_61">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="675.371463" y="454.44315" transform="rotate(-0 675.371463 454.44315)">5 docs</text>
+   </g>
+   <g id="text_62">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="688.825759" y="418.573237" transform="rotate(-0 688.825759 418.573237)">3 docs</text>
+   </g>
+   <g id="text_63">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="711.993401" y="382.703325" transform="rotate(-0 711.993401 382.703325)">4 docs</text>
+   </g>
+   <g id="text_64">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="714.224845" y="346.833412" transform="rotate(-0 714.224845 346.833412)">5 docs</text>
+   </g>
+   <g id="text_65">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="721.378593" y="310.9635" transform="rotate(-0 721.378593 310.9635)">4 docs</text>
+   </g>
+   <g id="text_66">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="728.46671" y="275.093588" transform="rotate(-0 728.46671 275.093588)">7 docs</text>
+   </g>
+   <g id="text_67">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="741.592852" y="239.223675" transform="rotate(-0 741.592852 239.223675)">7 docs</text>
+   </g>
+   <g id="text_68">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="745.530695" y="203.353763" transform="rotate(-0 745.530695 203.353763)">10 docs</text>
+   </g>
+   <g id="text_69">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="770.142212" y="167.48385" transform="rotate(-0 770.142212 167.48385)">15 docs</text>
+   </g>
+   <g id="text_70">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="785.56543" y="131.613938" transform="rotate(-0 785.56543 131.613938)">16 docs</text>
+   </g>
+   <g id="text_71">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #52514e" x="821.924844" y="95.744025" transform="rotate(-0 821.924844 95.744025)">19 docs</text>
+   </g>
+   <g id="text_72">
+    <text style="font-weight: 700; font-size: 10px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0b0b0b" x="648.99139" y="53.912" transform="rotate(-0 648.99139 53.912)">Topic coverage</text>
+   </g>
+  </g>
+  <g id="text_73">
+   <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start; fill: #0b0b0b" x="8.64" y="20.166281" transform="rotate(-0 8.64 20.166281)">MedBridge knowledge base: 27 curated documents, 2,747 chunks (505 table chunks)</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pae10dbdfeb">
+   <rect x="245.70125" y="59.912" width="289.04514" height="497.946125"/>
+  </clipPath>
+  <clipPath id="pe7ebe3c23a">
+   <rect x="648.99139" y="59.912" width="199.341476" height="497.946125"/>
+  </clipPath>
+ </defs>
+</svg>
