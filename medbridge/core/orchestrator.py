@@ -63,7 +63,12 @@ from medbridge.api.schemas.responses import (
 )
 from medbridge.config import Settings, get_settings
 from medbridge.core import emergency_classifier as default_emergency_classifier
-from medbridge.core.citations import make_excerpt, validate_citations
+from medbridge.core.citations import (
+    display_page,
+    display_section,
+    make_excerpt,
+    validate_citations,
+)
 from medbridge.core.pipeline_types import (
     STAGE_LABELS,
     AblationConfig,
@@ -82,6 +87,7 @@ from medbridge.core.templates import (
     get_template,
 )
 from medbridge.db.connection import get_sessionmaker
+from medbridge.nlp.query_expansion import expand_query
 from medbridge.retrieval.hybrid_retriever import (
     HybridRetriever,
     RetrievedChunk,
@@ -232,8 +238,8 @@ def _evidence(rank: int, chunk: RetrievedChunk) -> RetrievedEvidence:
         title=chunk.doc_title or "",
         org=chunk.org or "",
         year=chunk.year,
-        section=chunk.section_title or "",
-        page=chunk.page_number or None,
+        section=display_section(chunk),
+        page=display_page(chunk),
         score_rrf=float(chunk.score_rrf or 0.0),
         score_rerank=float(chunk.score_rerank or 0.0),
         excerpt=make_excerpt(chunk.chunk_text, _EVIDENCE_EXCERPT_CHARS),
@@ -245,10 +251,40 @@ def _overlap_ms(a: tuple[float, float], b: tuple[float, float]) -> float:
 
 
 def _gate3_record(result: Any) -> dict[str, Any]:
+    """Numeric/status summary of a ``GroundingResult`` — never sentences or text (PHI-free)."""
+    available = bool(getattr(result, "available", True))
     return {
+        "status": "ok" if available else "unavailable",
+        "available": available,
         "n_claims": int(getattr(result, "n_claims", 0) or 0),
         "n_unsupported": int(getattr(result, "n_unsupported", 0) or 0),
         "unsupported_fraction": float(getattr(result, "unsupported_fraction", 0.0) or 0.0),
+    }
+
+
+def _emergency_record(action: ActionEnum | None, result: Any) -> dict[str, Any]:
+    """Audit view of the emergency classification.
+
+    Records rule ids (fired, negated, suppressed) and the decisive BP reading;
+    never ``evidence_spans`` — they are fragments of the patient's own text.
+    """
+    bp = getattr(result, "bp", None)
+    reading: list[int] | None = None
+    if isinstance(bp, tuple | list) and len(bp) == 2:
+        try:
+            reading = [int(bp[0]), int(bp[1])]
+        except (TypeError, ValueError):
+            reading = None
+
+    def _ids(name: str) -> list[str]:
+        return [str(rule) for rule in (getattr(result, name, None) or [])]
+
+    return {
+        "action": action.value if action else None,
+        "matched_rules": _ids("matched_rules"),
+        "negated": _ids("negated"),
+        "suppressed": _ids("suppressed"),
+        "bp": reading,
     }
 
 
@@ -396,15 +432,20 @@ class PipelineOrchestrator:
             if not self._settings.GROUNDING_VERIFIER_ENABLED:
                 return
 
-            async def _load_verifier() -> None:
+            async def _load_verifier() -> Any:
+                # GroundingVerifier.warmup() loads the NLI model and runs one
+                # inference; it returns False when the model cannot be loaded.
                 verifier = await asyncio.to_thread(self._get_verifier)
                 warm = getattr(verifier, "warmup", None)
                 if inspect.iscoroutinefunction(warm):
-                    await warm()
-                elif callable(warm):
-                    await asyncio.to_thread(warm)
+                    return await warm()
+                if callable(warm):
+                    return await asyncio.to_thread(warm)
+                return None
 
-            readiness["nli_verifier"], _ = await _attempt("nli_verifier", _load_verifier)
+            ok, result = await _attempt("nli_verifier", _load_verifier)
+            usable = result if isinstance(result, bool) else True
+            readiness["nli_verifier"] = ok and usable
 
         await asyncio.gather(_retrieval_side(), _llm_side(), _verifier_side())
         readiness["warmup_ms"] = round((time.perf_counter() - started) * 1000, 1)
@@ -531,19 +572,22 @@ class PipelineOrchestrator:
     # Stage 1 — deterministic emergency fast-path (raw text, no LLM)
     # ------------------------------------------------------------------
 
-    def _classify_emergency(self, text: str) -> tuple[ActionEnum | None, list[str]]:
+    def _classify_emergency(self, text: str) -> tuple[ActionEnum | None, dict[str, Any]]:
+        """(action, audit record) from ``classify_detailed`` when available, else ``classify``."""
         classifier = self._emergency_classifier
         detailed = getattr(classifier, "classify_detailed", None)
         if callable(detailed):
             result = detailed(text)
-            rules = getattr(result, "matched_rules", None) or []
-            return _as_action(getattr(result, "action", None)), [str(r) for r in rules]
+            action = _as_action(getattr(result, "action", None))
+            return action, _emergency_record(action, result)
         classify = getattr(classifier, "classify", None)
         if callable(classify):
-            return _as_action(classify(text)), []
-        if callable(classifier):
-            return _as_action(classifier(text)), []
-        return None, []
+            action = _as_action(classify(text))
+        elif callable(classifier):
+            action = _as_action(classifier(text))
+        else:
+            action = None
+        return action, _emergency_record(action, None)
 
     async def _stage_emergency(self, ctx: TurnContext) -> None:
         if not ctx.ablation.use_emergency_fastpath:
@@ -551,15 +595,13 @@ class PipelineOrchestrator:
             return
         async with self._stage(ctx, StageName.EMERGENCY) as run:
             try:
-                action, rules = self._classify_emergency(ctx.raw_message)
+                action, record = self._classify_emergency(ctx.raw_message)
             except Exception as exc:  # Gate 2 can still ESCALATE downstream
                 logger.error("emergency_classifier_failed", error=type(exc).__name__)
                 run.status = "failed"
-                action, rules = None, []
-        ctx.explanation.emergency = {
-            "action": action.value if action else None,
-            "matched_rules": rules,
-        }
+                action, record = None, _emergency_record(None, None)
+        ctx.explanation.emergency = record
+        rules: list[str] = record["matched_rules"]
         if action != ActionEnum.ESCALATE:
             return
         logger.warning("emergency_fastpath_escalate", session_id=str(ctx.session_id))
@@ -623,6 +665,15 @@ class PipelineOrchestrator:
     # Stage 3 — context extraction + in-memory projection
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _fallback_query(message: str) -> str:
+        """Retrieval query when the extractor failed: the message plus clinical synonyms."""
+        try:
+            return expand_query(message) or message
+        except Exception as exc:  # deterministic helper; never let it break the turn
+            logger.warning("query_expansion_failed", error=type(exc).__name__)
+            return message
+
     async def _stage_extraction(self, ctx: TurnContext) -> None:
         if ctx.complete:
             await self._skip(ctx, StageName.EXTRACTION)
@@ -637,8 +688,9 @@ class PipelineOrchestrator:
                 output = None
             if output is None:
                 run.status = "failed"
-        if output is None:  # spec fallback: raw message, no events
-            ctx.search_query = ctx.raw_intent = ctx.message
+        if output is None:  # spec fallback: the (redacted) message, no events
+            ctx.raw_intent = ctx.message
+            ctx.search_query = self._fallback_query(ctx.message)
             return
         ctx.search_query = (output.search_query or "").strip() or ctx.message
         ctx.raw_intent = (output.raw_intent or "").strip() or ctx.message
@@ -845,10 +897,33 @@ class PipelineOrchestrator:
     # Stage 6 — Gate 2 (Evidence Gate), optional V1 calibration
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _evidence_features(ctx: TurnContext) -> dict[str, Any]:
+        """V1 evidence features for the plain Gate 2 (same function and inputs as V1).
+
+        Recorded so the V1 thresholds can be calibrated from C5 traces with exactly
+        the production features. Deterministic, cheap and never raises.
+        """
+        try:
+            from medbridge.ai.evidence_calibration import evidence_features
+
+            features = evidence_features(
+                ctx.message or ctx.search_query, ctx.chunks, ctx.gate_snapshot
+            )
+        except Exception as exc:
+            logger.warning("evidence_features_failed", error=type(exc).__name__)
+            return {}
+        return {str(k): float(v) for k, v in features.items()}
+
     async def _llm_evidence_decision(self, ctx: TurnContext) -> GateDecision | None:
+        # The gate judges the patient's own words (false premises, unknown drug
+        # names); the extractor's clinical search query is passed alongside.
         try:
             output = await self._evidence_gate.evaluate(
-                chunks=ctx.chunks, snapshot=ctx.gate_snapshot, query=ctx.message
+                chunks=ctx.chunks,
+                snapshot=ctx.gate_snapshot,
+                query=self._retrieval_query(ctx),
+                message=ctx.message,
             )
         except Exception as exc:
             logger.warning("evidence_gate_failed", error=type(exc).__name__)
@@ -865,9 +940,10 @@ class PipelineOrchestrator:
                 self._evidence_gate,
                 ctx.chunks,
                 ctx.gate_snapshot,
-                ctx.message,
+                self._retrieval_query(ctx),
                 votes=self._settings.EVIDENCE_GATE_VOTES,
                 settings=self._settings,
+                message=ctx.message,
             )
         except Exception as exc:
             logger.warning("calibrated_evidence_gate_failed", error=type(exc).__name__)
@@ -914,6 +990,8 @@ class PipelineOrchestrator:
                 rationale="Evidence Gate failed permanently; spec fallback to GENERALIZE.",
                 source="fallback",
             )
+        if not decision.features:  # the calibrated gate already carries its own features
+            decision.features = self._evidence_features(ctx)
         ctx.explanation.gate2 = decision
         ctx.final_action = ActionEnum(decision.action)
 
@@ -936,7 +1014,8 @@ class PipelineOrchestrator:
                 action=action,
                 chunks=chunks,
                 snapshot=ctx.gate_snapshot,
-                query=ctx.message,
+                query=self._retrieval_query(ctx),
+                message=ctx.message,
                 **kwargs,
             )
         except Exception as exc:

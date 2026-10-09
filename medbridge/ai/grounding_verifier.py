@@ -276,6 +276,16 @@ class GroundingVerifier:
 
     # -- model ------------------------------------------------------------
 
+    @property
+    def loaded(self) -> bool:
+        """True once the NLI model is resident in memory."""
+        return self._model is not None
+
+    @property
+    def load_error(self) -> str | None:
+        """Why the model could not be loaded (``None`` if it loaded or was never tried)."""
+        return self._load_error
+
     def _load(self) -> NLIModel | None:
         if self._model is not None or self._load_error is not None:
             return self._model

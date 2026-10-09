@@ -52,6 +52,9 @@ _NUMBER_WITH_UNIT = re.compile(
     re.IGNORECASE,
 )
 _WORD = re.compile(r"[a-z][a-z\-]{3,}")
+# Placeholders inserted by the privacy redactor ("[NAME]", "[PHONE]", "[AGE: 54]");
+# they are not part of the clinical question and must not count as entities.
+_REDACTION_PLACEHOLDER = re.compile(r"\[[A-Z][A-Z_]*(?::\s*\d+)?\]")
 _SELF_MEDICATION = re.compile(
     r"\b(?:my|current)\s+(?:medicine|medication|meds|pills?|tablets?|dose)\b"
 )
@@ -71,7 +74,8 @@ those though through today told tomorrow took too toward under until upon used u
 want wanted wants well were what whatever when where whether which while whom whose will
 with within without would year years your yours yourself doctor doctors normal week
 weeks month months days morning night evening started start stop stopped medicine
-medicines medication medications pill pills tablet tablets
+medicines medication medications pill pills tablet tablets name phone mobile email
+contact number address
 """.split())
 
 
@@ -137,8 +141,10 @@ def salient_entities(query: str, snapshot: dict[str, Any] | None = None) -> list
 
     When the question refers to "my medicine/dose" without naming it, the
     current medications recorded in the snapshot are used as drug entities.
+    Privacy-redaction placeholders (``[NAME]``, ``[PHONE]``, ``[AGE: 54]``) and
+    contact words are ignored: they are not part of the clinical question.
     """
-    text = query or ""
+    text = _REDACTION_PLACEHOLDER.sub(" ", query or "")
     entities: list[str] = []
     drug_tokens: set[str] = set()
     for drug in find_drugs(text):

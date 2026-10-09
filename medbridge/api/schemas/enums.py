@@ -1,5 +1,6 @@
 from enum import StrEnum
 
+
 class ActionEnum(StrEnum):
     SOFT_ASK = "SOFT-ASK"
     ANSWER = "ANSWER"

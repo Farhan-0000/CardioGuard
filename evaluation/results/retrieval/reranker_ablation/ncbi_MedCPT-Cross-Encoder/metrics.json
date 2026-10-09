@@ -1,0 +1,4021 @@
+{
+  "modes": {
+    "dense": {
+      "recall@5": {
+        "estimate": 0.7404761904761904,
+        "low": 0.6476190476190476,
+        "high": 0.8261904761904761
+      },
+      "recall@20": {
+        "estimate": 0.8595238095238095,
+        "low": 0.7904761904761906,
+        "high": 0.9214285714285714
+      },
+      "mrr": {
+        "estimate": 0.6774904387592358,
+        "low": 0.5842742275738046,
+        "high": 0.7664950718923933
+      },
+      "ndcg@5": {
+        "estimate": 0.6406416319172423,
+        "low": 0.5534978697102398,
+        "high": 0.72422962240358
+      },
+      "n": 70
+    },
+    "sparse": {
+      "recall@5": {
+        "estimate": 0.6404761904761904,
+        "low": 0.5380357142857143,
+        "high": 0.738095238095238
+      },
+      "recall@20": {
+        "estimate": 0.8333333333333334,
+        "low": 0.7547619047619047,
+        "high": 0.9024404761904753
+      },
+      "mrr": {
+        "estimate": 0.5835165158567416,
+        "low": 0.4881141361249445,
+        "high": 0.6757879998291184
+      },
+      "ndcg@5": {
+        "estimate": 0.54463104346187,
+        "low": 0.4510146810946825,
+        "high": 0.6340762495367335
+      },
+      "n": 70
+    },
+    "hybrid": {
+      "recall@5": {
+        "estimate": 0.7428571428571429,
+        "low": 0.65,
+        "high": 0.8261904761904763
+      },
+      "recall@20": {
+        "estimate": 0.8666666666666666,
+        "low": 0.7952380952380952,
+        "high": 0.9285714285714286
+      },
+      "mrr": {
+        "estimate": 0.7326465201465201,
+        "low": 0.642882326007326,
+        "high": 0.8180724206349207
+      },
+      "ndcg@5": {
+        "estimate": 0.6848943363276433,
+        "low": 0.5968525092003875,
+        "high": 0.7678405080049086
+      },
+      "n": 70
+    },
+    "hybrid+rerank": {
+      "recall@5": {
+        "estimate": 0.7476190476190475,
+        "low": 0.6547619047619047,
+        "high": 0.830952380952381
+      },
+      "recall@20": {
+        "estimate": 0.8666666666666666,
+        "low": 0.7952380952380952,
+        "high": 0.9285714285714286
+      },
+      "mrr": {
+        "estimate": 0.7344217687074829,
+        "low": 0.6433477891156463,
+        "high": 0.8194077380952381
+      },
+      "ndcg@5": {
+        "estimate": 0.682803213355946,
+        "low": 0.594242140218193,
+        "high": 0.7663993826422386
+      },
+      "n": 70
+    }
+  },
+  "per_query": [
+    {
+      "id": "R001",
+      "topic": "hypertension",
+      "dense": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.49818925746641285
+      },
+      "dense_top5": [
+        "nice_ng136_p25_c35",
+        "aha_acc_htn_2025_p11_c40",
+        "nice_ng136_p26_c36",
+        "aha_bp_measurement_2019_p6_c30",
+        "acc_aha_prevention_2019_p17_c82"
+      ],
+      "sparse": {
+        "recall@5": 0.3333333333333333,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.46927872602275644
+      },
+      "sparse_top5": [
+        "aha_bp_measurement_2019_p6_c30",
+        "aha_acc_htn_2025_p3_c6",
+        "nice_ng136_p25_c35",
+        "aha_acc_htn_2025_p3_c7",
+        "esc_htn_2024_p25_c93"
+      ],
+      "hybrid": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.5307212739772434
+      },
+      "hybrid_top5": [
+        "nice_ng136_p25_c35",
+        "aha_bp_measurement_2019_p6_c30",
+        "aha_acc_htn_2025_p11_c40",
+        "aha_acc_htn_2025_p3_c6",
+        "aha_acc_htn_2025_p3_c7"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.9060254355346823
+      },
+      "hybrid+rerank_top5": [
+        "aha_bp_measurement_2019_p6_c30",
+        "nice_ng136_p25_c35",
+        "aha_acc_htn_2025_p11_c40",
+        "medlineplus_high_bp_p2_c1",
+        "esc_htn_2024_p25_c93"
+      ]
+    },
+    {
+      "id": "R002",
+      "topic": "hypertension",
+      "dense": {
+        "recall@5": 0.3333333333333333,
+        "recall@20": 0.6666666666666666,
+        "mrr": 0.25,
+        "ndcg@5": 0.20210734650054757
+      },
+      "dense_top5": [
+        "esc_htn_2024_p26_c102",
+        "nice_ng136_p26_c36",
+        "esc_htn_2024_p50_c211",
+        "medlineplus_high_bp_p2_c1",
+        "esc_htn_2024_p33_c133"
+      ],
+      "sparse": {
+        "recall@5": 0.3333333333333333,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.23463936301137822
+      },
+      "sparse_top5": [
+        "ish_htn_2020_p13_c55",
+        "who_htn_pharm_2021_p31_c69",
+        "medlineplus_high_bp_p2_c1",
+        "ish_htn_2020_p15_c62",
+        "medlineplus_high_bp_p2_c2"
+      ],
+      "hybrid": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 0.6666666666666666,
+        "mrr": 1.0,
+        "ndcg@5": 0.7653606369886217
+      },
+      "hybrid_top5": [
+        "medlineplus_high_bp_p2_c1",
+        "nhlbi_high_bp_p3_c1",
+        "nhlbi_high_bp_p1_c0",
+        "medlineplus_high_bp_p2_c2",
+        "ish_htn_2020_p3_c11"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 0.6666666666666666,
+        "mrr": 0.5,
+        "ndcg@5": 0.5307212739772434
+      },
+      "hybrid+rerank_top5": [
+        "nhlbi_high_bp_p1_c0",
+        "medlineplus_high_bp_p2_c1",
+        "nhlbi_high_bp_p3_c1",
+        "medlineplus_high_bp_p2_c2",
+        "esc_htn_2024_p33_c133"
+      ]
+    },
+    {
+      "id": "R003",
+      "topic": "bp_measurement",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.5
+      },
+      "dense_top5": [
+        "who_hearts_protocols_2018_p13_c16",
+        "esc_htn_2024_p32_c129",
+        "nice_ng136_p8_c7",
+        "nice_ng136_p7_c6",
+        "esc_htn_2024_p33_c135"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nice_ng136_p7_c6",
+        "ish_htn_2020_p5_c17",
+        "esc_htn_2024_p26_c104",
+        "ish_htn_2020_p3_c13",
+        "esc_htn_2024_p32_c129"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng136_p7_c6",
+        "esc_htn_2024_p32_c129",
+        "nice_ng136_p8_c7",
+        "esc_htn_2024_p33_c135",
+        "ish_htn_2020_p3_c13"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng136_p7_c6",
+        "esc_htn_2024_p32_c129",
+        "nice_ng136_p8_c7",
+        "ish_htn_2020_p3_c13",
+        "ish_htn_2020_p5_c17"
+      ]
+    },
+    {
+      "id": "R004",
+      "topic": "hypertension",
+      "dense": {
+        "recall@5": 0.3333333333333333,
+        "recall@20": 0.6666666666666666,
+        "mrr": 1.0,
+        "ndcg@5": 0.46927872602275644
+      },
+      "dense_top5": [
+        "medlineplus_high_bp_p2_c2",
+        "nhlbi_high_bp_p3_c2",
+        "nhlbi_high_bp_p1_c0",
+        "medlineplus_high_bp_p2_c1",
+        "nhlbi_high_bp_p3_c1"
+      ],
+      "sparse": {
+        "recall@5": 0.3333333333333333,
+        "recall@20": 0.3333333333333333,
+        "mrr": 0.2,
+        "ndcg@5": 0.18154179253735267
+      },
+      "sparse_top5": [
+        "esc_htn_2024_p24_c89",
+        "medlineplus_high_bp_p5_c5",
+        "esc_htn_2024_p12_c35",
+        "nhlbi_high_bp_p1_c0",
+        "medlineplus_high_bp_p2_c2"
+      ],
+      "hybrid": {
+        "recall@5": 0.3333333333333333,
+        "recall@20": 0.6666666666666666,
+        "mrr": 1.0,
+        "ndcg@5": 0.46927872602275644
+      },
+      "hybrid_top5": [
+        "medlineplus_high_bp_p2_c2",
+        "nhlbi_high_bp_p1_c0",
+        "esc_htn_2024_p12_c35",
+        "who_hearts_protocols_2018_p12_c15",
+        "esc_htn_2024_p24_c89"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.3333333333333333,
+        "recall@20": 0.6666666666666666,
+        "mrr": 1.0,
+        "ndcg@5": 0.46927872602275644
+      },
+      "hybrid+rerank_top5": [
+        "medlineplus_high_bp_p2_c2",
+        "medlineplus_high_bp_p5_c5",
+        "medlineplus_high_bp_p4_c4",
+        "nhlbi_high_bp_p1_c0",
+        "medlineplus_high_bp_p2_c1"
+      ]
+    },
+    {
+      "id": "R005",
+      "topic": "hypertension",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "dense_top5": [
+        "nice_ng136_p14_c15",
+        "nice_ng136_p13_c17",
+        "nice_ng136_p16_c19",
+        "nice_ng136_p28_c41",
+        "who_htn_pharm_2021_p28_c61"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "sparse_top5": [
+        "nice_ng136_p14_c15",
+        "nice_ng136_p13_c17",
+        "nice_ng136_p15_c18",
+        "nice_ng136_p38_c60",
+        "nice_ng136_p16_c19"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "hybrid_top5": [
+        "nice_ng136_p14_c15",
+        "nice_ng136_p13_c17",
+        "nice_ng136_p16_c19",
+        "nice_ng136_p15_c18",
+        "nice_ng136_p28_c41"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng136_p14_c15",
+        "nice_ng136_p13_c17",
+        "nice_ng136_p16_c19",
+        "nice_ng136_p15_c18",
+        "nice_ng136_p28_c41"
+      ]
+    },
+    {
+      "id": "R006",
+      "topic": "hypertension",
+      "dense": {
+        "recall@5": 0.0,
+        "recall@20": 0.3333333333333333,
+        "mrr": 0.05263157894736842,
+        "ndcg@5": 0.0
+      },
+      "dense_top5": [
+        "who_hearts_protocols_2018_p12_c15",
+        "ish_htn_2020_p4_c16",
+        "nhlbi_high_bp_treatment_p5_c4",
+        "esc_htn_2024_p26_c102",
+        "who_hearts_protocols_2018_p12_c14"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 0.3333333333333333,
+        "mrr": 0.09090909090909091,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "esc_htn_2024_p62_c281",
+        "who_hearts_protocols_2018_p14_c22",
+        "who_hearts_protocols_2018_p36_c72",
+        "aha_resistant_htn_2018_p45_c87",
+        "acc_aha_af_2023_p31_c128"
+      ],
+      "hybrid": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "hybrid_top5": [
+        "nhlbi_high_bp_treatment_p5_c4",
+        "nhlbi_high_bp_p3_c2",
+        "nice_ng136_p25_c34",
+        "who_hearts_protocols_2018_p12_c15",
+        "esc_htn_2024_p62_c281"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "hybrid+rerank_top5": [
+        "who_hearts_protocols_2018_p14_c22",
+        "nhlbi_high_bp_p1_c0",
+        "nhlbi_high_bp_p3_c2",
+        "who_hearts_protocols_2018_p12_c14",
+        "nhlbi_high_bp_p3_c1"
+      ]
+    },
+    {
+      "id": "R007",
+      "topic": "hypertension",
+      "dense": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.6508205185601091
+      },
+      "dense_top5": [
+        "esc_htn_2024_p69_c330",
+        "esc_htn_2024_p39_c162",
+        "esc_htn_2024_p37_c156",
+        "ish_htn_2020_p12_c52",
+        "aha_acc_htn_2025_p63_c262"
+      ],
+      "sparse": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 0.6666666666666666,
+        "mrr": 1.0,
+        "ndcg@5": 0.6713860725233041
+      },
+      "sparse_top5": [
+        "esc_htn_2024_p69_c330",
+        "esc_htn_2024_p39_c162",
+        "aha_acc_htn_2025_p19_c72",
+        "aha_acc_htn_2025_p63_c262",
+        "esc_htn_2024_p39_c163"
+      ],
+      "hybrid": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.7039180890341347
+      },
+      "hybrid_top5": [
+        "esc_htn_2024_p69_c330",
+        "esc_htn_2024_p39_c162",
+        "aha_acc_htn_2025_p63_c262",
+        "ish_htn_2020_p12_c52",
+        "esc_htn_2024_p39_c163"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.6508205185601091
+      },
+      "hybrid+rerank_top5": [
+        "esc_htn_2024_p69_c330",
+        "esc_htn_2024_p37_c156",
+        "esc_htn_2024_p39_c162",
+        "ish_htn_2020_p12_c52",
+        "aha_acc_htn_2025_p63_c262"
+      ]
+    },
+    {
+      "id": "R008",
+      "topic": "hypertension",
+      "dense": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "dense_top5": [
+        "esc_htn_2024_p77_c377",
+        "esc_htn_2024_p26_c102",
+        "nhlbi_high_bp_p3_c1",
+        "nhlbi_high_bp_treatment_p5_c4",
+        "esc_htn_2024_p50_c213"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "esc_htn_2024_p19_c67",
+        "who_htn_pharm_2021_p25_c54",
+        "who_htn_pharm_2021_p26_c55",
+        "esc_htn_2024_p80_c392",
+        "who_htn_pharm_2021_p28_c62"
+      ],
+      "hybrid": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "hybrid_top5": [
+        "nhlbi_high_bp_treatment_p5_c4",
+        "esc_htn_2024_p19_c67",
+        "esc_htn_2024_p77_c377",
+        "esc_htn_2024_p26_c102",
+        "who_htn_pharm_2021_p25_c54"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "hybrid+rerank_top5": [
+        "nhlbi_high_bp_p1_c0",
+        "esc_htn_2024_p80_c392",
+        "nhlbi_high_bp_treatment_p5_c4",
+        "esc_htn_2024_p53_c225",
+        "esc_htn_2024_p51_c219"
+      ]
+    },
+    {
+      "id": "R009",
+      "topic": "hypertensive_emergency",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.9469024295259745
+      },
+      "dense_top5": [
+        "ish_htn_2020_p15_c63",
+        "esc_htn_2024_p72_c354",
+        "esc_htn_emergencies_2019_p3_c2",
+        "esc_htn_emergencies_2019_p2_c1",
+        "aha_acc_htn_2025_p67_c279"
+      ],
+      "sparse": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.7039180890341347
+      },
+      "sparse_top5": [
+        "esc_htn_2024_p72_c354",
+        "esc_htn_emergencies_2019_p2_c1",
+        "ish_htn_2020_p15_c63",
+        "esc_htn_2024_p73_c356",
+        "esc_htn_emergencies_2019_p9_c12"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.9674679834891693
+      },
+      "hybrid_top5": [
+        "esc_htn_2024_p72_c354",
+        "ish_htn_2020_p15_c63",
+        "esc_htn_emergencies_2019_p2_c1",
+        "aha_acc_htn_2025_p67_c279",
+        "ish_htn_2020_p15_c66"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.7653606369886217
+      },
+      "hybrid+rerank_top5": [
+        "esc_htn_2024_p72_c354",
+        "ish_htn_2020_p15_c63",
+        "esc_htn_emergencies_2019_p2_c1",
+        "esc_htn_2024_p73_c356",
+        "esc_htn_emergencies_2019_p3_c2"
+      ]
+    },
+    {
+      "id": "R010",
+      "topic": "hypertensive_emergency",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "esc_htn_emergencies_2019_p11_c22",
+        "aha_acc_htn_2025_p70_c293",
+        "esc_htn_2024_p74_c366",
+        "esc_htn_emergencies_2019_p17_c28",
+        "esc_htn_2024_p82_c404"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6509209298071326
+      },
+      "sparse_top5": [
+        "ish_htn_2020_p15_c61",
+        "aha_acc_htn_2025_p70_c294",
+        "esc_htn_emergencies_2019_p16_c27",
+        "esc_htn_emergencies_2019_p10_c21",
+        "aha_acc_htn_2025_p70_c293"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "aha_acc_htn_2025_p70_c293",
+        "esc_htn_emergencies_2019_p11_c22",
+        "aha_acc_htn_2025_p70_c294",
+        "esc_htn_emergencies_2019_p17_c28",
+        "esc_htn_2024_p74_c366"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "esc_htn_emergencies_2019_p10_c21",
+        "aha_acc_htn_2025_p67_c280",
+        "ish_htn_2020_p16_c67",
+        "esc_htn_2024_p74_c366",
+        "esc_htn_emergencies_2019_p10_c16"
+      ]
+    },
+    {
+      "id": "R011",
+      "topic": "hypertensive_emergency",
+      "dense": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "dense_top5": [
+        "aha_acc_htn_2025_p68_c282",
+        "esc_htn_emergencies_2019_p1_c0",
+        "esc_htn_2024_p72_c354",
+        "aha_acc_htn_2025_p67_c279",
+        "nice_ng136_p47_c75"
+      ],
+      "sparse": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "sparse_top5": [
+        "aha_acc_htn_2025_p67_c277",
+        "aha_acc_htn_2025_p68_c282",
+        "esc_htn_2024_p54_c234",
+        "medlineplus_heart_attack_p1_c0",
+        "nice_ng136_p47_c75"
+      ],
+      "hybrid": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "hybrid_top5": [
+        "aha_acc_htn_2025_p68_c282",
+        "aha_acc_htn_2025_p67_c277",
+        "nice_ng136_p47_c75",
+        "esc_htn_2024_p72_c354",
+        "esc_htn_emergencies_2019_p3_c2"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.8503449055347546
+      },
+      "hybrid+rerank_top5": [
+        "aha_acc_htn_2025_p68_c282",
+        "esc_htn_emergencies_2019_p3_c2",
+        "esc_htn_emergencies_2019_p1_c0",
+        "esc_htn_emergencies_2019_p2_c1",
+        "esc_htn_emergencies_2019_p10_c15"
+      ]
+    },
+    {
+      "id": "R012",
+      "topic": "hypertensive_emergency",
+      "dense": {
+        "recall@5": 0.0,
+        "recall@20": 0.6666666666666666,
+        "mrr": 0.09090909090909091,
+        "ndcg@5": 0.0
+      },
+      "dense_top5": [
+        "nice_ng133_p42_c69",
+        "nice_ng136_p26_c37",
+        "esc_htn_2024_p26_c102",
+        "esc_htn_2024_p80_c393",
+        "nice_ng136_p48_c76"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "who_hearts_protocols_2018_p38_c79",
+        "ish_htn_2020_p5_c21",
+        "ish_htn_2020_p6_c22",
+        "nice_ng133_p6_c4",
+        "who_hearts_protocols_2018_p38_c80"
+      ],
+      "hybrid": {
+        "recall@5": 0.0,
+        "recall@20": 0.3333333333333333,
+        "mrr": 0.05,
+        "ndcg@5": 0.0
+      },
+      "hybrid_top5": [
+        "nice_ng133_p42_c69",
+        "nice_ng133_p6_c4",
+        "ish_htn_2020_p6_c22",
+        "who_hearts_protocols_2018_p38_c80",
+        "nice_ng136_p24_c30"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.0,
+        "recall@20": 0.3333333333333333,
+        "mrr": 0.125,
+        "ndcg@5": 0.0
+      },
+      "hybrid+rerank_top5": [
+        "ish_htn_2020_p5_c21",
+        "nice_ng133_p42_c69",
+        "who_hearts_protocols_2018_p38_c79",
+        "nice_ng133_p6_c4",
+        "nice_ng136_p25_c32"
+      ]
+    },
+    {
+      "id": "R013",
+      "topic": "hypertensive_emergency",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6509209298071326
+      },
+      "dense_top5": [
+        "esc_htn_emergencies_2019_p1_c0",
+        "aha_acc_htn_2025_p67_c279",
+        "esc_htn_emergencies_2019_p2_c1",
+        "esc_htn_emergencies_2019_p3_c6",
+        "esc_htn_emergencies_2019_p3_c2"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "aha_acc_htn_2025_p67_c279",
+        "esc_htn_emergencies_2019_p3_c5",
+        "esc_htn_emergencies_2019_p1_c0",
+        "esc_htn_2024_p72_c355",
+        "esc_htn_emergencies_2019_p3_c6"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.9197207891481876
+      },
+      "hybrid_top5": [
+        "aha_acc_htn_2025_p67_c279",
+        "esc_htn_emergencies_2019_p1_c0",
+        "esc_htn_emergencies_2019_p3_c6",
+        "esc_htn_emergencies_2019_p3_c2",
+        "esc_htn_emergencies_2019_p10_c15"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.8503449055347546
+      },
+      "hybrid+rerank_top5": [
+        "aha_acc_htn_2025_p67_c279",
+        "esc_htn_emergencies_2019_p1_c0",
+        "esc_htn_emergencies_2019_p2_c1",
+        "esc_htn_emergencies_2019_p19_c31",
+        "esc_htn_emergencies_2019_p3_c2"
+      ]
+    },
+    {
+      "id": "R014",
+      "topic": "pregnancy",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.25,
+        "ndcg@5": 0.43067655807339306
+      },
+      "dense_top5": [
+        "esc_htn_2024_p82_c404",
+        "esc_htn_2024_p74_c363",
+        "who_htn_pharm_2021_p35_c79",
+        "nice_ng133_p32_c47",
+        "nice_ng133_p30_c45"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nice_ng133_p30_c45",
+        "nice_ng133_p32_c47",
+        "nice_ng133_p33_c52",
+        "esc_htn_2024_p74_c362",
+        "who_hearts_protocols_2018_p11_c11"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng133_p30_c45",
+        "nice_ng133_p32_c47",
+        "esc_htn_2024_p82_c404",
+        "esc_htn_2024_p74_c362",
+        "nice_ng133_p34_c51"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng133_p32_c47",
+        "esc_htn_2024_p74_c362",
+        "nice_ng133_p33_c52",
+        "nice_ng133_p30_c45",
+        "nice_ng133_p34_c51"
+      ]
+    },
+    {
+      "id": "R015",
+      "topic": "heart_failure",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "medlineplus_heart_failure_p1_c0",
+        "medlineplus_heart_failure_p2_c1",
+        "medlineplus_heart_failure_p4_c3",
+        "nice_ng106_p37_c57",
+        "medlineplus_heart_failure_p6_c5"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "medlineplus_heart_failure_p1_c0",
+        "aha_acc_htn_2025_p9_c34",
+        "nice_ng185_p29_c40",
+        "esc_htn_2024_p16_c54",
+        "esc_htn_2024_p6_c11"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "medlineplus_heart_failure_p1_c0",
+        "medlineplus_heart_failure_p2_c1",
+        "medlineplus_heart_attack_p1_c0",
+        "nice_ng106_p37_c58",
+        "aha_acc_htn_2025_p9_c34"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "medlineplus_heart_failure_p1_c0",
+        "medlineplus_heart_failure_p2_c1",
+        "medlineplus_heart_failure_p7_c6",
+        "medlineplus_heart_failure_p4_c3",
+        "medlineplus_heart_failure_p6_c5"
+      ]
+    },
+    {
+      "id": "R016",
+      "topic": "heart_failure",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.2,
+        "ndcg@5": 0.38685280723454163
+      },
+      "dense_top5": [
+        "nice_ng106_p18_c21",
+        "nice_ng106_p37_c58",
+        "nice_ng106_p19_c25",
+        "nice_ng106_p16_c18",
+        "nice_ng106_p13_c14"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "nice_ng185_p29_c40",
+        "esc_htn_2024_p67_c318",
+        "nice_ng185_p28_c38",
+        "ccd_guideline_review_2024_p11_c18",
+        "nice_ng185_p27_c37"
+      ],
+      "hybrid": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.07692307692307693,
+        "ndcg@5": 0.0
+      },
+      "hybrid_top5": [
+        "nice_ng106_p37_c58",
+        "nice_ng185_p29_c40",
+        "nice_ng185_p28_c38",
+        "nice_ng106_p19_c25",
+        "nice_ng106_p33_c51"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng106_p13_c14",
+        "nice_ng185_p28_c38",
+        "nice_ng106_p16_c18",
+        "nice_ng106_p37_c58",
+        "nice_ng106_p40_c60"
+      ]
+    },
+    {
+      "id": "R017",
+      "topic": "heart_failure",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng106_p9_c7",
+        "nice_ng106_p36_c55",
+        "medlineplus_heart_failure_p6_c5",
+        "nice_ng106_p10_c8",
+        "nice_ng106_p28_c37"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nice_ng106_p9_c7",
+        "nice_ng106_p36_c55",
+        "esc_htn_2024_p36_c145",
+        "esc_htn_2024_p36_c149",
+        "esc_htn_2024_p6_c12"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng106_p9_c7",
+        "nice_ng106_p36_c55",
+        "esc_htn_2024_p36_c149",
+        "esc_htn_2024_p38_c158",
+        "nice_ng106_p28_c37"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng106_p9_c7",
+        "nice_ng106_p28_c37",
+        "nice_ng106_p36_c55",
+        "medlineplus_heart_failure_p6_c5",
+        "esc_htn_2024_p36_c145"
+      ]
+    },
+    {
+      "id": "R018",
+      "topic": "heart_failure",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.8772153153380493
+      },
+      "dense_top5": [
+        "nice_ng106_p29_c43",
+        "kdigo_bp_ckd_2021_p37_c74",
+        "nice_ng106_p28_c38",
+        "medlineplus_heart_failure_p7_c6",
+        "aha_resistant_htn_2018_p40_c78"
+      ],
+      "sparse": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.38685280723454163
+      },
+      "sparse_top5": [
+        "ish_htn_2020_p9_c39",
+        "medlineplus_heart_failure_p7_c6",
+        "esc_htn_2024_p47_c194",
+        "who_hearts_protocols_2018_p27_c53",
+        "medlineplus_heart_attack_p3_c2"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "medlineplus_heart_failure_p7_c6",
+        "nice_ng106_p29_c43",
+        "who_hearts_protocols_2018_p27_c53",
+        "ish_htn_2020_p9_c39",
+        "kdigo_bp_ckd_2021_p37_c74"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng106_p29_c43",
+        "medlineplus_heart_failure_p7_c6",
+        "nice_ng106_p28_c38",
+        "esc_htn_2024_p47_c194",
+        "who_hearts_protocols_2018_p27_c53"
+      ]
+    },
+    {
+      "id": "R019",
+      "topic": "heart_failure",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng106_p19_c24",
+        "nice_ng185_p29_c39",
+        "nice_ng106_p19_c25",
+        "nice_ng106_p16_c18",
+        "nice_ng106_p20_c26"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "sparse_top5": [
+        "nice_ng185_p29_c39",
+        "nice_ng106_p19_c24",
+        "esc_htn_2024_p16_c54",
+        "acc_aha_af_2023_p47_c342",
+        "esc_htn_2024_p67_c318"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng106_p19_c24",
+        "nice_ng185_p29_c39",
+        "nice_ng106_p19_c25",
+        "nice_ng106_p20_c26",
+        "nice_ng185_p29_c40"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng185_p29_c39",
+        "nice_ng106_p19_c24",
+        "nice_ng185_p28_c38",
+        "nice_ng106_p16_c18",
+        "nice_ng106_p18_c21"
+      ]
+    },
+    {
+      "id": "R020",
+      "topic": "heart_failure",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "medlineplus_heart_failure_p4_c3",
+        "medlineplus_heart_failure_p5_c4",
+        "medlineplus_heart_failure_p2_c1",
+        "medlineplus_heart_failure_p1_c0",
+        "nice_ng106_p37_c57"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "medlineplus_heart_failure_p4_c3",
+        "who_hearts_protocols_2018_p38_c79",
+        "medlineplus_afib_p4_c3",
+        "medlineplus_heart_attack_p5_c3",
+        "medlineplus_heart_failure_p5_c4"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "medlineplus_heart_failure_p4_c3",
+        "medlineplus_heart_failure_p5_c4",
+        "who_hearts_protocols_2018_p38_c79",
+        "medlineplus_heart_attack_p5_c3",
+        "medlineplus_heart_failure_p1_c0"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "medlineplus_heart_failure_p4_c3",
+        "who_hearts_protocols_2018_p38_c79",
+        "medlineplus_heart_failure_p5_c4",
+        "medlineplus_heart_failure_p6_c5",
+        "medlineplus_heart_failure_p2_c1"
+      ]
+    },
+    {
+      "id": "R021",
+      "topic": "atrial_fibrillation",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng196_p7_c5",
+        "acc_aha_af_2023_p29_c100",
+        "acc_aha_af_2023_p29_c108",
+        "nice_ng196_p46_c60",
+        "acc_aha_af_2023_p31_c117"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nice_ng196_p7_c5",
+        "acc_aha_af_2023_p29_c100",
+        "acc_aha_af_2023_p29_c108",
+        "acc_aha_af_2023_p32_c141",
+        "acc_aha_af_2023_p31_c117"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng196_p7_c5",
+        "acc_aha_af_2023_p29_c100",
+        "acc_aha_af_2023_p29_c108",
+        "acc_aha_af_2023_p31_c117",
+        "nice_ng196_p46_c60"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng196_p7_c5",
+        "nice_ng196_p46_c60",
+        "nice_ng196_p49_c63",
+        "acc_aha_af_2023_p29_c100",
+        "acc_aha_af_2023_p29_c103"
+      ]
+    },
+    {
+      "id": "R022",
+      "topic": "atrial_fibrillation",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "medlineplus_afib_p1_c0",
+        "medlineplus_afib_p2_c1",
+        "medlineplus_afib_p5_c4",
+        "medlineplus_afib_p3_c2",
+        "medlineplus_afib_p4_c3"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "medlineplus_afib_p1_c0",
+        "medlineplus_afib_p7_c6",
+        "medlineplus_afib_p5_c4",
+        "medlineplus_afib_p3_c2",
+        "medlineplus_afib_p8_c7"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "medlineplus_afib_p1_c0",
+        "medlineplus_afib_p5_c4",
+        "medlineplus_afib_p3_c2",
+        "medlineplus_afib_p2_c1",
+        "medlineplus_afib_p7_c6"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "medlineplus_afib_p1_c0",
+        "medlineplus_afib_p5_c4",
+        "medlineplus_afib_p7_c6",
+        "medlineplus_afib_p3_c2",
+        "medlineplus_afib_p6_c5"
+      ]
+    },
+    {
+      "id": "R023",
+      "topic": "atrial_fibrillation",
+      "dense": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "dense_top5": [
+        "acc_aha_af_2023_p31_c118",
+        "acc_aha_af_2023_p31_c115",
+        "acc_aha_af_2023_p31_c119",
+        "acc_aha_af_2023_p31_c120",
+        "acc_aha_af_2023_p31_c114"
+      ],
+      "sparse": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.3065735963827292
+      },
+      "sparse_top5": [
+        "acc_aha_af_2023_p33_c150",
+        "acc_aha_af_2023_p61_c419",
+        "acc_aha_af_2023_p31_c118",
+        "acc_aha_af_2023_p61_c415",
+        "acc_aha_af_2023_p51_c368"
+      ],
+      "hybrid": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "hybrid_top5": [
+        "acc_aha_af_2023_p31_c118",
+        "acc_aha_af_2023_p61_c419",
+        "acc_aha_af_2023_p51_c368",
+        "acc_aha_af_2023_p31_c115",
+        "acc_aha_af_2023_p31_c120"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "hybrid+rerank_top5": [
+        "acc_aha_af_2023_p31_c116",
+        "acc_aha_af_2023_p31_c118",
+        "acc_aha_af_2023_p31_c115",
+        "acc_aha_af_2023_p31_c117",
+        "acc_aha_af_2023_p31_c114"
+      ]
+    },
+    {
+      "id": "R024",
+      "topic": "atrial_fibrillation",
+      "dense": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "dense_top5": [
+        "acc_aha_af_2023_p31_c122",
+        "nice_ng238_p13_c11",
+        "nice_ng133_p7_c5",
+        "nice_ng196_p39_c50",
+        "acc_aha_prevention_2019_p19_c107"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.8772153153380493
+      },
+      "sparse_top5": [
+        "acc_aha_af_2023_p31_c121",
+        "acc_aha_af_2023_p31_c122",
+        "nice_ng133_p7_c5",
+        "nice_ng196_p19_c22",
+        "nice_ng196_p15_c16"
+      ],
+      "hybrid": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "hybrid_top5": [
+        "acc_aha_af_2023_p31_c122",
+        "nice_ng133_p7_c5",
+        "nice_ng196_p39_c50",
+        "nice_ng196_p44_c57",
+        "nice_ng196_p43_c56"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng196_p19_c22",
+        "acc_aha_af_2023_p31_c122",
+        "nice_ng196_p39_c50",
+        "acc_aha_af_2023_p31_c121",
+        "nice_ng238_p13_c11"
+      ]
+    },
+    {
+      "id": "R025",
+      "topic": "atrial_fibrillation",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng196_p21_c26",
+        "acc_aha_af_2023_p37_c221",
+        "acc_aha_af_2023_p37_c220",
+        "nice_ng196_p31_c40",
+        "acc_aha_af_2023_p56_c390"
+      ],
+      "sparse": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "sparse_top5": [
+        "nice_ng196_p21_c26",
+        "nice_ng196_p37_c48",
+        "nice_ng196_p38_c49",
+        "nice_ng196_p24_c30",
+        "nice_ng196_p37_c46"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.9197207891481876
+      },
+      "hybrid_top5": [
+        "nice_ng196_p21_c26",
+        "nice_ng196_p31_c40",
+        "acc_aha_af_2023_p37_c221",
+        "nice_ng196_p37_c46",
+        "nice_ng196_p24_c29"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.8772153153380493
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng196_p21_c26",
+        "nice_ng196_p45_c59",
+        "acc_aha_af_2023_p40_c245",
+        "acc_aha_af_2023_p37_c221",
+        "acc_aha_af_2023_p37_c220"
+      ]
+    },
+    {
+      "id": "R026",
+      "topic": "atrial_fibrillation",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "medlineplus_afib_p7_c6",
+        "esc_htn_2024_p81_c399",
+        "nice_ng196_p47_c61",
+        "esc_htn_2024_p81_c398",
+        "medlineplus_afib_p5_c4"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "medlineplus_afib_p7_c6",
+        "medlineplus_heart_attack_p6_c4",
+        "medlineplus_afib_p1_c0",
+        "medlineplus_afib_p3_c2",
+        "medlineplus_afib_p6_c5"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "medlineplus_afib_p7_c6",
+        "medlineplus_afib_p5_c4",
+        "medlineplus_afib_p8_c7",
+        "medlineplus_heart_attack_p6_c4",
+        "esc_htn_2024_p81_c399"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "medlineplus_afib_p7_c6",
+        "medlineplus_afib_p5_c4",
+        "medlineplus_afib_p8_c7",
+        "medlineplus_afib_p6_c5",
+        "medlineplus_afib_p2_c1"
+      ]
+    },
+    {
+      "id": "R027",
+      "topic": "coronary_disease",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "medlineplus_heart_attack_p5_c3",
+        "esc_htn_emergencies_2019_p9_c12",
+        "ish_htn_2020_p6_c22",
+        "medlineplus_heart_attack_p1_c0",
+        "medlineplus_heart_attack_p2_c1"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.2,
+        "ndcg@5": 0.38685280723454163
+      },
+      "sparse_top5": [
+        "who_hearts_protocols_2018_p38_c79",
+        "nice_ng185_p5_c2",
+        "medlineplus_cholesterol_p6_c5",
+        "ish_htn_2020_p5_c21",
+        "medlineplus_heart_attack_p1_c0"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "hybrid_top5": [
+        "who_hearts_protocols_2018_p38_c79",
+        "medlineplus_heart_attack_p1_c0",
+        "medlineplus_heart_attack_p5_c3",
+        "medlineplus_heart_attack_p2_c1",
+        "medlineplus_heart_attack_p3_c2"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "medlineplus_heart_attack_p1_c0",
+        "medlineplus_heart_attack_p5_c3",
+        "medlineplus_heart_attack_p6_c4",
+        "medlineplus_heart_attack_p3_c2",
+        "who_hearts_protocols_2018_p38_c79"
+      ]
+    },
+    {
+      "id": "R028",
+      "topic": "coronary_disease",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.2,
+        "ndcg@5": 0.38685280723454163
+      },
+      "dense_top5": [
+        "nice_ng185_p51_c87",
+        "nice_ng185_p52_c89",
+        "nice_ng185_p52_c90",
+        "nice_ng185_p13_c16",
+        "nice_ng185_p18_c23"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nice_ng185_p17_c22",
+        "nice_ng185_p19_c25",
+        "acc_aha_af_2023_p36_c193",
+        "nice_ng185_p13_c16",
+        "nice_ng185_p51_c88"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng185_p17_c22",
+        "nice_ng185_p13_c16",
+        "nice_ng185_p19_c25",
+        "nice_ng185_p52_c89",
+        "nice_ng185_p8_c7"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.5
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng185_p51_c88",
+        "nice_ng185_p13_c16",
+        "nice_ng185_p19_c25",
+        "nice_ng185_p52_c90",
+        "nice_ng185_p17_c22"
+      ]
+    },
+    {
+      "id": "R029",
+      "topic": "coronary_disease",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng185_p23_c31",
+        "nice_ng185_p57_c97",
+        "ccd_guideline_review_2024_p6_c3",
+        "nice_ng185_p57_c98",
+        "nice_ng185_p29_c39"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.09090909090909091,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "nice_ng185_p57_c97",
+        "nice_ng136_p18_c22",
+        "nice_ng185_p5_c2",
+        "nice_ng196_p19_c22",
+        "nice_ng136_p41_c65"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.5
+      },
+      "hybrid_top5": [
+        "nice_ng185_p57_c97",
+        "ccd_guideline_review_2024_p6_c3",
+        "nice_ng185_p23_c31",
+        "nice_ng185_p57_c98",
+        "nice_ng136_p18_c22"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng185_p23_c31",
+        "nice_ng185_p57_c97",
+        "nice_ng185_p57_c98",
+        "nice_ng185_p29_c39",
+        "ccd_guideline_review_2024_p6_c3"
+      ]
+    },
+    {
+      "id": "R030",
+      "topic": "coronary_disease",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng185_p32_c46",
+        "nice_ng185_p33_c48",
+        "nice_ng106_p32_c48",
+        "ccd_guideline_review_2024_p16_c30",
+        "nice_ng185_p32_c47"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.5
+      },
+      "sparse_top5": [
+        "medlineplus_heart_attack_p6_c4",
+        "nice_ng106_p32_c48",
+        "nice_ng185_p32_c47",
+        "nice_ng185_p32_c46",
+        "nice_ng185_p33_c48"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng185_p32_c46",
+        "nice_ng106_p32_c48",
+        "nice_ng185_p33_c48",
+        "medlineplus_heart_attack_p6_c4",
+        "nice_ng185_p32_c47"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng185_p32_c46",
+        "medlineplus_heart_attack_p6_c4",
+        "nice_ng106_p32_c48",
+        "nice_ng185_p33_c48",
+        "nice_ng185_p23_c31"
+      ]
+    },
+    {
+      "id": "R031",
+      "topic": "coronary_disease",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "ccd_guideline_review_2024_p11_c19",
+        "acc_aha_af_2023_p36_c196",
+        "acc_aha_prevention_2019_p1_c1",
+        "ccd_guideline_review_2024_p10_c13",
+        "acc_aha_af_2023_p36_c195"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "ccd_guideline_review_2024_p11_c19",
+        "esc_htn_2024_p55_c241",
+        "nice_ng136_p41_c65",
+        "ccd_guideline_review_2024_p4_c2",
+        "esc_htn_2024_p50_c214"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "ccd_guideline_review_2024_p11_c19",
+        "acc_aha_af_2023_p36_c196",
+        "ccd_guideline_review_2024_p10_c13",
+        "who_htn_pharm_2021_p24_c50",
+        "ccd_guideline_review_2024_p10_c14"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng136_p41_c65",
+        "ccd_guideline_review_2024_p11_c19",
+        "ccd_guideline_review_2024_p1_c0",
+        "acc_aha_af_2023_p36_c195",
+        "ccd_guideline_review_2024_p10_c13"
+      ]
+    },
+    {
+      "id": "R032",
+      "topic": "coronary_disease",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "ccd_guideline_review_2024_p17_c32",
+        "acc_aha_prevention_2019_p15_c66",
+        "ccd_guideline_review_2024_p15_c27",
+        "ccd_guideline_review_2024_p6_c3",
+        "esc_htn_2024_p65_c306"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.08333333333333333,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "esc_htn_2024_p16_c54",
+        "esc_htn_2024_p67_c316",
+        "esc_htn_2024_p15_c49",
+        "esc_htn_2024_p65_c307",
+        "esc_htn_2024_p11_c50"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "hybrid_top5": [
+        "esc_htn_2024_p67_c316",
+        "ccd_guideline_review_2024_p17_c32",
+        "esc_htn_2024_p66_c312",
+        "ccd_guideline_review_2024_p6_c3",
+        "esc_htn_2024_p65_c306"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.1,
+        "ndcg@5": 0.0
+      },
+      "hybrid+rerank_top5": [
+        "esc_htn_2024_p65_c307",
+        "esc_htn_2024_p67_c316",
+        "esc_htn_2024_p65_c306",
+        "ccd_guideline_review_2024_p6_c3",
+        "esc_htn_2024_p16_c54"
+      ]
+    },
+    {
+      "id": "R033",
+      "topic": "dyslipidaemia",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "medlineplus_cholesterol_p2_c1",
+        "medlineplus_cholesterol_p1_c0",
+        "medlineplus_cholesterol_p3_c2",
+        "nice_ng238_p45_c66",
+        "aha_acc_cholesterol_2018_p10_c21"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "medlineplus_cholesterol_p2_c1",
+        "medlineplus_cholesterol_p3_c2",
+        "medlineplus_cholesterol_p7_c6",
+        "nice_ng238_p28_c38",
+        "nice_ng238_p34_c46"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "medlineplus_cholesterol_p2_c1",
+        "medlineplus_cholesterol_p3_c2",
+        "nice_ng238_p28_c38",
+        "nice_ng238_p34_c46",
+        "nice_ng238_p45_c66"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "medlineplus_cholesterol_p2_c1",
+        "medlineplus_cholesterol_p3_c2",
+        "medlineplus_cholesterol_p4_c3",
+        "medlineplus_cholesterol_p7_c6",
+        "medlineplus_cholesterol_p6_c5"
+      ]
+    },
+    {
+      "id": "R034",
+      "topic": "dyslipidaemia",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "dense_top5": [
+        "acc_aha_prevention_2019_p16_c75",
+        "aha_acc_cholesterol_2018_p2_c4",
+        "acc_aha_prevention_2019_p16_c74",
+        "acc_aha_prevention_2019_p16_c73",
+        "acc_aha_prevention_2019_p16_c67"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.5
+      },
+      "sparse_top5": [
+        "acc_aha_prevention_2019_p16_c67",
+        "acc_aha_prevention_2019_p16_c76",
+        "aha_acc_cholesterol_2018_p2_c2",
+        "acc_aha_prevention_2019_p16_c75",
+        "acc_aha_prevention_2019_p16_c69"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.5
+      },
+      "hybrid_top5": [
+        "acc_aha_prevention_2019_p16_c75",
+        "acc_aha_prevention_2019_p16_c67",
+        "aha_acc_cholesterol_2018_p2_c4",
+        "acc_aha_prevention_2019_p16_c74",
+        "acc_aha_prevention_2019_p16_c76"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.1,
+        "ndcg@5": 0.0
+      },
+      "hybrid+rerank_top5": [
+        "acc_aha_prevention_2019_p16_c75",
+        "acc_aha_prevention_2019_p16_c67",
+        "acc_aha_prevention_2019_p16_c74",
+        "acc_aha_prevention_2019_p16_c76",
+        "acc_aha_prevention_2019_p16_c72"
+      ]
+    },
+    {
+      "id": "R035",
+      "topic": "dyslipidaemia",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng238_p22_c30",
+        "nice_ng238_p23_c31",
+        "nice_ng238_p22_c27",
+        "nice_ng238_p35_c48",
+        "acc_aha_prevention_2019_p16_c71"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "sparse_top5": [
+        "nice_ng238_p35_c48",
+        "nice_ng238_p22_c30",
+        "nice_ng238_p23_c31",
+        "nice_ng238_p13_c11",
+        "nice_ng238_p30_c41"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng238_p22_c30",
+        "nice_ng238_p35_c48",
+        "nice_ng238_p23_c31",
+        "nice_ng238_p30_c41",
+        "acc_aha_prevention_2019_p1_c0"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng238_p22_c30",
+        "nice_ng238_p35_c48",
+        "nice_ng238_p23_c31",
+        "nice_ng238_p30_c41",
+        "nice_ng238_p21_c26"
+      ]
+    },
+    {
+      "id": "R036",
+      "topic": "dyslipidaemia",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng238_p26_c36",
+        "nice_ng238_p22_c27",
+        "aha_acc_cholesterol_2018_p11_c23",
+        "acc_aha_prevention_2019_p16_c71",
+        "acc_aha_prevention_2019_p16_c75"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nice_ng238_p26_c36",
+        "nice_ng238_p28_c39",
+        "nice_ng238_p31_c43",
+        "nice_ng238_p42_c59",
+        "nice_ng238_p34_c47"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng238_p26_c36",
+        "nice_ng238_p22_c27",
+        "aha_acc_cholesterol_2018_p11_c23",
+        "acc_aha_prevention_2019_p16_c68",
+        "nice_ng238_p29_c40"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng238_p26_c36",
+        "nice_ng238_p52_c76",
+        "aha_acc_cholesterol_2018_p11_c23",
+        "nice_ng238_p34_c47",
+        "nice_ng238_p42_c59"
+      ]
+    },
+    {
+      "id": "R037",
+      "topic": "dyslipidaemia",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "aha_acc_cholesterol_2018_p13_c46",
+        "nice_ng238_p20_c23",
+        "nice_ng238_p41_c56",
+        "nice_ng238_p18_c20",
+        "nice_ng238_p19_c22"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.8503449055347546
+      },
+      "sparse_top5": [
+        "nice_ng238_p20_c23",
+        "nice_ng238_p18_c20",
+        "nice_ng238_p41_c56",
+        "aha_acc_cholesterol_2018_p12_c41",
+        "aha_acc_cholesterol_2018_p13_c48"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.8772153153380493
+      },
+      "hybrid_top5": [
+        "nice_ng238_p20_c23",
+        "nice_ng238_p18_c20",
+        "nice_ng238_p41_c56",
+        "aha_acc_cholesterol_2018_p13_c46",
+        "nice_ng238_p19_c22"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.9197207891481876
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng238_p41_c56",
+        "nice_ng238_p18_c20",
+        "aha_acc_cholesterol_2018_p13_c48",
+        "nice_ng238_p20_c23",
+        "who_hearts_protocols_2018_p41_c84"
+      ]
+    },
+    {
+      "id": "R038",
+      "topic": "diabetes",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.25,
+        "ndcg@5": 0.5012658353418871
+      },
+      "dense_top5": [
+        "aha_acc_cholesterol_2018_p10_c22",
+        "who_hearts_protocols_2018_p35_c68",
+        "nice_ng238_p23_c31",
+        "aha_acc_cholesterol_2018_p2_c4",
+        "acc_aha_prevention_2019_p16_c74"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.9197207891481876
+      },
+      "sparse_top5": [
+        "aha_acc_cholesterol_2018_p2_c4",
+        "aha_acc_cholesterol_2018_p11_c23",
+        "acc_aha_prevention_2019_p16_c74",
+        "aha_acc_cholesterol_2018_p2_c6",
+        "acc_aha_prevention_2019_p1_c1"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "aha_acc_cholesterol_2018_p2_c4",
+        "acc_aha_prevention_2019_p16_c74",
+        "aha_acc_cholesterol_2018_p2_c6",
+        "nice_ng238_p23_c31",
+        "aha_acc_cholesterol_2018_p11_c23"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.9197207891481876
+      },
+      "hybrid+rerank_top5": [
+        "aha_acc_cholesterol_2018_p2_c4",
+        "nice_ng238_p23_c31",
+        "acc_aha_prevention_2019_p16_c74",
+        "aha_acc_cholesterol_2018_p11_c23",
+        "acc_aha_prevention_2019_p16_c75"
+      ]
+    },
+    {
+      "id": "R039",
+      "topic": "ckd",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "kdigo_bp_ckd_2021_p42_c90",
+        "kdigo_bp_ckd_2021_p10_c22",
+        "kdigo_bp_ckd_2021_p29_c48",
+        "kdigo_bp_ckd_2021_p28_c45",
+        "esc_htn_2024_p65_c306"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "kdigo_bp_ckd_2021_p42_c90",
+        "kdigo_bp_ckd_2021_p26_c42",
+        "kdigo_bp_ckd_2021_p70_c202",
+        "kdigo_bp_ckd_2021_p9_c21",
+        "kdigo_bp_ckd_2021_p60_c169"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "kdigo_bp_ckd_2021_p42_c90",
+        "kdigo_bp_ckd_2021_p28_c45",
+        "kdigo_bp_ckd_2021_p26_c42",
+        "kdigo_bp_ckd_2021_p29_c48",
+        "kdigo_bp_ckd_2021_p30_c51"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "kdigo_bp_ckd_2021_p42_c90",
+        "kdigo_bp_ckd_2021_p28_c45",
+        "esc_htn_2024_p65_c306",
+        "kdigo_bp_ckd_2021_p70_c202",
+        "kdigo_bp_ckd_2021_p26_c42"
+      ]
+    },
+    {
+      "id": "R040",
+      "topic": "ckd",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.5
+      },
+      "dense_top5": [
+        "aha_acc_htn_2025_p47_c186",
+        "aha_acc_htn_2025_p51_c204",
+        "kdigo_bp_ckd_2021_p54_c144",
+        "kdigo_bp_ckd_2021_p55_c148",
+        "esc_htn_2024_p65_c304"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.08333333333333333,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "kdigo_bp_ckd_2021_p29_c48",
+        "esc_htn_2024_p15_c48",
+        "who_hearts_protocols_2018_p21_c39",
+        "who_hearts_protocols_2018_p23_c42",
+        "who_hearts_protocols_2018_p19_c35"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "kdigo_bp_ckd_2021_p54_c144",
+        "kdigo_bp_ckd_2021_p53_c140",
+        "esc_htn_2024_p65_c304",
+        "who_hearts_protocols_2018_p27_c51",
+        "who_hearts_protocols_2018_p25_c47"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "kdigo_bp_ckd_2021_p54_c144",
+        "kdigo_bp_ckd_2021_p29_c49",
+        "kdigo_bp_ckd_2021_p53_c140",
+        "esc_htn_2024_p65_c304",
+        "esc_htn_2024_p15_c48"
+      ]
+    },
+    {
+      "id": "R041",
+      "topic": "ckd",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "kdigo_bp_ckd_2021_p37_c74",
+        "kdigo_bp_ckd_2021_p28_c47",
+        "kdigo_bp_ckd_2021_p38_c80",
+        "kdigo_bp_ckd_2021_p37_c76",
+        "kdigo_bp_ckd_2021_p38_c79"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "sparse_top5": [
+        "nhlbi_high_bp_treatment_p4_c2",
+        "kdigo_bp_ckd_2021_p37_c74",
+        "medlineplus_cholesterol_p3_c2",
+        "nhlbi_high_bp_treatment_p5_c4",
+        "aha_acc_htn_2025_p30_c121"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "kdigo_bp_ckd_2021_p37_c74",
+        "kdigo_bp_ckd_2021_p28_c47",
+        "kdigo_bp_ckd_2021_p38_c79",
+        "nhlbi_high_bp_treatment_p4_c2",
+        "medlineplus_cholesterol_p3_c2"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "kdigo_bp_ckd_2021_p37_c74",
+        "kdigo_bp_ckd_2021_p28_c47",
+        "kdigo_bp_ckd_2021_p38_c79",
+        "kdigo_bp_ckd_2021_p37_c75",
+        "kdigo_bp_ckd_2021_p38_c80"
+      ]
+    },
+    {
+      "id": "R042",
+      "topic": "ckd",
+      "dense": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "dense_top5": [
+        "medlineplus_high_bp_p4_c4",
+        "nice_ng136_p26_c37",
+        "esc_htn_2024_p17_c57",
+        "esc_htn_2024_p65_c303",
+        "esc_htn_emergencies_2019_p1_c0"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "esc_htn_emergencies_2019_p1_c0",
+        "esc_htn_2024_p52_c224",
+        "nice_ng136_p26_c37",
+        "who_htn_pharm_2021_p19_c37",
+        "esc_htn_2024_p27_c109"
+      ],
+      "hybrid": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 0.2,
+        "ndcg@5": 0.23719771276929622
+      },
+      "hybrid_top5": [
+        "nice_ng136_p26_c37",
+        "esc_htn_emergencies_2019_p1_c0",
+        "esc_htn_2024_p17_c57",
+        "nice_ng136_p10_c10",
+        "medlineplus_high_bp_p4_c4"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "hybrid+rerank_top5": [
+        "medlineplus_high_bp_p4_c4",
+        "nice_ng136_p26_c37",
+        "nice_ng136_p10_c10",
+        "esc_htn_emergencies_2019_p1_c0",
+        "esc_htn_2024_p27_c109"
+      ]
+    },
+    {
+      "id": "R043",
+      "topic": "medication",
+      "dense": {
+        "recall@5": 0.0,
+        "recall@20": 0.6666666666666666,
+        "mrr": 0.14285714285714285,
+        "ndcg@5": 0.0
+      },
+      "dense_top5": [
+        "nice_ng106_p15_c17",
+        "who_htn_pharm_2021_p25_c54",
+        "who_htn_pharm_2021_p10_c18",
+        "kdigo_bp_ckd_2021_p50_c127",
+        "nice_ng106_p14_c16"
+      ],
+      "sparse": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 0.6666666666666666,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.41618115554873086
+      },
+      "sparse_top5": [
+        "who_hearts_protocols_2018_p21_c40",
+        "who_hearts_protocols_2018_p25_c48",
+        "nice_ng136_p19_c24",
+        "who_hearts_protocols_2018_p13_c18",
+        "esc_htn_2024_p65_c304"
+      ],
+      "hybrid": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 0.6666666666666666,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.41618115554873086
+      },
+      "hybrid_top5": [
+        "nice_ng106_p15_c17",
+        "who_hearts_protocols_2018_p25_c48",
+        "esc_htn_2024_p65_c304",
+        "nice_ng106_p14_c16",
+        "nice_ng136_p19_c24"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.3333333333333333,
+        "recall@20": 0.6666666666666666,
+        "mrr": 1.0,
+        "ndcg@5": 0.46927872602275644
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng136_p19_c24",
+        "who_hearts_protocols_2018_p13_c18",
+        "who_hearts_protocols_2018_p21_c40",
+        "who_htn_pharm_2021_p10_c18",
+        "esc_htn_2024_p80_c392"
+      ]
+    },
+    {
+      "id": "R044",
+      "topic": "diabetes",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng136_p19_c24",
+        "nice_ng136_p42_c68",
+        "nice_ng136_p21_c26",
+        "nice_ng136_p17_c20",
+        "aha_acc_htn_2025_p46_c179"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nice_ng136_p19_c24",
+        "nice_ng136_p42_c68",
+        "nice_ng136_p42_c67",
+        "nice_ng136_p21_c26",
+        "nice_ng136_p43_c69"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng136_p19_c24",
+        "nice_ng136_p42_c68",
+        "nice_ng136_p21_c26",
+        "nice_ng136_p43_c69",
+        "nice_ng136_p42_c67"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng136_p19_c24",
+        "nice_ng136_p43_c69",
+        "nice_ng136_p42_c67",
+        "nice_ng136_p43_c70",
+        "nice_ng136_p21_c26"
+      ]
+    },
+    {
+      "id": "R045",
+      "topic": "diabetes",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.25,
+        "ndcg@5": 0.43067655807339306
+      },
+      "dense_top5": [
+        "nice_ng136_p17_c20",
+        "esc_htn_2024_p51_c218",
+        "nice_ng136_p43_c69",
+        "nice_ng136_p42_c68",
+        "aha_acc_htn_2025_p36_c144"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.5
+      },
+      "sparse_top5": [
+        "kdigo_bp_ckd_2021_p8_c18",
+        "medlineplus_high_bp_p3_c3",
+        "nice_ng136_p42_c68",
+        "esc_htn_2024_p50_c214",
+        "nice_ng136_p4_c2"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng136_p42_c68",
+        "nice_ng136_p43_c69",
+        "nice_ng136_p17_c21",
+        "nice_ng136_p27_c40",
+        "who_hearts_protocols_2018_p35_c67"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.14285714285714285,
+        "ndcg@5": 0.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng136_p43_c69",
+        "nice_ng136_p27_c40",
+        "nice_ng136_p4_c2",
+        "nice_ng136_p17_c20",
+        "medlineplus_high_bp_p3_c3"
+      ]
+    },
+    {
+      "id": "R046",
+      "topic": "diabetes",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "who_hearts_protocols_2018_p37_c74",
+        "who_hearts_protocols_2018_p33_c63",
+        "who_hearts_protocols_2018_p35_c67",
+        "ccd_guideline_review_2024_p15_c27",
+        "who_hearts_protocols_2018_p5_c5"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.5
+      },
+      "sparse_top5": [
+        "who_hearts_protocols_2018_p5_c5",
+        "who_hearts_protocols_2018_p23_c45",
+        "who_hearts_protocols_2018_p35_c67",
+        "acc_aha_prevention_2019_p15_c65",
+        "who_hearts_protocols_2018_p25_c48"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "hybrid_top5": [
+        "who_hearts_protocols_2018_p5_c5",
+        "who_hearts_protocols_2018_p35_c67",
+        "who_htn_pharm_2021_p24_c50",
+        "acc_aha_prevention_2019_p1_c1",
+        "acc_aha_prevention_2019_p15_c65"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "who_hearts_protocols_2018_p37_c74",
+        "who_hearts_protocols_2018_p37_c73",
+        "who_hearts_protocols_2018_p37_c75",
+        "who_hearts_protocols_2018_p5_c5",
+        "who_hearts_protocols_2018_p33_c63"
+      ]
+    },
+    {
+      "id": "R047",
+      "topic": "pregnancy",
+      "dense": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.09090909090909091,
+        "ndcg@5": 0.0
+      },
+      "dense_top5": [
+        "aha_acc_htn_2025_p60_c246",
+        "nice_ng133_p49_c82",
+        "aha_acc_htn_2025_p60_c248",
+        "nice_ng133_p50_c84",
+        "aha_acc_htn_2025_p58_c242"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.0625,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "nice_ng133_p49_c82",
+        "aha_acc_htn_2025_p60_c246",
+        "nice_ng133_p14_c17",
+        "esc_htn_2024_p58_c261",
+        "nice_ng133_p44_c71"
+      ],
+      "hybrid": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.125,
+        "ndcg@5": 0.0
+      },
+      "hybrid_top5": [
+        "aha_acc_htn_2025_p60_c246",
+        "nice_ng133_p49_c82",
+        "aha_acc_htn_2025_p60_c248",
+        "nice_ng133_p50_c84",
+        "ish_htn_2020_p15_c61"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 0.2,
+        "ndcg@5": 0.23719771276929622
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng133_p49_c82",
+        "nice_ng133_p50_c84",
+        "who_htn_pharm_2021_p34_c78",
+        "nice_ng133_p10_c11",
+        "nice_ng133_p11_c13"
+      ]
+    },
+    {
+      "id": "R048",
+      "topic": "pregnancy",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng133_p10_c11",
+        "nice_ng133_p35_c53",
+        "who_hearts_protocols_2018_p23_c43",
+        "nice_ng238_p21_c25",
+        "aha_acc_htn_2025_p60_c249"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.25,
+        "ndcg@5": 0.43067655807339306
+      },
+      "sparse_top5": [
+        "nhlbi_high_bp_treatment_p5_c4",
+        "who_hearts_protocols_2018_p23_c42",
+        "nice_ng136_p10_c11",
+        "nice_ng133_p10_c11",
+        "who_hearts_protocols_2018_p27_c51"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng133_p10_c11",
+        "acc_aha_af_2023_p60_c404",
+        "who_hearts_protocols_2018_p23_c42",
+        "who_hearts_protocols_2018_p21_c39",
+        "who_hearts_protocols_2018_p27_c51"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng133_p10_c11",
+        "nhlbi_high_bp_treatment_p5_c4",
+        "who_hearts_protocols_2018_p21_c39",
+        "who_hearts_protocols_2018_p23_c43",
+        "who_hearts_protocols_2018_p23_c42"
+      ]
+    },
+    {
+      "id": "R049",
+      "topic": "pregnancy",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.25,
+        "ndcg@5": 0.43067655807339306
+      },
+      "dense_top5": [
+        "aha_acc_htn_2025_p60_c247",
+        "nice_ng133_p50_c84",
+        "nice_ng133_p7_c5",
+        "nice_ng133_p12_c14",
+        "aha_acc_htn_2025_p62_c258"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "sparse_top5": [
+        "nice_ng133_p7_c5",
+        "nice_ng133_p12_c14",
+        "esc_htn_2024_p59_c265",
+        "nice_ng133_p8_c8",
+        "nice_ng133_p60_c99"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "hybrid_top5": [
+        "nice_ng133_p7_c5",
+        "nice_ng133_p12_c14",
+        "esc_htn_2024_p59_c265",
+        "esc_htn_2024_p59_c266",
+        "nice_ng133_p49_c82"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng133_p7_c5",
+        "nice_ng133_p12_c14",
+        "esc_htn_2024_p59_c265",
+        "aha_acc_htn_2025_p58_c242",
+        "nice_ng133_p49_c82"
+      ]
+    },
+    {
+      "id": "R050",
+      "topic": "pregnancy",
+      "dense": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.14285714285714285,
+        "ndcg@5": 0.0
+      },
+      "dense_top5": [
+        "esc_htn_2024_p59_c266",
+        "nice_ng133_p50_c84",
+        "aha_acc_htn_2025_p60_c248",
+        "esc_htn_2024_p14_c45",
+        "aha_acc_htn_2025_p61_c250"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nice_ng133_p11_c13",
+        "nice_ng136_p13_c17",
+        "esc_htn_2024_p80_c393",
+        "esc_htn_2024_p14_c44",
+        "nice_ng136_p18_c22"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng133_p11_c13",
+        "nice_ng133_p50_c84",
+        "aha_acc_htn_2025_p61_c250",
+        "aha_acc_htn_2025_p62_c258",
+        "nice_ng133_p49_c82"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng133_p11_c13",
+        "nice_ng133_p50_c84",
+        "nice_ng136_p13_c17",
+        "esc_htn_2024_p14_c44",
+        "esc_htn_2024_p14_c45"
+      ]
+    },
+    {
+      "id": "R051",
+      "topic": "pregnancy",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng133_p35_c54",
+        "nice_ng133_p54_c92",
+        "nice_ng133_p35_c53",
+        "nice_ng133_p36_c55",
+        "nice_ng133_p45_c74"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nice_ng133_p35_c54",
+        "nice_ng136_p22_c28",
+        "nice_ng133_p35_c53",
+        "nice_ng133_p54_c92",
+        "nice_ng136_p17_c21"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng133_p35_c54",
+        "nice_ng133_p54_c92",
+        "nice_ng133_p35_c53",
+        "nice_ng133_p36_c55",
+        "nice_ng133_p45_c74"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng133_p35_c54",
+        "nice_ng133_p36_c55",
+        "nice_ng133_p45_c74",
+        "nice_ng133_p54_c92",
+        "nice_ng133_p35_c53"
+      ]
+    },
+    {
+      "id": "R052",
+      "topic": "pregnancy",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nice_ng133_p22_c30",
+        "nice_ng133_p6_c4",
+        "nice_ng133_p33_c50",
+        "nice_ng133_p19_c25",
+        "nice_ng133_p28_c38"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nice_ng133_p22_c30",
+        "nice_ng133_p24_c31",
+        "nice_ng133_p23_c32",
+        "nice_ng133_p30_c45",
+        "nice_ng133_p53_c90"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nice_ng133_p22_c30",
+        "nice_ng133_p23_c32",
+        "nice_ng133_p28_c38",
+        "nice_ng133_p33_c50",
+        "nice_ng133_p53_c90"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nice_ng133_p22_c30",
+        "nice_ng133_p23_c32",
+        "nice_ng133_p24_c31",
+        "nice_ng133_p53_c90",
+        "nice_ng133_p33_c48"
+      ]
+    },
+    {
+      "id": "R053",
+      "topic": "prevention",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "dense_top5": [
+        "aha_acc_cholesterol_2018_p16_c57",
+        "acc_aha_prevention_2019_p11_c24",
+        "acc_aha_prevention_2019_p11_c26",
+        "acc_aha_prevention_2019_p11_c23",
+        "acc_aha_prevention_2019_p11_c22"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "sparse_top5": [
+        "aha_acc_cholesterol_2018_p11_c23",
+        "acc_aha_prevention_2019_p11_c26",
+        "aha_acc_cholesterol_2018_p2_c4",
+        "acc_aha_prevention_2019_p16_c71",
+        "acc_aha_prevention_2019_p16_c67"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "acc_aha_prevention_2019_p11_c26",
+        "aha_acc_cholesterol_2018_p11_c23",
+        "acc_aha_prevention_2019_p16_c71",
+        "acc_aha_prevention_2019_p11_c22",
+        "acc_aha_prevention_2019_p11_c23"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "acc_aha_prevention_2019_p11_c26",
+        "aha_acc_cholesterol_2018_p11_c23",
+        "acc_aha_prevention_2019_p16_c71",
+        "acc_aha_prevention_2019_p11_c22",
+        "acc_aha_prevention_2019_p11_c23"
+      ]
+    },
+    {
+      "id": "R054",
+      "topic": "prevention",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.8503449055347546
+      },
+      "dense_top5": [
+        "acc_aha_prevention_2019_p19_c109",
+        "acc_aha_prevention_2019_p18_c105",
+        "acc_aha_prevention_2019_p19_c104",
+        "acc_aha_prevention_2019_p19_c108",
+        "nice_ng238_p13_c11"
+      ],
+      "sparse": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.38685280723454163
+      },
+      "sparse_top5": [
+        "ccd_guideline_review_2024_p10_c13",
+        "acc_aha_prevention_2019_p19_c108",
+        "acc_aha_prevention_2019_p19_c104",
+        "acc_aha_prevention_2019_p19_c109",
+        "acc_aha_prevention_2019_p1_c1"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.8503449055347546
+      },
+      "hybrid_top5": [
+        "acc_aha_prevention_2019_p19_c109",
+        "acc_aha_prevention_2019_p19_c108",
+        "acc_aha_prevention_2019_p19_c104",
+        "ccd_guideline_review_2024_p10_c13",
+        "nice_ng238_p13_c11"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.8772153153380493
+      },
+      "hybrid+rerank_top5": [
+        "acc_aha_prevention_2019_p19_c109",
+        "acc_aha_prevention_2019_p19_c108",
+        "acc_aha_prevention_2019_p19_c104",
+        "nice_ng238_p13_c11",
+        "acc_aha_prevention_2019_p1_c1"
+      ]
+    },
+    {
+      "id": "R055",
+      "topic": "prevention",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.2,
+        "ndcg@5": 0.38685280723454163
+      },
+      "dense_top5": [
+        "who_hearts_protocols_2018_p31_c58",
+        "who_hearts_protocols_2018_p27_c53",
+        "acc_aha_prevention_2019_p21_c113",
+        "medlineplus_heart_attack_p2_c1",
+        "acc_aha_prevention_2019_p1_c0"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "who_hearts_lifestyle_2018_p22_c35",
+        "acc_aha_prevention_2019_p18_c98",
+        "medlineplus_afib_p3_c2",
+        "medlineplus_heart_failure_p4_c3",
+        "nhlbi_high_bp_treatment_p3_c1"
+      ],
+      "hybrid": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.1111111111111111,
+        "ndcg@5": 0.0
+      },
+      "hybrid_top5": [
+        "who_hearts_lifestyle_2018_p22_c35",
+        "who_hearts_protocols_2018_p31_c58",
+        "acc_aha_prevention_2019_p18_c98",
+        "who_hearts_protocols_2018_p27_c53",
+        "medlineplus_afib_p3_c2"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "hybrid+rerank_top5": [
+        "medlineplus_heart_attack_p2_c1",
+        "acc_aha_prevention_2019_p1_c0",
+        "acc_aha_prevention_2019_p21_c113",
+        "who_hearts_lifestyle_2018_p22_c35",
+        "medlineplus_afib_p8_c7"
+      ]
+    },
+    {
+      "id": "R056",
+      "topic": "prevention",
+      "dense": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "dense_top5": [
+        "acc_aha_prevention_2019_p11_c27",
+        "esc_htn_2024_p9_c24",
+        "esc_htn_2024_p27_c106",
+        "esc_htn_2024_p27_c105",
+        "acc_aha_prevention_2019_p11_c24"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nice_ng238_p5_c3",
+        "acc_aha_prevention_2019_p11_c27",
+        "acc_aha_prevention_2019_p11_c33",
+        "esc_htn_2024_p52_c224",
+        "acc_aha_prevention_2019_p11_c25"
+      ],
+      "hybrid": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.16666666666666666,
+        "ndcg@5": 0.0
+      },
+      "hybrid_top5": [
+        "acc_aha_prevention_2019_p11_c27",
+        "acc_aha_prevention_2019_p11_c24",
+        "acc_aha_prevention_2019_p11_c25",
+        "nice_ng136_p10_c10",
+        "acc_aha_prevention_2019_p11_c34"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.2,
+        "ndcg@5": 0.38685280723454163
+      },
+      "hybrid+rerank_top5": [
+        "acc_aha_prevention_2019_p11_c24",
+        "acc_aha_prevention_2019_p11_c27",
+        "acc_aha_prevention_2019_p11_c25",
+        "acc_aha_prevention_2019_p11_c33",
+        "nice_ng238_p5_c3"
+      ]
+    },
+    {
+      "id": "R057",
+      "topic": "lifestyle",
+      "dense": {
+        "recall@5": 0.0,
+        "recall@20": 0.3333333333333333,
+        "mrr": 0.0625,
+        "ndcg@5": 0.0
+      },
+      "dense_top5": [
+        "kdigo_bp_ckd_2021_p37_c74",
+        "ish_htn_2020_p9_c39",
+        "esc_htn_2024_p43_c180",
+        "aha_resistant_htn_2018_p40_c79",
+        "ish_htn_2020_p9_c41"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 0.3333333333333333,
+        "mrr": 0.05263157894736842,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "nhlbi_high_bp_treatment_p4_c2",
+        "who_hearts_protocols_2018_p31_c58",
+        "who_htn_pharm_2021_p14_c25",
+        "medlineplus_cholesterol_p3_c2",
+        "who_hearts_protocols_2018_p25_c46"
+      ],
+      "hybrid": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "hybrid_top5": [
+        "ish_htn_2020_p9_c39",
+        "esc_htn_2024_p43_c180",
+        "kdigo_bp_ckd_2021_p37_c74",
+        "ish_htn_2020_p9_c40",
+        "nhlbi_high_bp_treatment_p4_c2"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "hybrid+rerank_top5": [
+        "nhlbi_high_bp_treatment_p4_c2",
+        "who_htn_pharm_2021_p14_c25",
+        "ish_htn_2020_p9_c41",
+        "ish_htn_2020_p9_c40",
+        "esc_htn_2024_p43_c180"
+      ]
+    },
+    {
+      "id": "R058",
+      "topic": "lifestyle",
+      "dense": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.38685280723454163
+      },
+      "dense_top5": [
+        "aha_acc_htn_2025_p30_c121",
+        "nhlbi_high_bp_treatment_p4_c2",
+        "aha_acc_htn_2025_p30_c120",
+        "aha_resistant_htn_2018_p40_c80",
+        "aha_acc_htn_2025_p28_c111"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.8503449055347546
+      },
+      "sparse_top5": [
+        "nhlbi_high_bp_treatment_p4_c2",
+        "aha_acc_htn_2025_p30_c121",
+        "aha_acc_htn_2025_p30_c120",
+        "nhlbi_high_bp_p3_c2",
+        "aha_acc_htn_2025_p28_c118"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6509209298071326
+      },
+      "hybrid_top5": [
+        "aha_acc_htn_2025_p30_c121",
+        "nhlbi_high_bp_treatment_p4_c2",
+        "aha_acc_htn_2025_p30_c120",
+        "aha_acc_htn_2025_p28_c118",
+        "aha_acc_htn_2025_p28_c111"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.38685280723454163
+      },
+      "hybrid+rerank_top5": [
+        "aha_acc_htn_2025_p30_c121",
+        "nhlbi_high_bp_treatment_p4_c2",
+        "aha_acc_htn_2025_p30_c120",
+        "aha_acc_htn_2025_p28_c111",
+        "nhlbi_high_bp_p3_c2"
+      ]
+    },
+    {
+      "id": "R059",
+      "topic": "lifestyle",
+      "dense": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 0.5,
+        "ndcg@5": 0.38685280723454163
+      },
+      "dense_top5": [
+        "aha_resistant_htn_2018_p14_c32",
+        "esc_htn_2024_p46_c188",
+        "esc_htn_2024_p46_c189",
+        "aha_acc_htn_2025_p31_c125",
+        "ish_htn_2020_p8_c35"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.1111111111111111,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "medlineplus_afib_p3_c2",
+        "medlineplus_cholesterol_p3_c2",
+        "esc_htn_2024_p13_c38",
+        "ish_htn_2020_p9_c39",
+        "nhlbi_high_bp_treatment_p4_c2"
+      ],
+      "hybrid": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "hybrid_top5": [
+        "esc_htn_2024_p46_c188",
+        "nhlbi_high_bp_treatment_p4_c2",
+        "aha_acc_htn_2025_p31_c125",
+        "esc_htn_2024_p13_c38",
+        "esc_htn_2024_p46_c189"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.5437713091520254
+      },
+      "hybrid+rerank_top5": [
+        "aha_resistant_htn_2018_p14_c32",
+        "acc_aha_prevention_2019_p17_c92",
+        "esc_htn_2024_p46_c188",
+        "nhlbi_high_bp_treatment_p4_c2",
+        "aha_acc_htn_2025_p29_c116"
+      ]
+    },
+    {
+      "id": "R060",
+      "topic": "lifestyle",
+      "dense": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 0.6666666666666666,
+        "mrr": 1.0,
+        "ndcg@5": 0.7039180890341347
+      },
+      "dense_top5": [
+        "acc_aha_prevention_2019_p13_c49",
+        "acc_aha_prevention_2019_p13_c45",
+        "who_hearts_lifestyle_2018_p12_c16",
+        "who_hearts_lifestyle_2018_p21_c33",
+        "acc_aha_af_2023_p28_c74"
+      ],
+      "sparse": {
+        "recall@5": 0.3333333333333333,
+        "recall@20": 0.6666666666666666,
+        "mrr": 1.0,
+        "ndcg@5": 0.46927872602275644
+      },
+      "sparse_top5": [
+        "acc_aha_prevention_2019_p13_c49",
+        "acc_aha_prevention_2019_p13_c45",
+        "acc_aha_prevention_2019_p13_c48",
+        "aha_resistant_htn_2018_p42_c81",
+        "ccd_guideline_review_2024_p16_c29"
+      ],
+      "hybrid": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 0.6666666666666666,
+        "mrr": 1.0,
+        "ndcg@5": 0.7039180890341347
+      },
+      "hybrid_top5": [
+        "acc_aha_prevention_2019_p13_c49",
+        "acc_aha_prevention_2019_p13_c45",
+        "who_hearts_lifestyle_2018_p12_c16",
+        "ccd_guideline_review_2024_p16_c29",
+        "who_hearts_lifestyle_2018_p21_c33"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 0.6666666666666666,
+        "mrr": 1.0,
+        "ndcg@5": 0.7039180890341347
+      },
+      "hybrid+rerank_top5": [
+        "acc_aha_prevention_2019_p13_c49",
+        "acc_aha_prevention_2019_p13_c45",
+        "who_hearts_lifestyle_2018_p12_c16",
+        "nice_ng238_p15_c14",
+        "acc_aha_prevention_2019_p13_c46"
+      ]
+    },
+    {
+      "id": "R061",
+      "topic": "lifestyle",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "who_hearts_lifestyle_2018_p22_c36",
+        "nice_ng185_p37_c54",
+        "acc_aha_prevention_2019_p18_c98",
+        "who_hearts_lifestyle_2018_p23_c37",
+        "who_hearts_lifestyle_2018_p22_c35"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.125,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "medlineplus_heart_failure_p7_c6",
+        "nhlbi_high_bp_treatment_p4_c2",
+        "esc_htn_2024_p46_c190",
+        "esc_htn_2024_p80_c390",
+        "nice_ng185_p37_c54"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.6309297535714575
+      },
+      "hybrid_top5": [
+        "nice_ng185_p37_c54",
+        "who_hearts_lifestyle_2018_p22_c36",
+        "esc_htn_2024_p46_c190",
+        "acc_aha_prevention_2019_p18_c98",
+        "who_hearts_protocols_2018_p27_c53"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.125,
+        "ndcg@5": 0.0
+      },
+      "hybrid+rerank_top5": [
+        "acc_aha_prevention_2019_p18_c98",
+        "nice_ng185_p37_c54",
+        "acc_aha_prevention_2019_p18_c97",
+        "esc_htn_2024_p46_c190",
+        "nice_ng238_p16_c16"
+      ]
+    },
+    {
+      "id": "R062",
+      "topic": "medication",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.9197207891481876
+      },
+      "dense_top5": [
+        "who_htn_pharm_2021_p10_c17",
+        "who_htn_pharm_2021_p23_c48",
+        "aha_acc_htn_2025_p36_c144",
+        "who_htn_pharm_2021_p13_c23",
+        "esc_htn_2024_p47_c192"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "aha_acc_htn_2025_p36_c144",
+        "who_htn_pharm_2021_p10_c17",
+        "aha_acc_htn_2025_p36_c145",
+        "who_htn_pharm_2021_p23_c47",
+        "who_htn_pharm_2021_p23_c48"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "who_htn_pharm_2021_p10_c17",
+        "aha_acc_htn_2025_p36_c144",
+        "who_htn_pharm_2021_p23_c48",
+        "aha_acc_htn_2025_p36_c145",
+        "who_htn_pharm_2021_p23_c47"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "who_htn_pharm_2021_p10_c17",
+        "aha_acc_htn_2025_p36_c144",
+        "who_htn_pharm_2021_p23_c48",
+        "aha_acc_htn_2025_p36_c145",
+        "who_htn_pharm_2021_p23_c47"
+      ]
+    },
+    {
+      "id": "R063",
+      "topic": "medication",
+      "dense": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.125,
+        "ndcg@5": 0.0
+      },
+      "dense_top5": [
+        "who_htn_pharm_2021_p26_c55",
+        "who_htn_pharm_2021_p27_c58",
+        "who_htn_pharm_2021_p26_c56",
+        "who_htn_pharm_2021_p25_c54",
+        "who_htn_pharm_2021_p27_c59"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "who_htn_pharm_2021_p40_c90",
+        "who_htn_pharm_2021_p5_c7",
+        "who_htn_pharm_2021_p26_c55",
+        "who_htn_pharm_2021_p38_c86",
+        "who_hearts_protocols_2018_p21_c40"
+      ],
+      "hybrid": {
+        "recall@5": 0.0,
+        "recall@20": 0.5,
+        "mrr": 0.05555555555555555,
+        "ndcg@5": 0.0
+      },
+      "hybrid_top5": [
+        "who_htn_pharm_2021_p26_c55",
+        "who_htn_pharm_2021_p38_c86",
+        "who_htn_pharm_2021_p27_c59",
+        "who_htn_pharm_2021_p26_c57",
+        "aha_acc_htn_2025_p39_c155"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.3065735963827292
+      },
+      "hybrid+rerank_top5": [
+        "who_htn_pharm_2021_p5_c7",
+        "who_htn_pharm_2021_p25_c54",
+        "aha_acc_htn_2025_p36_c145",
+        "who_htn_pharm_2021_p38_c86",
+        "esc_htn_2024_p51_c219"
+      ]
+    },
+    {
+      "id": "R064",
+      "topic": "medication",
+      "dense": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "dense_top5": [
+        "nhlbi_high_bp_treatment_p5_c4",
+        "aha_acc_htn_2025_p28_c114",
+        "esc_htn_2024_p13_c40",
+        "aha_resistant_htn_2018_p5_c14",
+        "aha_resistant_htn_2018_p19_c38"
+      ],
+      "sparse": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "sparse_top5": [
+        "nhlbi_high_bp_treatment_p5_c4",
+        "aha_acc_htn_2025_p3_c7",
+        "esc_htn_2024_p37_c156",
+        "who_hearts_protocols_2018_p23_c45",
+        "who_hearts_protocols_2018_p35_c70"
+      ],
+      "hybrid": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid_top5": [
+        "nhlbi_high_bp_treatment_p5_c4",
+        "aha_acc_htn_2025_p3_c7",
+        "esc_htn_2024_p70_c339",
+        "aha_acc_htn_2025_p28_c114",
+        "esc_htn_2024_p13_c40"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 1.0,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 1.0
+      },
+      "hybrid+rerank_top5": [
+        "nhlbi_high_bp_treatment_p5_c4",
+        "esc_htn_2024_p48_c203",
+        "who_htn_pharm_2021_p13_c24",
+        "esc_htn_2024_p70_c340",
+        "esc_htn_2024_p70_c339"
+      ]
+    },
+    {
+      "id": "R065",
+      "topic": "medication",
+      "dense": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.38685280723454163
+      },
+      "dense_top5": [
+        "esc_htn_2024_p69_c333",
+        "esc_htn_2024_p16_c52",
+        "aha_acc_htn_2025_p64_c266",
+        "esc_htn_2024_p70_c339",
+        "esc_htn_2024_p69_c334"
+      ],
+      "sparse": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg@5": 0.3065735963827292
+      },
+      "sparse_top5": [
+        "aha_acc_htn_2025_p38_c151",
+        "ish_htn_2020_p13_c53",
+        "esc_htn_2024_p14_c51",
+        "aha_acc_htn_2025_p64_c267",
+        "esc_htn_2024_p70_c339"
+      ],
+      "hybrid": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "hybrid_top5": [
+        "esc_htn_2024_p16_c52",
+        "esc_htn_2024_p70_c339",
+        "ish_htn_2020_p13_c53",
+        "esc_htn_2024_p69_c333",
+        "aha_acc_htn_2025_p64_c266"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.5,
+        "recall@20": 1.0,
+        "mrr": 0.5,
+        "ndcg@5": 0.38685280723454163
+      },
+      "hybrid+rerank_top5": [
+        "ish_htn_2020_p13_c53",
+        "esc_htn_2024_p16_c52",
+        "esc_htn_2024_p70_c339",
+        "nice_ng136_p22_c28",
+        "esc_htn_2024_p70_c337"
+      ]
+    },
+    {
+      "id": "R066",
+      "topic": "medication",
+      "dense": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "dense_top5": [
+        "who_hearts_protocols_2018_p14_c22",
+        "aha_resistant_htn_2018_p33_c71",
+        "nhlbi_high_bp_p3_c2",
+        "esc_htn_2024_p34_c139",
+        "esc_htn_2024_p51_c216"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 1.0,
+        "mrr": 0.06666666666666667,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "nhlbi_high_bp_treatment_p5_c4",
+        "who_hearts_protocols_2018_p36_c72",
+        "who_hearts_protocols_2018_p14_c22",
+        "esc_htn_2024_p6_c12",
+        "nhlbi_high_bp_treatment_p3_c1"
+      ],
+      "hybrid": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "hybrid_top5": [
+        "who_hearts_protocols_2018_p14_c22",
+        "nhlbi_high_bp_treatment_p5_c4",
+        "esc_htn_2024_p34_c139",
+        "who_hearts_protocols_2018_p36_c72",
+        "aha_resistant_htn_2018_p33_c71"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "hybrid+rerank_top5": [
+        "medlineplus_high_bp_p4_c4",
+        "who_hearts_protocols_2018_p14_c22",
+        "nhlbi_high_bp_treatment_p5_c4",
+        "esc_htn_2024_p51_c216",
+        "esc_htn_2024_p34_c139"
+      ]
+    },
+    {
+      "id": "R067",
+      "topic": "bp_measurement",
+      "dense": {
+        "recall@5": 0.6666666666666666,
+        "recall@20": 0.6666666666666666,
+        "mrr": 1.0,
+        "ndcg@5": 0.7653606369886217
+      },
+      "dense_top5": [
+        "esc_htn_2024_p21_c73",
+        "who_hearts_protocols_2018_p12_c15",
+        "medlineplus_high_bp_p2_c2",
+        "nice_ng136_p5_c3",
+        "nice_ng136_p25_c34"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 0.3333333333333333,
+        "mrr": 0.06666666666666667,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "nice_ng136_p5_c3",
+        "nice_ng136_p37_c58",
+        "aha_bp_measurement_2019_p43_c92",
+        "kdigo_bp_ckd_2021_p24_c39",
+        "esc_htn_2024_p12_c33"
+      ],
+      "hybrid": {
+        "recall@5": 0.3333333333333333,
+        "recall@20": 0.6666666666666666,
+        "mrr": 0.25,
+        "ndcg@5": 0.20210734650054757
+      },
+      "hybrid_top5": [
+        "nice_ng136_p5_c3",
+        "kdigo_bp_ckd_2021_p31_c53",
+        "nice_ng136_p25_c34",
+        "esc_htn_2024_p21_c74",
+        "ish_htn_2020_p5_c20"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.0,
+        "recall@20": 0.6666666666666666,
+        "mrr": 0.16666666666666666,
+        "ndcg@5": 0.0
+      },
+      "hybrid+rerank_top5": [
+        "esc_htn_2024_p20_c69",
+        "nice_ng136_p5_c3",
+        "ish_htn_2020_p5_c17",
+        "nice_ng136_p37_c58",
+        "medlineplus_high_bp_p2_c2"
+      ]
+    },
+    {
+      "id": "R068",
+      "topic": "bp_measurement",
+      "dense": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "dense_top5": [
+        "aha_bp_measurement_2019_p5_c6",
+        "aha_bp_measurement_2019_p5_c10",
+        "who_hearts_protocols_2018_p12_c15",
+        "esc_htn_2024_p20_c70",
+        "ish_htn_2020_p4_c16"
+      ],
+      "sparse": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "sparse_top5": [
+        "aha_bp_measurement_2019_p5_c10",
+        "aha_bp_measurement_2019_p5_c6",
+        "aha_bp_measurement_2019_p4_c5",
+        "ish_htn_2020_p4_c14",
+        "esc_htn_2024_p20_c70"
+      ],
+      "hybrid": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "hybrid_top5": [
+        "aha_bp_measurement_2019_p5_c6",
+        "aha_bp_measurement_2019_p5_c10",
+        "esc_htn_2024_p20_c70",
+        "ish_htn_2020_p4_c14",
+        "esc_htn_2024_p19_c66"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 1.0,
+        "ndcg@5": 0.6131471927654584
+      },
+      "hybrid+rerank_top5": [
+        "aha_bp_measurement_2019_p5_c6",
+        "aha_bp_measurement_2019_p5_c10",
+        "esc_htn_2024_p20_c70",
+        "ish_htn_2020_p4_c14",
+        "who_hearts_protocols_2018_p12_c15"
+      ]
+    },
+    {
+      "id": "R069",
+      "topic": "bp_measurement",
+      "dense": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 0.2,
+        "ndcg@5": 0.23719771276929622
+      },
+      "dense_top5": [
+        "ish_htn_2020_p5_c18",
+        "kdigo_bp_ckd_2021_p34_c66",
+        "aha_bp_measurement_2019_p16_c53",
+        "kdigo_bp_ckd_2021_p35_c69",
+        "aha_bp_measurement_2019_p10_c40"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 0.5,
+        "mrr": 0.125,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "aha_bp_measurement_2019_p16_c53",
+        "aha_acc_htn_2025_p18_c69",
+        "kdigo_bp_ckd_2021_p36_c73",
+        "kdigo_bp_ckd_2021_p35_c69",
+        "kdigo_bp_ckd_2021_p34_c68"
+      ],
+      "hybrid": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 0.25,
+        "ndcg@5": 0.2640681225725909
+      },
+      "hybrid_top5": [
+        "aha_bp_measurement_2019_p16_c53",
+        "ish_htn_2020_p5_c18",
+        "kdigo_bp_ckd_2021_p35_c69",
+        "aha_bp_measurement_2019_p10_c40",
+        "kdigo_bp_ckd_2021_p34_c68"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.5,
+        "recall@20": 0.5,
+        "mrr": 0.25,
+        "ndcg@5": 0.2640681225725909
+      },
+      "hybrid+rerank_top5": [
+        "aha_bp_measurement_2019_p16_c53",
+        "ish_htn_2020_p5_c18",
+        "kdigo_bp_ckd_2021_p35_c69",
+        "aha_bp_measurement_2019_p10_c40",
+        "kdigo_bp_ckd_2021_p34_c68"
+      ]
+    },
+    {
+      "id": "R070",
+      "topic": "bp_measurement",
+      "dense": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "dense_top5": [
+        "kdigo_bp_ckd_2021_p34_c68",
+        "ish_htn_2020_p5_c17",
+        "aha_bp_measurement_2019_p1_c0",
+        "ish_htn_2020_p5_c18",
+        "esc_htn_2024_p26_c102"
+      ],
+      "sparse": {
+        "recall@5": 0.0,
+        "recall@20": 0.5,
+        "mrr": 0.07142857142857142,
+        "ndcg@5": 0.0
+      },
+      "sparse_top5": [
+        "esc_htn_2024_p23_c85",
+        "esc_htn_2024_p22_c79",
+        "aha_acc_htn_2025_p11_c38",
+        "kdigo_bp_ckd_2021_p15_c29",
+        "ish_htn_2020_p5_c17"
+      ],
+      "hybrid": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "hybrid_top5": [
+        "ish_htn_2020_p5_c17",
+        "esc_htn_2024_p22_c79",
+        "nice_ng136_p25_c34",
+        "ish_htn_2020_p5_c20",
+        "ish_htn_2020_p3_c13"
+      ],
+      "hybrid+rerank": {
+        "recall@5": 0.0,
+        "recall@20": 0.0,
+        "mrr": 0.0,
+        "ndcg@5": 0.0
+      },
+      "hybrid+rerank_top5": [
+        "medlineplus_high_bp_p2_c2",
+        "ish_htn_2020_p3_c13",
+        "esc_htn_2024_p23_c81",
+        "aha_bp_measurement_2019_p6_c30",
+        "ish_htn_2020_p5_c19"
+      ]
+    }
+  ],
+  "dataset": "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/datasets/retrieval_eval_v1.json",
+  "generated_at": "2026-10-09T12:21:58+00:00",
+  "candidates": 20
+}

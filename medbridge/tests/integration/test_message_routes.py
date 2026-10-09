@@ -85,14 +85,22 @@ class FakeOrchestrator:
         )
 
 
+ERASED = uuid.UUID("cccccccc-0000-0000-0000-000000000003")
+
+
 class FakeDB:
-    def __init__(self, known: set[uuid.UUID]) -> None:
+    def __init__(self, known: set[uuid.UUID], erased: set[uuid.UUID] | None = None) -> None:
         self.known = known
+        self.erased = erased or set()
         self.commit = AsyncMock()
         self.rollback = AsyncMock()
 
     async def get(self, model: Any, key: uuid.UUID) -> Any:
-        return SessionModel(session_id=key) if model is SessionModel and key in self.known else None
+        if model is not SessionModel:
+            return None
+        if key in self.erased:
+            return SessionModel(session_id=key, erased_at=datetime.now(UTC))
+        return SessionModel(session_id=key) if key in self.known else None
 
 
 class FakeMaker:
@@ -115,7 +123,7 @@ class FakeMaker:
 
 @pytest.fixture
 def db() -> FakeDB:
-    return FakeDB({KNOWN})
+    return FakeDB({KNOWN}, erased={ERASED})
 
 
 @pytest.fixture
@@ -336,6 +344,24 @@ def test_regenerate_nothing_to_regenerate_409(client, store, orchestrator, strea
 def test_regenerate_unknown_session_404(client, stream):
     response = client.post(f"/api/sessions/{uuid.uuid4()}/regenerate?stream={stream}")
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Erased (crypto-shredded) sessions: 410 before any pipeline/LLM work
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["messages", "messages/stream", "regenerate", "regenerate?stream=true"],
+)
+def test_erased_session_rejected_with_410_before_any_llm_work(client, orchestrator, store, path):
+    response = client.post(f"/api/sessions/{ERASED}/{path}", json={"message": "BP target?"})
+    assert response.status_code == 410
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json()["error_code"] == "SESSION_ERASED"
+    assert orchestrator.calls == []
+    store.get_last_user_message.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------

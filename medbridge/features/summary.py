@@ -2,9 +2,10 @@
 Clinician summary export (Markdown / JSON).
 
 Builds a structured, cited summary of one session from the decrypted session
-data: patient-reported snapshot, BP log with ACC/AHA categories and the
-numbered question/answer exchanges with their routing action and guideline
-citations (source, section, page). It contains nothing beyond what the
+data: patient-reported snapshot (demographics, pregnancy status, long-term
+conditions, medicines with brand name, drug class and dose history), BP log
+with ACC/AHA categories and the numbered question/answer exchanges with their
+routing action and guideline citations (source, section, page). It contains nothing beyond what the
 session already holds — user messages were PII-redacted before storage — and
 the session is referenced only by a short prefix of its id.
 """
@@ -33,6 +34,61 @@ _CITATION_KEYS = ("marker", "source", "title", "org", "year", "section", "page",
 
 def _citation(c: dict[str, Any]) -> dict[str, Any]:
     return {k: c.get(k) for k in _CITATION_KEYS if c.get(k) not in (None, "")}
+
+
+# ---------------------------------------------------------------------------
+# Structured patient context (shared with GET /api/sessions/{id}/context)
+# ---------------------------------------------------------------------------
+
+def _clean(value: Any) -> str:
+    return str(value).strip() if value not in (None, "") else ""
+
+
+def patient_profile(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Age, sex, pregnancy status and long-term conditions from the snapshot demographics."""
+    demo = snapshot.get("demographics") if isinstance(snapshot, dict) else None
+    demo = demo if isinstance(demo, dict) else {}
+    raw_conditions = demo.get("conditions")
+    if isinstance(raw_conditions, str):
+        raw_conditions = [raw_conditions]
+    conditions = [
+        _clean(c) for c in (raw_conditions if isinstance(raw_conditions, list) else [])
+        if _clean(c)
+    ]
+    return {
+        "age": demo.get("age"),
+        "sex": _clean(demo.get("sex")) or None,
+        "pregnancy_status": _clean(demo.get("pregnancy_status")) or None,
+        "conditions": conditions,
+    }
+
+
+def medication_rows(
+    snapshot: dict[str, Any], key: str = "current_medications"
+) -> list[dict[str, Any]]:
+    """Medications with generic name, brand, drug class, dose, frequency and dose history."""
+    rows: list[dict[str, Any]] = []
+    items = snapshot.get(key) if isinstance(snapshot, dict) else None
+    for med in items if isinstance(items, list) else []:
+        if not isinstance(med, dict) or not _clean(med.get("drug")):
+            continue
+        history = [
+            {k: h.get(k) for k in ("dosage", "frequency", "changed_at") if h.get(k)}
+            for h in med.get("history") or []
+            if isinstance(h, dict)
+        ]
+        row: dict[str, Any] = {
+            "drug": _clean(med.get("drug")),
+            "brand_name": _clean(med.get("brand_name")) or None,
+            "drug_class": _clean(med.get("drug_class")) or None,
+            "dosage": _clean(med.get("dosage")) or None,
+            "frequency": _clean(med.get("frequency")) or None,
+            "history": history,
+        }
+        if key == "discontinued_medications":
+            row["reason"] = _clean(med.get("reason")) or None
+        rows.append(row)
+    return rows
 
 
 def _exchanges(history: list[HistoryRow]) -> list[dict[str, Any]]:
@@ -86,6 +142,11 @@ async def build_clinician_summary(
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "disclaimer": DISCLAIMER.format(app=cfg.APP_NAME),
         "snapshot": state.snapshot,
+        "profile": patient_profile(state.snapshot),
+        "medications": medication_rows(state.snapshot),
+        "discontinued_medications": medication_rows(
+            state.snapshot, "discontinued_medications"
+        ),
         "bp_readings": bp_series(events),
         "exchanges": exchanges,
         "action_counts": actions,
@@ -106,9 +167,21 @@ def _one_line(text: str) -> str:
 
 
 def _format_med(med: dict[str, Any]) -> str:
-    parts = [str(med.get("drug", "")).strip(), str(med.get("dosage", "")).strip(),
-             str(med.get("frequency", "")).strip()]
+    """``amlodipine (Amlong; calcium channel blocker) 10 mg daily (previously 5 mg)``."""
+    name = _clean(med.get("drug"))
+    labels = [_clean(med.get(k)) for k in ("brand_name", "drug_class") if _clean(med.get(k))]
+    if labels:
+        name += f" ({'; '.join(labels)})"
+    parts = [name, _clean(med.get("dosage")), _clean(med.get("frequency"))]
     text = " ".join(p for p in parts if p)
+    previous = [
+        " ".join(p for p in (_clean(h.get("dosage")), _clean(h.get("frequency"))) if p)
+        for h in med.get("history") or []
+        if isinstance(h, dict)
+    ]
+    previous = [p for p in previous if p]
+    if previous:
+        text += f" (previously {', then '.join(previous)})"
     if med.get("reason"):
         text += f" (reason: {med['reason']})"
     return text
@@ -120,11 +193,23 @@ def _format_lab(lab: dict[str, Any]) -> str:
     return f"{name} {value}".strip()
 
 
+_PROFILE_KEYS = ("conditions", "pregnancy_status")
+
+
 def _snapshot_lines(snapshot: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     demo = snapshot.get("demographics") or {}
     if isinstance(demo, dict) and demo:
-        lines.append("- **Demographics:** " + ", ".join(f"{k} {v}" for k, v in demo.items()))
+        basics = {k: v for k, v in demo.items() if k not in _PROFILE_KEYS and v not in (None, "")}
+        if basics:
+            lines.append(
+                "- **Demographics:** " + ", ".join(f"{k} {v}" for k, v in basics.items())
+            )
+        profile = patient_profile(snapshot)
+        if profile["pregnancy_status"]:
+            lines.append(f"- **Pregnancy status:** {profile['pregnancy_status']}")
+        if profile["conditions"]:
+            lines.append("- **Long-term conditions:** " + ", ".join(profile["conditions"]))
     sections = (
         ("Current medications", snapshot.get("current_medications"), _format_med),
         ("Discontinued medications", snapshot.get("discontinued_medications"), _format_med),
@@ -132,7 +217,8 @@ def _snapshot_lines(snapshot: dict[str, Any]) -> list[str]:
     )
     for title, items, fmt in sections:
         if isinstance(items, list) and items:
-            lines.append(f"- **{title}:** " + "; ".join(fmt(i) for i in items if isinstance(i, dict)))
+            rendered = "; ".join(fmt(i) for i in items if isinstance(i, dict))
+            lines.append(f"- **{title}:** {rendered}")
     symptoms = snapshot.get("symptoms")
     if isinstance(symptoms, list) and symptoms:
         lines.append("- **Symptoms:** " + ", ".join(str(s) for s in symptoms))

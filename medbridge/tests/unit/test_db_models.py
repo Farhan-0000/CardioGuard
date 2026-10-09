@@ -1,13 +1,15 @@
 import pytest
 from sqlalchemy import inspect
+
 from medbridge.db.models import (
+    AuditLog,
     Base,
-    Session,
     ClinicalEvent,
     ContextSnapshot,
-    AuditLog,
     MessageHistory,
+    Session,
 )
+
 
 def test_table_names():
     assert Session.__tablename__ == "sessions"
@@ -41,6 +43,7 @@ def test_enum_column_values():
 def test_enum_bind_and_result_processing():
     """Verify that SQLAlchemy binds and parses hyphenated enum values properly."""
     from sqlalchemy.dialects import postgresql
+
     from medbridge.db.models import FinalActionEnum, Gate1ActionEnum
 
     final_type = AuditLog.__table__.c.final_action.type

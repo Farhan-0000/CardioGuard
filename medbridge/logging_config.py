@@ -75,12 +75,23 @@ def configure_logging(json_format: bool = True, log_level: int = logging.INFO) -
     root_logger.addHandler(handler)
     root_logger.setLevel(log_level)
 
+    processors: list[Processor] = [
+        structlog.stdlib.filter_by_level,
+        *shared_processors,
+        structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+    ]
+    # Loggers are cached on first use and keep a reference to the processor
+    # list that was configured at that moment. Re-configuring (create_app() is
+    # called more than once in one process, e.g. by tests or a reloader) must
+    # therefore update the existing list in place; a new list would leave the
+    # already-cached module loggers on a stale chain that later configuration
+    # (or structlog.testing.capture_logs) never reaches.
+    current = structlog.get_config().get("processors")
+    if structlog.is_configured() and isinstance(current, list):
+        current[:] = processors
+        processors = current
     structlog.configure(
-        processors=[
-            structlog.stdlib.filter_by_level,
-            *shared_processors,
-            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
-        ],
+        processors=processors,
         logger_factory=structlog.stdlib.LoggerFactory(),
         wrapper_class=structlog.stdlib.BoundLogger,
         cache_logger_on_first_use=True,

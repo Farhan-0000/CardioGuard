@@ -105,6 +105,45 @@ async def test_context(client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatc
     assert [c["key"] for c in body["categories"]][-1] == "crisis"
 
 
+async def test_context_profile_and_medications(
+    client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sid = uuid.uuid4()
+    snapshot = {
+        "demographics": {"age": 64, "pregnancy_status": "not pregnant",
+                         "conditions": ["diabetes"]},
+        "current_medications": [{"drug": "telmisartan", "dosage": "80 mg", "frequency": "",
+                                 "brand_name": "Telma", "drug_class": "ARB",
+                                 "history": [{"dosage": "40 mg", "frequency": ""}]}],
+        "discontinued_medications": [{"drug": "lisinopril", "dosage": "10 mg",
+                                      "reason": "dry cough"}],
+    }
+    monkeypatch.setattr(turn_store, "load_session_state",
+                        AsyncMock(return_value=SessionState(snapshot=snapshot)))
+    monkeypatch.setattr(turn_store, "list_events", AsyncMock(return_value=[]))
+    body = (await client.get(f"/api/sessions/{sid}/context", headers=_auth(sid))).json()
+    assert body["snapshot"] == snapshot
+    assert body["profile"] == {"age": 64, "sex": None, "pregnancy_status": "not pregnant",
+                               "conditions": ["diabetes"]}
+    assert body["medications"] == [{
+        "drug": "telmisartan", "brand_name": "Telma", "drug_class": "ARB", "dosage": "80 mg",
+        "frequency": None, "history": [{"dosage": "40 mg"}], "reason": None,
+    }]
+    assert body["discontinued_medications"][0]["reason"] == "dry cough"
+
+
+async def test_bp_entry_uses_bp_parse_plausibility(
+    client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from medbridge.api.routes import features as features_module
+
+    sid = uuid.uuid4()
+    monkeypatch.setattr(features_module, "is_plausible_bp", lambda s, d: False)
+    resp = await client.post(f"/api/sessions/{sid}/bp", headers=_auth(sid),
+                             json={"systolic": 128, "diastolic": 82})
+    assert resp.status_code == 422
+
+
 @pytest.mark.parametrize(
     "payload",
     [

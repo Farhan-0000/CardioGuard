@@ -100,3 +100,35 @@ async def test_missing_or_erased_session(monkeypatch: pytest.MonkeyPatch) -> Non
     load.return_value = SessionState(erased=True)
     with pytest.raises(SessionErasedError):
         await build_clinician_summary(AsyncMock(), uuid.uuid4())
+
+
+async def test_summary_shows_profile_brands_classes_and_dose_history(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = {
+        "demographics": {"age": 31, "sex": "female", "pregnancy_status": "pregnant",
+                         "conditions": ["diabetes", "chronic kidney disease"]},
+        "current_medications": [{
+            "drug": "amlodipine", "dosage": "10 mg", "frequency": "once daily",
+            "brand_name": "Amlong", "drug_class": "calcium channel blocker",
+            "history": [{"dosage": "5 mg", "frequency": "once daily"}],
+        }],
+    }
+    monkeypatch.setattr(summary_mod.turn_store, "load_session_state",
+                        AsyncMock(return_value=SessionState(snapshot=snapshot)))
+    monkeypatch.setattr(summary_mod.turn_store, "get_history", AsyncMock(return_value=[]))
+    monkeypatch.setattr(summary_mod.turn_store, "list_events", AsyncMock(return_value=[]))
+    data = await build_clinician_summary(AsyncMock(), uuid.uuid4())
+    assert data["profile"] == {"age": 31, "sex": "female", "pregnancy_status": "pregnant",
+                               "conditions": ["diabetes", "chronic kidney disease"]}
+    assert data["medications"] == [{
+        "drug": "amlodipine", "brand_name": "Amlong", "drug_class": "calcium channel blocker",
+        "dosage": "10 mg", "frequency": "once daily",
+        "history": [{"dosage": "5 mg", "frequency": "once daily"}],
+    }]
+    md = render_markdown(data)
+    assert "- **Demographics:** age 31, sex female" in md
+    assert "- **Pregnancy status:** pregnant" in md
+    assert "- **Long-term conditions:** diabetes, chronic kidney disease" in md
+    assert ("- **Current medications:** amlodipine (Amlong; calcium channel blocker) 10 mg "
+            "once daily (previously 5 mg once daily)") in md

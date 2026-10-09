@@ -51,6 +51,16 @@ BYPASS_ACTIONS: set[str] = {"ABSTAIN", "ESCALATE"}
 GENERATOR_MODES: tuple[str, ...] = ("grounded", "direct", "prompt_safety")
 
 _OUTPUT_FORMAT = 'Return JSON: {"response_text": "<markdown answer>"}'
+# Grounded modes show the markers inside the JSON example: with grammar-constrained
+# JSON output the model mirrors the example, and a marker-free placeholder made
+# local models (qwen3:8b) drop every [n] — each such ANSWER was then downgraded to
+# GENERALIZE by citation validation (live integration smoke test, round 2).
+_GROUNDED_OUTPUT_FORMAT = (
+    'Return JSON: {"response_text": "<markdown answer>"}. Inside response_text, every '
+    "sentence that states a clinical fact ends with the [n] marker of its supporting "
+    'chunk, for example: {"response_text": "Eating less salt lowers blood pressure [2]. '
+    'The DASH eating plan is recommended [1][3]."}'
+)
 
 _ACTION_RULES: dict[str, str] = {
     "ANSWER": (
@@ -170,7 +180,7 @@ def _build_system_prompt(action: str, mode: GeneratorMode = "grounded") -> str:
         action_decision=action,
         action_rule=_ACTION_RULES.get(action, _ACTION_RULES["GENERALIZE"]),
         extra_rules=PROMPT_SAFETY_RULE if mode == "prompt_safety" else "",
-        output_format=_OUTPUT_FORMAT,
+        output_format=_GROUNDED_OUTPUT_FORMAT,
     )
 
 

@@ -6,10 +6,14 @@ actions, latency and the PHI-free ``trace``) and the ``feedback`` table:
 
 * final-action, Gate 1 and Gate 2 decision counts (+ decision sources);
 * end-to-end latency p50/p95 overall and per action, per-stage p50/p95 from
-  ``trace.timings``;
+  ``trace.timings`` (only stages that ran: ``skipped`` and ``discarded``
+  timings are excluded);
 * spec-fallback counts, loop-breaker / fast-path / small-talk counts,
-  citation downgrades, Gate 3 action changes, speculative-retrieval discard
-  rate and the latency it saved;
+  citation downgrades, speculative-retrieval discard rate and the latency it
+  saved;
+* Gate 3 (grounding verifier) counters: verified turns, failures, turns where
+  the NLI model was unavailable, action changes, claims checked, unsupported
+  claims and removed sentences;
 * feedback count and 👍/👎 totals.
 
 The computation is a pure function (:func:`compute_metrics`) so it is unit
@@ -38,6 +42,9 @@ logger = structlog.get_logger(__name__)
 
 metrics_router = APIRouter(tags=["metrics"])
 
+# Stage timings that measure real work. "skipped" (stage not run, 0 ms) and
+# "discarded" (speculative retrieval thrown away after a SOFT-ASK) are excluded
+# from the per-stage percentiles.
 _TIMED_STATUSES = frozenset({"ok", "failed"})
 
 
@@ -123,6 +130,33 @@ def _source(trace: dict[str, Any], gate: str) -> str | None:
     return str(decision.get("source")) if isinstance(decision, dict) else None
 
 
+def _int(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return 0
+    return int(value)
+
+
+GATE3_COUNTERS: tuple[str, ...] = (
+    "verified_turns", "failures", "unavailable", "action_changes",
+    "claims", "unsupported_claims", "removed_sentences",
+)
+
+
+def _count_gate3(counter: Counter[str], verification: dict[str, Any]) -> None:
+    """Gate 3 (grounding verifier) counters from the public ``trace.gate3`` record."""
+    counter["verified_turns"] += 1
+    status = verification.get("status")
+    if status == "failed":
+        counter["failures"] += 1
+    if status == "unavailable" or verification.get("available") is False:
+        counter["unavailable"] += 1
+    if verification.get("action_change"):
+        counter["action_changes"] += 1
+    counter["claims"] += _int(verification.get("n_claims"))
+    counter["unsupported_claims"] += _int(verification.get("n_unsupported"))
+    counter["removed_sentences"] += _int(verification.get("removed_sentences_count"))
+
+
 def compute_metrics(
     rows: Iterable[tuple[Any, Any, Any, int | None, dict[str, Any] | None]],
     feedback_ratings: Iterable[int],
@@ -195,11 +229,7 @@ def compute_metrics(
 
         verification = trace.get("gate3")
         if isinstance(verification, dict):
-            gate3["verified_turns"] += 1
-            if verification.get("status") == "failed":
-                gate3["failures"] += 1
-            if verification.get("action_change"):
-                gate3["action_changes"] += 1
+            _count_gate3(gate3, verification)
 
         redactions = int(trace.get("redactions") or 0)
         redaction["redacted_items"] += redactions
@@ -229,7 +259,7 @@ def compute_metrics(
             "discard_rate": round(discarded / launched, 3) if launched else None,
             "mean_saved_ms": round(sum(saved) / len(saved), 1) if saved else None,
         },
-        grounding_verifier=dict(gate3),
+        grounding_verifier={name: gate3[name] for name in GATE3_COUNTERS},
         redaction=dict(redaction),
         feedback=FeedbackStats(
             count=len(ratings),

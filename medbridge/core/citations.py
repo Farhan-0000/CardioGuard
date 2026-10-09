@@ -12,6 +12,9 @@ This module makes those citations trustworthy:
 * the citation list is rebuilt from the chunk metadata (source label, section,
   page, URL and the first ~350 characters of the chunk text). Excerpts or
   sources written by the LLM are never trusted.
+* HTML sources (payload ``source_format == "html"``) have no physical pages —
+  their ``page_number`` is a section index — so the citation's ``page`` is
+  ``None`` and its section reads ``"<section title> (section N)"``.
 
 The orchestrator uses ``valid == 0`` on an ANSWER to downgrade it to
 GENERALIZE (an "answer" with no verifiable evidence is not an answer).
@@ -62,14 +65,36 @@ def _expand(group: str) -> list[int] | None:
 
 
 def source_label(chunk: RetrievedChunk) -> str:
-    """Human-readable source, e.g. ``"AHA/ACC 2025"``; falls back to title or id."""
+    """Human-readable source ``f"{org} {year}"``, e.g. ``"AHA/ACC 2025"``.
+
+    Falls back to the document title, then the guideline id.
+    """
     if chunk.org and chunk.year:
         return f"{chunk.org} {chunk.year}"
     if chunk.doc_title:
         return chunk.doc_title
-    if chunk.org:
-        return chunk.org
     return chunk.guideline_id or "Clinical guideline"
+
+
+def is_html_source(chunk: RetrievedChunk) -> bool:
+    """HTML sources have no physical pages: ``page_number`` is a section index."""
+    return (chunk.source_format or "").strip().lower() == "html"
+
+
+def display_page(chunk: RetrievedChunk) -> int | None:
+    """Physical page to show for a chunk; ``None`` for HTML sources and unknown pages."""
+    if is_html_source(chunk):
+        return None
+    return chunk.page_number or None
+
+
+def display_section(chunk: RetrievedChunk) -> str:
+    """Section label; HTML sources read ``"<section title> (section N)"``."""
+    title = (chunk.section_title or "").strip()
+    if not is_html_source(chunk) or not chunk.page_number or chunk.page_number <= 0:
+        return title
+    suffix = f"section {chunk.page_number}"
+    return f"{title} ({suffix})" if title else suffix.capitalize()
 
 
 def make_excerpt(text: str, limit: int = EXCERPT_CHARS) -> str:
@@ -87,13 +112,13 @@ def build_citation(index: int, chunk: RetrievedChunk) -> CitationResponse:
         marker=f"[{index}]",
         chunk_id=chunk.chunk_id,
         source=source_label(chunk),
-        section=chunk.section_title or "",
+        section=display_section(chunk),
         excerpt=make_excerpt(chunk.chunk_text),
         guideline_id=chunk.guideline_id or None,
         title=chunk.doc_title,
         org=chunk.org,
         year=chunk.year,
-        page=chunk.page_number or None,
+        page=display_page(chunk),
         url=chunk.source_url or None,
     )
 

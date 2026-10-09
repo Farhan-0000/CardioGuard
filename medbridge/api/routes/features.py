@@ -3,8 +3,11 @@ Complementary feature routes (BP log, context card, feedback, clinician summary)
 
 Endpoints (all require the session token when ``AUTH_REQUIRED``):
 - POST /api/sessions/{id}/feedback  → 201 ``{feedback_id}``
-- GET  /api/sessions/{id}/context   → snapshot + BP series with ACC/AHA categories + counts
+- GET  /api/sessions/{id}/context   → snapshot + BP series with ACC/AHA categories + counts,
+                                      plus ``profile`` (age, sex, pregnancy status, conditions)
+                                      and ``medications`` (brand, drug class, dose history)
 - POST /api/sessions/{id}/bp        → 201 manual BP entry → BP_READING event via the projector
+                                      (422 unless ``nlp.bp_parse.is_plausible_bp`` accepts it)
 - GET  /api/sessions/{id}/summary   → clinician summary (``?format=md|json``)
 
 None of these routes calls an LLM or bypasses the gates: they read/append the
@@ -25,7 +28,13 @@ from medbridge.api.schemas.enums import EventTypeEnum
 from medbridge.config import get_settings
 from medbridge.db.connection import get_session
 from medbridge.features.bp import CATEGORY_LEGEND, CRISIS, CRISIS_ADVICE, bp_series, make_reading
-from medbridge.features.summary import build_clinician_summary, render_markdown
+from medbridge.features.summary import (
+    build_clinician_summary,
+    medication_rows,
+    patient_profile,
+    render_markdown,
+)
+from medbridge.nlp.bp_parse import is_plausible_bp
 from medbridge.privacy.deps import require_session_access
 from medbridge.state import turn_store
 
@@ -63,12 +72,32 @@ class BPReadingOut(BaseModel):
     category_label: str
 
 
+class PatientProfileOut(BaseModel):
+    age: int | float | None = None
+    sex: str | None = None
+    pregnancy_status: str | None = None
+    conditions: list[str] = Field(default_factory=list)
+
+
+class MedicationOut(BaseModel):
+    drug: str
+    brand_name: str | None = None
+    drug_class: str | None = None
+    dosage: str | None = None
+    frequency: str | None = None
+    history: list[dict[str, Any]] = Field(default_factory=list)
+    reason: str | None = None
+
+
 class ContextResponse(BaseModel):
     session_id: uuid.UUID
     snapshot: dict[str, Any]
     bp_readings: list[BPReadingOut]
     counts: dict[str, int]
     categories: list[dict[str, Any]] = Field(default_factory=lambda: list(CATEGORY_LEGEND))
+    profile: PatientProfileOut = Field(default_factory=PatientProfileOut)
+    medications: list[MedicationOut] = Field(default_factory=list)
+    discontinued_medications: list[MedicationOut] = Field(default_factory=list)
 
 
 class BPEntryRequest(BaseModel):
@@ -81,6 +110,8 @@ class BPEntryRequest(BaseModel):
     def _check(self) -> "BPEntryRequest":
         if self.systolic <= self.diastolic:
             raise ValueError("systolic must be greater than diastolic")
+        if not is_plausible_bp(self.systolic, self.diastolic):
+            raise ValueError("blood pressure reading is outside the plausible range")
         if self.measured_at is not None:
             if self.measured_at.tzinfo is None:
                 self.measured_at = self.measured_at.replace(tzinfo=UTC)
@@ -134,11 +165,18 @@ async def handle_context(
     for event in events:
         counts[event.event_type] = counts.get(event.event_type, 0) + 1
     counts["total_events"] = len(events)
+    snapshot = state.snapshot
     return ContextResponse(
         session_id=session_id,
-        snapshot=state.snapshot,
+        snapshot=snapshot,
         bp_readings=[BPReadingOut.model_validate(r) for r in bp_series(events)],
         counts=counts,
+        profile=PatientProfileOut.model_validate(patient_profile(snapshot)),
+        medications=[MedicationOut.model_validate(m) for m in medication_rows(snapshot)],
+        discontinued_medications=[
+            MedicationOut.model_validate(m)
+            for m in medication_rows(snapshot, "discontinued_medications")
+        ],
     )
 
 

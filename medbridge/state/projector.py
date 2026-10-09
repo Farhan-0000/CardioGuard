@@ -49,6 +49,74 @@ def _lab_key(lab: dict[str, Any]) -> str:
     return str(_first(lab, "lab_type", "lab", "test", "name") or "").strip().lower()
 
 
+def _text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _apply_demographic(snapshot: dict[str, Any], payload: dict[str, Any]) -> None:
+    """Merge demographics: scalar keys (age, sex, pregnancy_status) are overwritten;
+    ``conditions`` is a case-insensitive, order-preserving union."""
+    demo: dict[str, Any] = snapshot.setdefault("demographics", {})
+    for key, value in payload.items():
+        if key == "conditions":
+            if isinstance(value, str):
+                incoming: list[Any] = [value]
+            else:
+                incoming = list(value) if isinstance(value, list | tuple) else []
+            merged: list[str] = [str(c) for c in demo.get("conditions") or []]
+            for condition in incoming:
+                name = _text(condition)
+                if name and name.lower() not in (c.lower() for c in merged):
+                    merged.append(name)
+            demo["conditions"] = merged
+        else:
+            demo[key] = value
+
+
+def _apply_medication_added(snapshot: dict[str, Any], payload: dict[str, Any]) -> None:
+    """Add a medicine, or update the dose of one already in ``current_medications``.
+
+    A repeated MEDICATION_ADDED for a known drug (case-insensitive name match)
+    is a dose change: a non-empty ``dosage``/``frequency`` replaces the current
+    value and the previous ``{dosage, frequency}`` is appended to the entry's
+    ``history`` list (with ``changed_at`` when the event carries a date, so the
+    fold stays pure). ``brand_name`` and ``drug_class`` from the extractor's
+    drug normaliser are kept; a later event only fills in or refreshes them.
+    """
+    drug_name = _text(_first(payload, "drug_name", "drug", "name", "medication"))
+    if not drug_name:
+        return
+    meds: list[dict[str, Any]] = snapshot.setdefault("current_medications", [])
+    dosage = _text(_first(payload, "dosage", "dose"))
+    frequency = _text(payload.get("frequency"))
+    labels = {k: _text(payload.get(k)) for k in ("brand_name", "drug_class")}
+    existing = next(
+        (m for m in meds if _text(m.get("drug")).lower() == drug_name.lower()), None
+    )
+    if existing is None:
+        entry: dict[str, Any] = {"drug": drug_name, "dosage": dosage, "frequency": frequency}
+        entry.update({k: v for k, v in labels.items() if v})
+        meds.append(entry)
+        return
+
+    previous = {
+        "dosage": _text(existing.get("dosage")),
+        "frequency": _text(existing.get("frequency")),
+    }
+    updated = {
+        "dosage": dosage or previous["dosage"],
+        "frequency": frequency or previous["frequency"],
+    }
+    if updated != previous:
+        change: dict[str, Any] = dict(previous)
+        changed_at = _first(payload, "changed_at", "date", "recorded_at")
+        if changed_at is not None:
+            change["changed_at"] = changed_at
+        existing.setdefault("history", []).append(change)
+        existing.update(updated)
+    existing.update({k: v for k, v in labels.items() if v})
+
+
 class StateProjector:
     """
     Deterministic Python projector.
@@ -157,16 +225,7 @@ class StateProjector:
                 snapshot["recent_bp_readings"] = readings[-MAX_BP_READINGS:]
 
             case "MEDICATION_ADDED":
-                meds = snapshot.setdefault("current_medications", [])
-                drug_name = _first(payload, "drug_name", "drug", "name", "medication")
-                if drug_name:
-                    name_lower = str(drug_name).strip().lower()
-                    if not any(str(m.get("drug", "")).strip().lower() == name_lower for m in meds):
-                        meds.append({
-                            "drug": str(drug_name).strip(),
-                            "dosage": str(_first(payload, "dosage", "dose") or "").strip(),
-                            "frequency": str(payload.get("frequency") or "").strip(),
-                        })
+                _apply_medication_added(snapshot, payload)
 
             case "MEDICATION_STOPPED":
                 drug_name = _first(payload, "drug_name", "drug", "name", "medication")
@@ -195,8 +254,7 @@ class StateProjector:
                     symptoms.append(new)
 
             case "DEMOGRAPHIC":
-                demo = snapshot.setdefault("demographics", {})
-                demo.update(payload)
+                _apply_demographic(snapshot, payload)
 
             case "LAB_RESULT":
                 labs = [*snapshot.get("lab_results", []), payload]

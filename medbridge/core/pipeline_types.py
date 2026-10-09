@@ -13,9 +13,10 @@ evaluation harness and the UI:
 """
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Awaitable, Callable, Literal
+from typing import Any, Literal
 
 
 class StageName(StrEnum):
@@ -108,11 +109,11 @@ class AblationConfig:
     grounding_verifier: bool | None = None
 
     @classmethod
-    def full(cls) -> "AblationConfig":
+    def full(cls) -> AblationConfig:
         return cls(name="C5")
 
     @classmethod
-    def preset(cls, name: str) -> "AblationConfig":
+    def preset(cls, name: str) -> AblationConfig:
         presets: dict[str, AblationConfig] = {
             "C0": cls(name="C0", use_emergency_fastpath=False, use_small_talk=False,
                       use_context_gate=False, use_retrieval=False, use_evidence_gate=False,

@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     # Launch retrieval concurrently with Gate 1; discarded on SOFT-ASK (ADL-027).
     SPECULATIVE_RETRIEVAL: bool = True
     # Evidence text per chunk passed to LLM prompts (characters).
-    EVIDENCE_MAX_CHARS_PER_CHUNK: int = 1800
+    EVIDENCE_MAX_CHARS_PER_CHUNK: int = 2400
 
     # ------------------------------------------------------------------
     # Pipeline safety behaviour
@@ -132,6 +132,6 @@ class Settings(BaseSettings):
         return self.LLM_MODEL_GENERATOR or self.LLM_MODEL
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     return Settings()

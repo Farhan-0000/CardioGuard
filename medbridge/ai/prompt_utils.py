@@ -25,8 +25,20 @@ from medbridge.config import get_settings
 DEFAULT_EMPTY_CHUNKS_PLACEHOLDER = "(No guideline evidence was retrieved for this question.)"
 HISTORY_ASSISTANT_MAX_CHARS = 300
 
+# Unicode look-alikes of "<" and ">" (fullwidth, small form, angle brackets) that a
+# tokenizer may read as tag delimiters; folded to ASCII before escaping.
+_ANGLE_LOOKALIKES = str.maketrans({
+    "＜": "<", "﹤": "<", "‹": "<", "⟨": "<", "〈": "<", "〈": "<",
+    "＞": ">", "﹥": ">", "›": ">", "⟩": ">", "〉": ">", "〉": ">",
+})
+# Whitespace plus invisible format characters (zero-width space/joiners, BOM, soft
+# hyphen) that could be slipped between "<" and a tag name.
+_GAP = r"[\s­​-‏⁠-⁤﻿]*"
 # Anything that looks like an XML/HTML tag: <tag>, </tag>, <tag attr="x">.
-_TAG_LIKE = re.compile(r"<\s*(/?)\s*([A-Za-z_][\w:.-]*)([^<>]*)>")
+_TAG_LIKE = re.compile(rf"<{_GAP}(/?){_GAP}([A-Za-z_][\w:.-]*)([^<>]*)>")
+# A "<" that starts a tag-like token even when the tag is never closed
+# ("</untrusted_user_input" at the end of the text, "<!--", "<?xml", "< /x").
+_TAG_OPEN = re.compile(rf"<(?={_GAP}[/!?]?{_GAP}[A-Za-z_!?/])")
 
 
 class ChatTurnLike(Protocol):
@@ -39,11 +51,25 @@ class ChatTurnLike(Protocol):
 def neutralize_tags(text: str) -> str:
     """Escape tag-like sequences, e.g. ``</untrusted_user_input>`` → ``&lt;/…&gt;``.
 
-    Plain comparisons such as ``BP < 140`` are left untouched; only sequences
-    that could be parsed as XML tags are escaped, which prevents prompt
-    injection by closing or opening prompt blocks.
+    Used on every piece of untrusted text placed in a prompt (patient messages,
+    history, snapshot JSON, extractor intent, evidence text) so it can neither
+    close nor open a prompt block:
+
+    * complete tags (``<x>``, ``</x>``, ``< / x >``, ``<x attr="…">``) are escaped,
+      also with zero-width characters between ``<`` and the name;
+    * an unterminated tag opener (``</untrusted_user_input`` at the end of the
+      text, ``<!--``, ``<?xml``) has its ``<`` escaped;
+    * Unicode look-alike angle brackets (``＜``/``＞``, ``‹``/``›``, ``⟨``/``⟩``…)
+      are folded to ASCII first, so they are escaped too.
+
+    Plain comparisons such as ``BP < 140`` or ``> 90`` are left untouched (a
+    lone ``>`` cannot open or close a block).
     """
-    return _TAG_LIKE.sub(lambda m: f"&lt;{m.group(1)}{m.group(2)}{m.group(3)}&gt;", text or "")
+    folded = (text or "").translate(_ANGLE_LOOKALIKES)
+    escaped = _TAG_LIKE.sub(
+        lambda m: f"&lt;{m.group(1)}{m.group(2)}{m.group(3)}&gt;", folded
+    )
+    return _TAG_OPEN.sub("&lt;", escaped)
 
 
 def untrusted_block(text: str) -> str:
@@ -115,7 +141,14 @@ def chunk_source_label(chunk: Any) -> str:
     return str(_field(chunk, "guideline_id") or "Clinical guideline")
 
 
+def _is_html(chunk: Any) -> bool:
+    return str(_field(chunk, "source_format") or "").strip().lower() == "html"
+
+
 def _page_label(chunk: Any) -> str:
+    """Physical page(s) of a chunk; empty for HTML sources (``page_number`` is a section index)."""
+    if _is_html(chunk):
+        return ""
     try:
         start = int(_field(chunk, "page_number") or 0)
         end = int(_field(chunk, "page_end") or 0)
@@ -124,6 +157,23 @@ def _page_label(chunk: Any) -> str:
     if start <= 0:
         return ""
     return f"{start}–{end}" if end > start else str(start)
+
+
+def _section_label(chunk: Any) -> str:
+    """Section title; HTML sources read ``"<title> (section N)"``."""
+    title = str(_field(chunk, "section_title") or "").strip() or "General"
+    if not _is_html(chunk):
+        return title
+    try:
+        index = int(_field(chunk, "page_number") or 0)
+    except (TypeError, ValueError):
+        index = 0
+    return f"{title} (section {index})" if index > 0 else title
+
+
+def _attr(value: str) -> str:
+    """Attribute-safe value: look-alike brackets folded, then quotes and ``<>&`` escaped."""
+    return html.escape(value.translate(_ANGLE_LOOKALIKES), quote=True)
 
 
 def truncate_text(text: str, max_chars: int) -> str:
@@ -154,12 +204,9 @@ def format_chunks(
     for index, chunk in enumerate(list(chunks)[:max_chunks], start=1):
         is_record = not isinstance(chunk, (tuple, str))
         source = chunk_source_label(chunk) if is_record else "Clinical guideline"
-        section = str(_field(chunk, "section_title") or "General") if is_record else "General"
+        section = _section_label(chunk) if is_record else "General"
         page = _page_label(chunk) if is_record else ""
-        attrs = (
-            f'index="{index}" source="{html.escape(source, quote=True)}" '
-            f'section="{html.escape(section, quote=True)}"'
-        )
+        attrs = f'index="{index}" source="{_attr(source)}" section="{_attr(section)}"'
         if page:
             attrs += f' page="{page}"'
         body = neutralize_tags(truncate_text(chunk_text(chunk), limit))

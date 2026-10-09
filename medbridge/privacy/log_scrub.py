@@ -20,7 +20,9 @@ MAX_SCRUB_CHARS = 4000
 MAX_DEPTH = 4
 MAX_ITEMS = 200
 _SKIP_KEYS = frozenset({"timestamp", "level", "logger", "logger_name"})
-_UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 
 
 def _scrub_str(value: str) -> str:

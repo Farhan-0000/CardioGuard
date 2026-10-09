@@ -253,3 +253,16 @@ class TestSchema:
 
 def test_factory_function() -> None:
     assert isinstance(get_response_generator(), ResponseGenerator)
+
+
+def test_grounded_output_format_shows_citation_markers() -> None:
+    """The JSON example the model mirrors must itself carry [n] markers (grounded modes only)."""
+    from medbridge.ai.response_generator import _build_system_prompt
+
+    for action, mode in (("ANSWER", "grounded"), ("GENERALIZE", "grounded"),
+                         ("ANSWER", "prompt_safety")):
+        prompt = _build_system_prompt(action, mode)
+        assert 'Eating less salt lowers blood pressure [2].' in prompt, (action, mode)
+    for action, mode in (("SOFT-ASK", "grounded"), ("ANSWER", "direct")):
+        prompt = _build_system_prompt(action, mode)
+        assert "[2]" not in prompt and '{"response_text": "<markdown answer>"}' in prompt

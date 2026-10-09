@@ -2,11 +2,11 @@
 Unit tests for TASK-11: Core Enumerations & Shared Types.
 Verifies all enum members, string representations, and ADL-008 casing compliance.
 """
-import pytest
 from enum import StrEnum
 
-from medbridge.api.schemas.enums import ActionEnum, EventTypeEnum
+import pytest
 
+from medbridge.api.schemas.enums import ActionEnum, EventTypeEnum
 
 # ---------------------------------------------------------------------------
 # ActionEnum Tests

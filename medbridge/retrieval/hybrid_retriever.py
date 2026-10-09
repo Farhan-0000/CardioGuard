@@ -42,7 +42,9 @@ class RetrievedChunk(BaseModel):
 
     chunk_id: str = Field(..., description="Unique chunk identifier, e.g. 'aha_2025_s8_c3'")
     chunk_text: str = Field(..., description="Full text content of the chunk")
-    guideline_id: str = Field(..., description="Guideline source identifier, e.g. 'AHA_ACC_2025'")
+    guideline_id: str = Field(
+        ..., description="Guideline source identifier, e.g. 'AHA_ACC_HTN_2025'"
+    )
     section_title: str = Field(..., description="Section or chapter title")
     page_number: int = Field(default=0, description="Source PDF page number")
     source_url: str = Field(default="", description="Reference document or guideline URL")
@@ -54,6 +56,10 @@ class RetrievedChunk(BaseModel):
     topics: list[str] = Field(default_factory=list, description="Topic tags")
     score_rrf: float | None = Field(default=None, description="Reciprocal Rank Fusion score")
     score_rerank: float | None = Field(default=None, description="Cross-encoder score")
+    source_format: str | None = Field(
+        default=None,
+        description="'pdf' or 'html'; for HTML, page_number is a section index, not a page",
+    )
 
 
 # ----------------------------------------------------------------------
@@ -80,6 +86,11 @@ def _as_int(value: Any) -> int | None:
 
 def _as_str(value: Any) -> str | None:
     return None if value is None else str(value)
+
+
+def _as_source_format(value: Any) -> str | None:
+    text = str(value).strip().lower() if value is not None else ""
+    return text or None
 
 
 def _as_topics(value: Any) -> list[str]:
@@ -110,6 +121,7 @@ def chunk_from_payload(
         page_end=_as_int(_first(data, "page_end")),
         topics=_as_topics(data.get("topics")),
         score_rrf=fused if mode == "hybrid" else None,
+        source_format=_as_source_format(data.get("source_format")),
     )
 
 

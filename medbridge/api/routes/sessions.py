@@ -2,7 +2,8 @@
 Session Management REST Routes (TASK-29, Module M-04; ADL-032/033).
 
 Endpoints:
-- POST   /api/sessions                      → 201 ``SessionResponse`` incl. signed ``session_token``
+- POST   /api/sessions                      → 201 ``SessionResponse`` incl. signed
+                                              ``session_token``
 - GET    /api/sessions/{session_id}/history → 200 ``HistoryResponse`` (message ids + explanations)
 - DELETE /api/sessions/{session_id}         → 204, right to erasure (crypto-shredding)
 
@@ -46,7 +47,10 @@ def citation_from_dict(data: dict[str, Any]) -> CitationResponse | None:
     """Build a ``CitationResponse`` from a stored dict (legacy rows may lack fields)."""
     try:
         return CitationResponse.model_validate(
-            {**{k: "" for k in _CITATION_REQUIRED}, **{k: v for k, v in data.items() if v is not None}}
+            {
+                **{k: "" for k in _CITATION_REQUIRED},
+                **{k: v for k, v in data.items() if v is not None},
+            }
         )
     except ValidationError:
         return None

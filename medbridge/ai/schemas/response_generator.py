@@ -7,7 +7,9 @@ class GeneratedCitation(BaseModel):
 
     marker: str = Field(..., description="Inline citation marker, e.g. '[1]'")
     chunk_id: str = Field(default="", description="Identifier of the cited guideline chunk")
-    source: str = Field(default="", description="Source guideline document, e.g. 'AHA_ACC_2025'")
+    source: str = Field(
+        default="", description="Source guideline document, e.g. 'AHA_ACC_HTN_2025'"
+    )
     section: str = Field(default="", description="Section or chapter title")
     excerpt: str = Field(default="", description="Verbatim or summarized evidence excerpt")
 

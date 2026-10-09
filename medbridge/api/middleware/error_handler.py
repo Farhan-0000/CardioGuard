@@ -194,10 +194,16 @@ async def global_exception_handler(
 
 def register_error_handlers(app: FastAPI) -> None:
     """Register all global exception handlers onto a FastAPI application instance."""
-    app.add_exception_handler(SessionErasedError, session_erased_handler)  # type: ignore[arg-type]
-    app.add_exception_handler(SessionNotFoundError, session_not_found_handler)  # type: ignore[arg-type]
-    app.add_exception_handler(MessageNotFoundError, message_not_found_handler)  # type: ignore[arg-type]
-    app.add_exception_handler(RequestValidationError, validation_error_handler)  # type: ignore[arg-type]
-    app.add_exception_handler(SQLAlchemyError, database_error_handler)  # type: ignore[arg-type]
-    app.add_exception_handler(StarletteHTTPException, http_exception_handler)  # type: ignore[arg-type]
-    app.add_exception_handler(Exception, global_exception_handler)
+    # Starlette types handlers as (Request, Exception); ours take the narrower
+    # exception subclass, hence the arg-type ignores.
+    handlers: list[tuple[type[Exception], Any]] = [
+        (SessionErasedError, session_erased_handler),  # before its base class
+        (SessionNotFoundError, session_not_found_handler),
+        (MessageNotFoundError, message_not_found_handler),
+        (RequestValidationError, validation_error_handler),
+        (SQLAlchemyError, database_error_handler),
+        (StarletteHTTPException, http_exception_handler),
+        (Exception, global_exception_handler),
+    ]
+    for exc_class, handler in handlers:
+        app.add_exception_handler(exc_class, handler)

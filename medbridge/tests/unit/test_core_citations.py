@@ -6,6 +6,8 @@ import pytest
 
 from medbridge.core.citations import (
     EXCERPT_CHARS,
+    display_page,
+    display_section,
     make_excerpt,
     source_label,
     validate_citations,
@@ -109,7 +111,7 @@ def test_llm_excerpt_never_trusted():
     [
         ({}, "ESC 2024"),
         ({"year": None}, "Guideline 1"),
-        ({"year": None, "doc_title": None}, "ESC"),
+        ({"year": None, "doc_title": None}, "GUIDE_1"),  # org alone is not a source label
         ({"year": None, "doc_title": None, "org": None}, "GUIDE_1"),
         ({"year": None, "doc_title": None, "org": None, "guideline_id": ""}, "Clinical guideline"),
     ],
@@ -127,3 +129,42 @@ def test_missing_page_and_url_become_none():
 def test_make_excerpt_collapses_whitespace():
     assert make_excerpt("a\n\n  b\tc") == "a b c"
     assert make_excerpt("x" * 10, limit=20) == "x" * 10
+
+
+def test_html_source_has_no_physical_page():
+    html = chunk(3, source_format="html", section_title="Treatment", page_number=7)
+    result = validate_citations("Claim [1].", [html])
+    citation = result.citations[0]
+    assert citation.page is None
+    assert citation.section == "Treatment (section 7)"
+    assert citation.source == "ESC 2024"
+
+
+def test_pdf_source_keeps_page_and_plain_section():
+    pdf = chunk(2, source_format="pdf", section_title="8.1 BP goals", page_number=34)
+    assert display_page(pdf) == 34 and display_section(pdf) == "8.1 BP goals"
+    legacy = chunk(2, section_title="8.1 BP goals", page_number=34)  # no source_format
+    assert display_page(legacy) == 34 and display_section(legacy) == "8.1 BP goals"
+
+
+@pytest.mark.parametrize(
+    "extra,section",
+    [
+        ({"section_title": "", "page_number": 4}, "Section 4"),
+        ({"section_title": "Overview", "page_number": 0}, "Overview"),
+        ({"section_title": "Overview", "page_number": 2, "source_format": "HTML"}, None),
+    ],
+)
+def test_html_section_label_edge_cases(extra, section):
+    item = chunk(1, **{"source_format": "html", **extra})
+    expected = section if section is not None else "Overview (section 2)"
+    assert display_section(item) == expected
+    assert display_page(item) is None
+
+
+def test_source_label_is_org_year_then_title_then_id():
+    assert source_label(chunk(1, org="NICE", year=2026)) == "NICE 2026"
+    assert source_label(chunk(1, org="NICE", year=None, doc_title="Hypertension in adults")) == (
+        "Hypertension in adults"
+    )
+    assert source_label(chunk(1, org="NICE", year=None, doc_title=None)) == "GUIDE_1"

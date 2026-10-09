@@ -5,7 +5,7 @@ Tests validation boundaries, JSON serialization, and schema compliance
 for all models in api/schemas/requests.py and api/schemas/responses.py.
 """
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from uuid import UUID, uuid4
 
 import pytest
@@ -22,7 +22,6 @@ from medbridge.api.schemas.responses import (
     MessageResponse,
     SessionResponse,
 )
-
 
 # ---------------------------------------------------------------------------
 # MessageRequest Tests
@@ -133,7 +132,7 @@ class TestMessageResponse:
                 )
             ],
             soft_ask_count=0,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
     def test_action_is_enum(self, sample_response: MessageResponse) -> None:
@@ -150,7 +149,7 @@ class TestMessageResponse:
             response_text="General guidance...",
             action=ActionEnum.GENERALIZE,
             soft_ask_count=0,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
         assert resp.citations == []
 
@@ -168,7 +167,7 @@ class TestMessageResponse:
                 response_text="text",
                 action=action,
                 soft_ask_count=0,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
             )
             assert resp.action == action
 
@@ -182,7 +181,7 @@ class TestSessionResponse:
 
     def test_valid_session_response(self) -> None:
         sid = uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         resp = SessionResponse(session_id=sid, created_at=now)
         assert resp.session_id == sid
         assert resp.created_at == now
@@ -190,7 +189,7 @@ class TestSessionResponse:
     def test_json_serialization(self) -> None:
         resp = SessionResponse(
             session_id=uuid4(),
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         data = json.loads(resp.model_dump_json())
         assert "session_id" in data
@@ -209,7 +208,7 @@ class TestHistoryResponse:
         assert resp.messages == []
 
     def test_history_with_messages(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         resp = HistoryResponse(
             session_id=uuid4(),
             messages=[
@@ -243,7 +242,7 @@ class TestHistoryResponse:
         assert len(resp.messages[1].citations) == 1
 
     def test_json_round_trip(self) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         resp = HistoryResponse(
             session_id=uuid4(),
             messages=[
@@ -268,7 +267,7 @@ class TestHealthResponse:
             status="healthy",
             postgres_connected=True,
             qdrant_connected=True,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
         assert resp.status == "healthy"
         assert resp.postgres_connected is True
@@ -279,7 +278,7 @@ class TestHealthResponse:
             status="unhealthy",
             postgres_connected=True,
             qdrant_connected=False,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
         assert resp.status == "unhealthy"
         assert resp.qdrant_connected is False
@@ -289,7 +288,7 @@ class TestHealthResponse:
             status="healthy",
             postgres_connected=True,
             qdrant_connected=True,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
         data = json.loads(resp.model_dump_json())
         assert data["status"] == "healthy"

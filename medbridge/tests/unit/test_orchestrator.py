@@ -41,6 +41,7 @@ from medbridge.core.templates import (
     SMALL_TALK_TEMPLATES,
     get_template,
 )
+from medbridge.nlp.query_expansion import expand_query
 from medbridge.retrieval.hybrid_retriever import RetrievedChunk
 from medbridge.state.projector import StateProjector
 from medbridge.state.turn_store import ChatTurn, SessionState, TurnRecord
@@ -154,6 +155,10 @@ def store() -> FakeStore:
 @pytest.fixture
 def components(chunks: list[RetrievedChunk]) -> SimpleNamespace:
     """Fakes for every orchestrator collaborator (default: a clean ANSWER turn)."""
+    return make_components(chunks)
+
+
+def make_components(chunks: list[RetrievedChunk]) -> SimpleNamespace:
     extractor = MagicMock()
     extractor.extract = AsyncMock(
         return_value=ExtractorOutput(
@@ -432,7 +437,12 @@ async def test_emergency_fastpath_runs_before_any_llm(components, store):
 
 async def test_emergency_detailed_classifier_records_rules(components, store):
     detailed = SimpleNamespace(
-        action=ActionEnum.ESCALATE, matched_rules=["chest_pain", "bp_crisis"]
+        action=ActionEnum.ESCALATE,
+        matched_rules=["chest_pain", "bp_crisis"],
+        negated=["syncope"],
+        suppressed=["stroke_signs"],
+        bp=(200, 125),
+        evidence_spans=["my bp is 200/125", "my chest feels tight"],
     )
     components.emergency_classifier = SimpleNamespace(
         classify_detailed=MagicMock(return_value=detailed), classify=MagicMock()
@@ -441,9 +451,45 @@ async def test_emergency_detailed_classifier_records_rules(components, store):
     assert response.explanation.emergency == {
         "action": "ESCALATE",
         "matched_rules": ["chest_pain", "bp_crisis"],
+        "negated": ["syncope"],
+        "suppressed": ["stroke_signs"],
+        "bp": [200, 125],
     }
     components.emergency_classifier.classify.assert_not_called()
     assert "chest_pain" in store.records[0].gate_2_rationale
+    # evidence spans are fragments of the patient's text: never in the trace
+    trace_json = json.dumps(store.records[0].trace)
+    assert "chest feels tight" not in trace_json and "evidence_spans" not in trace_json
+
+
+async def test_emergency_non_escalation_records_negated_and_suppressed(components, store):
+    detailed = SimpleNamespace(
+        action=None, matched_rules=[], negated=["chest_pain"], suppressed=[], bp=(138, 88),
+        evidence_spans=[],
+    )
+    components.emergency_classifier = SimpleNamespace(
+        classify_detailed=MagicMock(return_value=detailed)
+    )
+    response = await run(build(components, store))
+    assert response.action == ActionEnum.ANSWER
+    assert response.explanation.emergency == {
+        "action": None, "matched_rules": [], "negated": ["chest_pain"], "suppressed": [],
+        "bp": [138, 88],
+    }
+
+
+async def test_emergency_record_with_real_classifier(components, store):
+    from medbridge.core import emergency_classifier
+
+    components.emergency_classifier = emergency_classifier
+    response = await run(
+        build(components, store), message="my bp is 200/125 and my chest feels tight"
+    )
+    assert response.action == ActionEnum.ESCALATE
+    emergency = response.explanation.emergency
+    assert emergency["action"] == "ESCALATE" and "bp_crisis" in emergency["matched_rules"]
+    assert emergency["bp"] == [200, 125]
+    assert set(emergency) == {"action", "matched_rules", "negated", "suppressed", "bp"}
 
 
 async def test_emergency_plain_callable_classifier(components, store):
@@ -469,9 +515,12 @@ async def test_redacted_text_used_everywhere_except_emergency(components, store)
     assert seen == [MESSAGE]
     assert components.context_extractor.extract.await_args.args[0] == REDACTED
     assert components.context_gate.evaluate.await_args.args[1] == REDACTED
-    assert components.hybrid_retriever.hybrid_search.await_args.args[0] == REDACTED
-    assert components.evidence_gate.evaluate.await_args.kwargs["query"] == REDACTED
-    assert generator_calls(components)[0]["query"] == REDACTED
+    expanded = expand_query(REDACTED)  # extractor failed: expanded redacted message
+    assert components.hybrid_retriever.hybrid_search.await_args.args[0] == expanded
+    assert components.evidence_gate.evaluate.await_args.kwargs["message"] == REDACTED
+    assert components.evidence_gate.evaluate.await_args.kwargs["query"] == expanded
+    assert generator_calls(components)[0]["message"] == REDACTED
+    assert generator_calls(components)[0]["query"] == expanded
     assert store.records[0].user_message == REDACTED
     assert response.redaction_count == 1
     assert response.explanation.redaction_categories == {"NAME": 1}
@@ -508,9 +557,34 @@ async def test_extractor_failure_falls_back_to_raw_query(components, store, fail
         components.context_extractor.extract.side_effect = failure
     response = await run(build(components, store))
     assert response.action == ActionEnum.ANSWER
-    assert components.hybrid_retriever.hybrid_search.await_args.args[0] == REDACTED
+    query = components.hybrid_retriever.hybrid_search.await_args.args[0]
+    assert query == expand_query(REDACTED)  # redacted message + clinical synonyms
+    assert query.startswith(REDACTED)
     assert store.records[0].delta_events == []
     assert store.records[0].new_snapshot is None
+    assert components.evidence_gate.evaluate.await_args.kwargs["message"] == REDACTED
+
+
+async def test_extractor_failure_query_expansion_error_uses_message(components, store):
+    components.context_extractor.extract.return_value = None
+    with patch("medbridge.core.orchestrator.expand_query", side_effect=ValueError("bad")):
+        response = await run(build(components, store))
+    assert response.action == ActionEnum.ANSWER
+    assert components.hybrid_retriever.hybrid_search.await_args.args[0] == REDACTED
+
+
+async def test_gates_and_generator_get_message_and_search_query(components, store):
+    """False premises and unknown drugs are judged on the patient's own words."""
+    await run(build(components, store))
+    gate_kwargs = components.evidence_gate.evaluate.await_args.kwargs
+    assert gate_kwargs["message"] == REDACTED
+    assert gate_kwargs["query"] == "blood pressure target amlodipine"
+    generator_kwargs = generator_calls(components)[0]
+    assert generator_kwargs["message"] == REDACTED
+    assert generator_kwargs["query"] == "blood pressure target amlodipine"
+    assert components.hybrid_retriever.hybrid_search.await_args.args[0] == (
+        "blood pressure target amlodipine"
+    )
 
 
 @pytest.mark.parametrize("failure", [None, TimeoutError("slow")])
@@ -925,7 +999,8 @@ async def test_v1_calibrated_evidence_gate(components, store, calibration_module
     assert gate2.features == {"max_rerank": -2.5, "overridden": True}
     call = calibration_module.calibrated_evidence_decision.await_args
     assert call.kwargs["votes"] == get_settings().EVIDENCE_GATE_VOTES
-    assert call.args[3] == REDACTED
+    assert call.args[3] == "blood pressure target amlodipine"  # extractor search query
+    assert call.kwargs["message"] == REDACTED  # the patient's own words
 
 
 async def test_v1_follows_settings_when_ablation_is_none(components, store, calibration_module):
@@ -1283,3 +1358,184 @@ async def test_warmup_remote_provider_has_nothing_to_load(components, store):
     with patch("medbridge.core.orchestrator.get_llm_wrapper", return_value=llm):
         readiness = await build(components, store).warmup()
     assert readiness["llm"] is True and readiness["llm_models"] == {}
+
+
+# ---------------------------------------------------------------------------
+# 13. Integration contract (round 2): Gate-2 features, Gate 3 availability,
+#     NLI warm-up, HTML evidence and a PHI-free plaintext trace
+# ---------------------------------------------------------------------------
+
+
+async def test_plain_gate2_records_production_evidence_features(components, store, chunks):
+    from medbridge.ai.evidence_calibration import evidence_features
+
+    response = await run(build(components, store))
+    gate2 = response.explanation.gate2
+    assert gate2.source == "llm"
+    reranked = await rerank_top("q", chunks)
+    expected = evidence_features(REDACTED, reranked, {"recent_bp_readings": [
+        {"systolic": 150, "diastolic": 95}
+    ]})
+    assert gate2.features == pytest.approx(expected)
+    assert set(gate2.features) == {"max_rerank", "mean_top3_rerank", "entity_coverage", "n_chunks"}
+    assert gate2.features["max_rerank"] == 5.0 and gate2.features["n_chunks"] == 5.0
+
+
+async def test_gate2_fallback_still_records_features(components, store):
+    components.evidence_gate.evaluate.return_value = None
+    response = await run(build(components, store))
+    assert response.explanation.gate2.source == "fallback"
+    assert response.explanation.gate2.features["n_chunks"] == 5.0
+
+
+async def test_gate2_features_with_no_evidence(components, store):
+    components.hybrid_retriever.hybrid_search.return_value = []
+    response = await run(build(components, store))
+    features = response.explanation.gate2.features
+    assert features["n_chunks"] == 0.0 and features["max_rerank"] < -1
+
+
+async def test_gate2_features_not_recorded_for_bypassed_gates(components, store):
+    components.context_gate.evaluate.return_value = ContextGateOutput(
+        action="SOFT-ASK", rationale="Need meds.", missing_fields=["current_medications"]
+    )
+    response = await run(build(components, store))
+    assert response.explanation.gate2 is None
+    c1 = await run(build(components, FakeStore()), ablation=AblationConfig.preset("C1"))
+    assert c1.explanation.gate2.source == "ablation" and c1.explanation.gate2.features == {}
+
+
+async def test_gate2_features_survive_the_plaintext_trace_split(components, store):
+    from medbridge.state.turn_store import split_trace
+
+    await run(build(components, store))
+    public, private = split_trace(store.records[0].trace)
+    assert public["gate2"]["features"]["n_chunks"] == 5.0
+    assert "rationale" not in public["gate2"]
+    assert private["gate2"] == {"rationale": "Evidence covers the target."}
+
+
+def unavailable_grounding(draft: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        unsupported_fraction=0.0, cleaned_text=draft, n_claims=2, n_unsupported=0,
+        available=False, sentences=[{"text": draft, "supported": True}],
+    )
+
+
+async def test_v2_unavailable_verifier_keeps_draft_and_is_recorded(components, store):
+    draft = "The usual target is below 130/80 mmHg [2]. Keep checking at home [1]."
+    verifier = verifier_with(unavailable_grounding(draft))
+    response = await run(
+        build(components, store, verifier=verifier), ablation=AblationConfig.preset("V2")
+    )
+    assert response.action == ActionEnum.ANSWER
+    gate3 = response.explanation.gate3
+    assert gate3["available"] is False and gate3["status"] == "unavailable"
+    assert gate3["n_claims"] == 2 and gate3["action_change"] is None
+
+
+async def test_v2_gate3_record_is_numeric_and_text_free(components, store):
+    from medbridge.state.turn_store import split_trace
+
+    verifier = verifier_with(SimpleNamespace(
+        unsupported_fraction=0.25, cleaned_text="Keep checking at home [1].", n_claims=4,
+        n_unsupported=1, available=True,
+        sentences=[{"text": "The usual target is below 130/80 mmHg [2].", "supported": False}],
+        unsupported_sentences=["The usual target is below 130/80 mmHg [2]."],
+    ))
+    await run(build(components, store, verifier=verifier), ablation=AblationConfig.preset("V2"))
+    gate3 = store.records[0].trace["gate3"]
+    assert gate3["available"] is True and gate3["status"] == "ok"
+    assert "sentences" not in gate3 and "cleaned_text" not in gate3
+    public, private = split_trace(store.records[0].trace)
+    assert public["gate3"] == gate3  # every Gate 3 member is numeric/status → public
+    assert "gate3" not in private
+    assert "130/80" not in json.dumps(public["gate3"])
+
+
+async def test_warmup_reflects_nli_verifier_result(components, store):
+    components.hybrid_retriever.embedder = None
+    components.hybrid_retriever.warmup = AsyncMock()
+    components.reranker.warmup = AsyncMock()
+    llm = MagicMock()
+    llm.warmup = AsyncMock(return_value={})
+    for result, expected in ((True, True), (False, False)):
+        verifier = MagicMock(spec=["verify", "warmup"])
+        verifier.warmup = AsyncMock(return_value=result)
+        with patch("medbridge.core.orchestrator.get_llm_wrapper", return_value=llm):
+            readiness = await build(
+                components, store, verifier=verifier, GROUNDING_VERIFIER_ENABLED=True
+            ).warmup()
+        verifier.warmup.assert_awaited_once()
+        assert readiness["nli_verifier"] is expected
+
+
+async def test_warmup_uses_the_shared_grounding_verifier(components, store):
+    components.hybrid_retriever.embedder = None
+    components.hybrid_retriever.warmup = AsyncMock()
+    components.reranker.warmup = AsyncMock()
+    shared = MagicMock(spec=["verify", "warmup"])
+    shared.warmup = AsyncMock(return_value=True)
+    llm = MagicMock()
+    llm.warmup = AsyncMock(return_value={})
+    with (
+        patch("medbridge.core.orchestrator.get_llm_wrapper", return_value=llm),
+        patch("medbridge.ai.grounding_verifier.get_grounding_verifier", return_value=shared),
+    ):
+        readiness = await build(components, store, GROUNDING_VERIFIER_ENABLED=True).warmup()
+    assert readiness["nli_verifier"] is True
+    shared.warmup.assert_awaited_once()
+
+
+async def test_html_evidence_has_no_physical_page(components, store, chunks):
+    html_chunks = [
+        c.model_copy(update={"source_format": "html", "section_title": "Treatment"})
+        for c in chunks
+    ]
+    components.hybrid_retriever.hybrid_search.return_value = html_chunks
+    response = await run(build(components, store))
+    evidence = response.explanation.retrieval[0]
+    assert evidence.page is None and evidence.section == "Treatment (section 11)"
+    assert response.citations[0].page is None
+    assert response.citations[0].section == "Treatment (section 12)"
+
+
+async def test_metrics_grounding_counters_from_orchestrator_traces():
+    """Gate 3 records → plaintext audit trace (split_trace) → /api/metrics counters."""
+    from medbridge.api.routes.metrics import compute_metrics
+    from medbridge.state.turn_store import split_trace
+
+    def result(fraction: float, n_claims: int, n_unsupported: int, available: bool = True):
+        return SimpleNamespace(
+            unsupported_fraction=fraction, cleaned_text="Keep checking at home [1].",
+            n_claims=n_claims, n_unsupported=n_unsupported, available=available,
+            sentences=[{"text": "secret sentence 150/95"}],
+        )
+
+    failing = MagicMock()
+    failing.verify = AsyncMock(side_effect=RuntimeError("nli"))
+    verifiers = [
+        verifier_with(result(0.25, 4, 1)),                     # kept, 1 sentence removed
+        verifier_with(result(0.0, 2, 0, available=False)),     # NLI model unavailable
+        verifier_with(result(0.9, 3, 3), result(0.0, 2, 0)),  # ANSWER -> GENERALIZE
+        failing,                                               # verifier crashed
+    ]
+    traces = []
+    for verifier in verifiers:
+        store = FakeStore()
+        orchestrator = build(make_components(make_chunks()), store, verifier=verifier)
+        await run(orchestrator, ablation=AblationConfig.preset("V2"))
+        public, _ = split_trace(store.records[0].trace)
+        traces.append(public)
+
+    assert all("secret sentence" not in json.dumps(t) for t in traces)
+    rows = [("ANSWER", "PROCEED", "ANSWER", 100, t) for t in traces]
+    assert compute_metrics(rows, [], window=10).grounding_verifier == {
+        "verified_turns": 4,
+        "failures": 1,
+        "unavailable": 1,
+        "action_changes": 1,
+        "claims": 4 + 2 + 2,
+        "unsupported_claims": 1,
+        "removed_sentences": 1,
+    }

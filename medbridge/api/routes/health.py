@@ -99,8 +99,21 @@ def collect_models_loaded(
         "embedder_sparse": bool(readiness.get("embedder_sparse")) or embedder["sparse"],
         "reranker": bool(readiness.get("reranker")) or get_reranker().loaded,
         "llm": bool(readiness.get("llm")) or llm_resident,
-        "nli_verifier": bool(readiness.get("nli_verifier")),
+        "nli_verifier": bool(readiness.get("nli_verifier")) or _verifier_loaded(settings),
     }
+
+
+def _verifier_loaded(settings: Settings) -> bool:
+    """Live state of the Gate 3 NLI model (only consulted when the verifier is enabled)."""
+    if not settings.GROUNDING_VERIFIER_ENABLED:
+        return False
+    try:
+        from medbridge.ai.grounding_verifier import get_grounding_verifier
+
+        return bool(getattr(get_grounding_verifier(), "loaded", False))
+    except Exception as exc:  # health must never fail because of an optional model
+        logger.warning("health_check_verifier_failed", error=type(exc).__name__)
+        return False
 
 
 def derive_status(

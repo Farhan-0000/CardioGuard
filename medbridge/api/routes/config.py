@@ -3,10 +3,11 @@ Public UI configuration route (Module M-04) — ``GET /api/config/public``.
 
 Everything the web client needs before the first message: app name, the
 configurable emergency numbers, whether the deployment is local-only, the
-model names, the medical disclaimer, suggested starter prompts and a summary
-of the curated corpus (titles / organisations / years only, read from
-``data/corpus_manifest.json`` when it exists). Contains no secrets and no
-session data, so it needs no authentication.
+model names, the medical disclaimer, six starter suggestions (``suggestions``:
+``{title, prompt}`` cards, plus the plain ``suggested_prompts`` list kept for
+older clients) and a summary of the curated corpus (titles / organisations /
+years only, read from ``data/corpus_manifest.json`` when it exists). Contains
+no secrets and no session data, so it needs no authentication.
 """
 
 from __future__ import annotations
@@ -29,14 +30,24 @@ config_router = APIRouter(prefix="/config", tags=["config"])
 
 CORPUS_MANIFEST_PATH = Path(__file__).resolve().parents[3] / "data" / "corpus_manifest.json"
 
-SUGGESTED_PROMPTS: tuple[str, ...] = (
-    "My blood pressure was 148/92 this morning. Is that high?",
-    "What lifestyle changes help bring blood pressure down?",
-    "I take amlodipine 5 mg. What side effects should I watch out for?",
-    "What blood pressure target is recommended if I also have diabetes?",
-    "How do I measure my blood pressure correctly at home?",
-    "What is atrial fibrillation and why does it raise stroke risk?",
+# Starter suggestions shown on the empty chat screen: (card title, prompt sent).
+SUGGESTIONS: tuple[tuple[str, str], ...] = (
+    ("Check a reading", "My blood pressure was 148/92 this morning. Is that high?"),
+    ("Lower it naturally", "What lifestyle changes help bring blood pressure down?"),
+    ("Medicine side effects", "I take amlodipine 5 mg. What side effects should I watch out for?"),
+    ("Targets with diabetes", "What blood pressure target is recommended if I also have diabetes?"),
+    ("Measure at home", "How do I measure my blood pressure correctly at home?"),
+    ("Atrial fibrillation", "What is atrial fibrillation and why does it raise stroke risk?"),
 )
+# Plain prompt list kept for older clients (Streamlit, v1 web UI).
+SUGGESTED_PROMPTS: tuple[str, ...] = tuple(prompt for _, prompt in SUGGESTIONS)
+
+
+class Suggestion(BaseModel):
+    """One starter suggestion card."""
+
+    title: str
+    prompt: str
 
 
 class CorpusDocumentSummary(BaseModel):
@@ -66,6 +77,7 @@ class PublicConfig(BaseModel):
     models: dict[str, str]
     disclaimer: str
     suggested_prompts: list[str]
+    suggestions: list[Suggestion] = Field(default_factory=list)
     corpus: CorpusSummary | None = None
 
 
@@ -141,5 +153,6 @@ async def get_public_config() -> PublicConfig:
         models={"gates": settings.gates_model, "generator": settings.generator_model},
         disclaimer=build_disclaimer(settings),
         suggested_prompts=list(SUGGESTED_PROMPTS),
+        suggestions=[Suggestion(title=title, prompt=prompt) for title, prompt in SUGGESTIONS],
         corpus=load_corpus_summary(),
     )

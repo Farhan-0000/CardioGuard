@@ -18,9 +18,12 @@ CONTRACT (implemented by the persistence/privacy work-stream):
   module issues UPDATE/DELETE against them.
 
 Trace storage: ``audit_logs.trace`` keeps the PHI-free parts of the
-``Explanation`` (timings, actions, sources, models, retrieved guideline
-chunks) in plaintext for metrics. Gate rationales, the emergency match, the
-grounding-verifier sentences and any unknown key are moved into
+``Explanation`` in plaintext for metrics and threshold calibration: timings,
+actions, sources, models, retrieved guideline chunks, the numeric Gate 2
+evidence ``features`` (rerank scores, entity coverage, chunk count) and the
+numeric/status members of ``gate3`` (claims, unsupported fraction,
+``available``, action change). Gate rationales, the emergency rule lists and
+BP reading, any non-numeric member and any unknown key are moved into
 ``trace["private"]`` as an encrypted envelope, and ``trace["assistant_message_id"]``
 links the row to its assistant message for the history "Why this answer?" view.
 """
@@ -29,7 +32,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from sqlalchemy import delete, select
@@ -82,7 +85,7 @@ class ChatTurn:
 
     role: str  # "user" | "assistant"
     content: str
-    action: Optional[str] = None
+    action: str | None = None
 
 
 @dataclass
@@ -94,15 +97,15 @@ class TurnRecord:
     assistant_message: str
     final_action: ActionEnum
     citations: list[dict[str, Any]] = field(default_factory=list)
-    gate_1_action: Optional[str] = None     # "SOFT-ASK" | "PROCEED" | None
-    gate_1_rationale: Optional[str] = None
-    gate_2_action: Optional[str] = None     # "ANSWER" | "GENERALIZE" | "ABSTAIN" | "ESCALATE" | None
-    gate_2_rationale: Optional[str] = None
+    gate_1_action: str | None = None     # "SOFT-ASK" | "PROCEED" | None
+    gate_1_rationale: str | None = None
+    gate_2_action: str | None = None     # "ANSWER" | "GENERALIZE" | "ABSTAIN" | "ESCALATE" | None
+    gate_2_rationale: str | None = None
     evidence_chunk_ids: list[str] = field(default_factory=list)
     latency_ms: int = 0
     trace: dict[str, Any] = field(default_factory=dict)   # Explanation.model_dump(mode="json")
     delta_events: list[DeltaEvent] = field(default_factory=list)
-    new_snapshot: Optional[dict[str, Any]] = None          # None = unchanged
+    new_snapshot: dict[str, Any] | None = None          # None = unchanged
     soft_ask_count: int = 0
 
 
@@ -111,10 +114,10 @@ class HistoryRow:
     message_id: uuid.UUID
     role: str
     content: str
-    action: Optional[str]
+    action: str | None
     citations: list[dict[str, Any]]
     created_at: datetime
-    trace: Optional[dict[str, Any]] = None   # assistant rows: explanation from the audit log
+    trace: dict[str, Any] | None = None   # assistant rows: explanation from the audit log
 
 
 @dataclass
@@ -168,6 +171,32 @@ def _is_public_member(key: str, value: Any) -> bool:
     return key in _PUBLIC_STRING_FIELDS and isinstance(value, str) and len(value) <= 64
 
 
+def _is_number(value: Any) -> bool:
+    return isinstance(value, bool | int | float)
+
+
+def _split_gate(value: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Gate decision: public except the free-text rationale and non-numeric features.
+
+    ``features`` (the V1 evidence features: rerank scores, entity coverage,
+    chunk count, override flag) are numbers and stay public so metrics and
+    threshold calibration can read them without the session key.
+    """
+    public: dict[str, Any] = {}
+    private: dict[str, Any] = {}
+    for key, member in value.items():
+        if key == "rationale":
+            private[key] = member
+        elif key == "features" and isinstance(member, dict):
+            public[key] = {k: v for k, v in member.items() if _is_number(v)}
+            rest = {k: v for k, v in member.items() if not _is_number(v)}
+            if rest:
+                private[key] = rest
+        else:
+            public[key] = member
+    return public, private
+
+
 def split_trace(trace: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     """Split an explanation dict into (public, private) parts."""
     public: dict[str, Any] = {}
@@ -178,9 +207,9 @@ def split_trace(trace: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         if key in _PUBLIC_TRACE_KEYS or value is None:
             public[key] = value
         elif key in _GATE_TRACE_KEYS and isinstance(value, dict):
-            public[key] = {k: v for k, v in value.items() if k != "rationale"}
-            if "rationale" in value:
-                private[key] = {"rationale": value["rationale"]}
+            public[key], gate_private = _split_gate(value)
+            if gate_private:
+                private[key] = gate_private
         elif key in _SCALAR_TRACE_KEYS and isinstance(value, dict):
             public[key] = {k: v for k, v in value.items() if _is_public_member(k, v)}
             rest = {k: v for k, v in value.items() if not _is_public_member(k, v)}
@@ -191,6 +220,17 @@ def split_trace(trace: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     return public, private
 
 
+def _merge_dicts(current: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(current)
+    for key, value in extra.items():
+        existing = merged.get(key)
+        if isinstance(value, dict) and isinstance(existing, dict):
+            merged[key] = {**existing, **value}
+        else:
+            merged[key] = value
+    return merged
+
+
 def merge_trace(public: dict[str, Any], private: dict[str, Any]) -> dict[str, Any]:
     """Inverse of :func:`split_trace` (internal keys removed)."""
     merged = {
@@ -199,7 +239,7 @@ def merge_trace(public: dict[str, Any], private: dict[str, Any]) -> dict[str, An
     for key, value in private.items():
         current = merged.get(key)
         if isinstance(value, dict) and isinstance(current, dict):
-            merged[key] = {**current, **value}
+            merged[key] = _merge_dicts(current, value)
         else:
             merged[key] = value
     return merged
@@ -374,7 +414,9 @@ async def persist_turn(db: AsyncSession, record: TurnRecord) -> tuple[uuid.UUID,
 async def append_manual_events(
     db: AsyncSession, session_id: uuid.UUID, events: list[DeltaEvent]
 ) -> dict[str, Any]:
-    """Append user-entered events (e.g. BP log form) through the same projector. Returns new snapshot.
+    """Append user-entered events (e.g. the BP log form) through the same projector.
+
+    Returns the new snapshot.
 
     Raises:
         SessionNotFoundError / SessionErasedError.
@@ -413,7 +455,7 @@ async def save_feedback(
     session_id: uuid.UUID,
     message_id: uuid.UUID,
     rating: int,
-    comment: Optional[str] = None,
+    comment: str | None = None,
 ) -> uuid.UUID:
     """Store 👍(+1)/👎(-1) feedback with an optional (encrypted, redacted) comment.
 
@@ -555,7 +597,9 @@ async def get_history(db: AsyncSession, session_id: uuid.UUID) -> list[HistoryRo
     return rows
 
 
-async def get_last_user_message(db: AsyncSession, session_id: uuid.UUID) -> Optional[tuple[uuid.UUID, str]]:
+async def get_last_user_message(
+    db: AsyncSession, session_id: uuid.UUID
+) -> tuple[uuid.UUID, str] | None:
     """Return (message_id, decrypted text) of the most recent user message, if any."""
     cipher = await get_session_cipher(db, session_id)
     if cipher is None:
@@ -567,7 +611,7 @@ async def get_last_user_message(db: AsyncSession, session_id: uuid.UUID) -> Opti
 
 
 async def list_events(
-    db: AsyncSession, session_id: uuid.UUID, event_types: Optional[list[str]] = None
+    db: AsyncSession, session_id: uuid.UUID, event_types: list[str] | None = None
 ) -> list[EventRow]:
     """Return decrypted clinical events (chronological), optionally filtered by type."""
     cipher = await get_session_cipher(db, session_id)

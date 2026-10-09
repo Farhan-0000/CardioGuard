@@ -187,3 +187,20 @@ def test_derive_status_table():
     assert derive_status(True, True, {"reachable": False}, warm, s) == "degraded"
     assert derive_status(True, True, LLM_OK, {**warm, "llm": False}, s) == "degraded"
     assert derive_status(True, True, LLM_OK, {}, settings()) == "healthy"
+
+
+def test_nli_verifier_live_state_when_enabled(probes):
+    enabled = settings(GROUNDING_VERIFIER_ENABLED=True)
+    loaded_verifier = SimpleNamespace(loaded=True)
+    with patch(
+        "medbridge.ai.grounding_verifier.get_grounding_verifier", return_value=loaded_verifier
+    ):
+        assert collect_models_loaded({}, {}, enabled)["nli_verifier"] is True
+        # disabled verifier: never reported as loaded, the model is not consulted
+        assert collect_models_loaded({}, {}, settings())["nli_verifier"] is False
+    with patch(
+        "medbridge.ai.grounding_verifier.get_grounding_verifier", side_effect=RuntimeError("x")
+    ):
+        assert collect_models_loaded({}, {}, enabled)["nli_verifier"] is False
+    # the warm-up flag alone is enough
+    assert collect_models_loaded({"nli_verifier": True}, {}, enabled)["nli_verifier"] is True

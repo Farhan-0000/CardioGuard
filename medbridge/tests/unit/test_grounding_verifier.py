@@ -225,11 +225,15 @@ class TestVerify:
 
         monkeypatch.setattr(sentence_transformers, "CrossEncoder", boom)
         v = GroundingVerifier(model_name="missing/model", device="cpu")
+        assert v.loaded is False and v.load_error is None
         assert await v.warmup() is False
         assert v._load_error is not None
+        assert v.loaded is False and v.load_error is not None
 
     async def test_warmup_with_model(self) -> None:
-        assert await verifier().warmup() is True
+        v = verifier()
+        assert await v.warmup() is True
+        assert v.loaded is True
 
     def test_singleton(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(gv, "_verifier_instance", None)

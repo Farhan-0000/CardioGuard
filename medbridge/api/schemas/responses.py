@@ -6,7 +6,7 @@ All schemas follow Technical Specification Part II §5.1. Fields added for the
 final release are optional so existing clients (Streamlit, tests) keep working.
 """
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -22,12 +22,12 @@ class CitationResponse(BaseModel):
     source: str = Field(..., description="Guideline source, e.g. 'AHA/ACC 2025'")
     section: str = Field(..., description="Section reference, e.g. 'Section 8.2'")
     excerpt: str = Field(..., description="Truncated evidence text excerpt")
-    guideline_id: Optional[str] = Field(default=None, description="Corpus document id")
-    title: Optional[str] = Field(default=None, description="Full guideline title")
-    org: Optional[str] = Field(default=None, description="Issuing organisation")
-    year: Optional[int] = Field(default=None, description="Publication year")
-    page: Optional[int] = Field(default=None, description="Source page number")
-    url: Optional[str] = Field(default=None, description="Source URL")
+    guideline_id: str | None = Field(default=None, description="Corpus document id")
+    title: str | None = Field(default=None, description="Full guideline title")
+    org: str | None = Field(default=None, description="Issuing organisation")
+    year: int | None = Field(default=None, description="Publication year")
+    page: int | None = Field(default=None, description="Source page number")
+    url: str | None = Field(default=None, description="Source URL")
 
 
 # ----------------------------------------------------------------------
@@ -64,9 +64,9 @@ class RetrievedEvidence(BaseModel):
     guideline_id: str = ""
     title: str = ""
     org: str = ""
-    year: Optional[int] = None
+    year: int | None = None
     section: str = ""
-    page: Optional[int] = None
+    page: int | None = None
     score_rrf: float = 0.0
     score_rerank: float = 0.0
     excerpt: str = ""
@@ -84,20 +84,20 @@ class StageTiming(BaseModel):
 class Explanation(BaseModel):
     """Structured trace of how the answer was produced."""
 
-    gate1: Optional[GateDecision] = None
-    gate2: Optional[GateDecision] = None
-    gate3: Optional[dict[str, Any]] = None
-    emergency: Optional[dict[str, Any]] = None
+    gate1: GateDecision | None = None
+    gate2: GateDecision | None = None
+    gate3: dict[str, Any] | None = None
+    emergency: dict[str, Any] | None = None
     retrieval: list[RetrievedEvidence] = Field(default_factory=list)
     timings: list[StageTiming] = Field(default_factory=list)
     total_ms: float = 0.0
-    speculative_retrieval: Optional[dict[str, Any]] = None
-    citation_validation: Optional[dict[str, Any]] = None
+    speculative_retrieval: dict[str, Any] | None = None
+    citation_validation: dict[str, Any] | None = None
     redactions: int = 0
     redaction_categories: dict[str, int] = Field(default_factory=dict)
     models: dict[str, str] = Field(default_factory=dict)
     llm_calls: list[dict[str, Any]] = Field(default_factory=list)
-    ablation: Optional[str] = None
+    ablation: str | None = None
     regenerated: bool = False
 
 
@@ -110,10 +110,12 @@ class MessageResponse(BaseModel):
     citations: list[CitationResponse] = Field(default_factory=list)
     soft_ask_count: int = Field(default=0, ge=0)
     timestamp: datetime
-    message_id: Optional[UUID] = Field(default=None, description="Assistant message id")
-    user_message_id: Optional[UUID] = Field(default=None, description="Stored (redacted) user message id")
+    message_id: UUID | None = Field(default=None, description="Assistant message id")
+    user_message_id: UUID | None = Field(
+        default=None, description="Stored (redacted) user message id"
+    )
     redaction_count: int = Field(default=0, ge=0)
-    explanation: Optional[Explanation] = None
+    explanation: Explanation | None = None
 
 
 class SessionResponse(BaseModel):
@@ -121,8 +123,10 @@ class SessionResponse(BaseModel):
 
     session_id: UUID
     created_at: datetime
-    session_token: Optional[str] = Field(default=None, description="Signed bearer token for this session")
-    expires_at: Optional[datetime] = None
+    session_token: str | None = Field(
+        default=None, description="Signed bearer token for this session"
+    )
+    expires_at: datetime | None = None
 
 
 class HistoryMessage(BaseModel):
@@ -130,11 +134,11 @@ class HistoryMessage(BaseModel):
 
     role: str = Field(..., description="Message sender: 'user' or 'assistant'")
     content: str
-    action: Optional[ActionEnum] = None
+    action: ActionEnum | None = None
     citations: list[CitationResponse] = Field(default_factory=list)
     timestamp: datetime
-    message_id: Optional[UUID] = None
-    explanation: Optional[Explanation] = None
+    message_id: UUID | None = None
+    explanation: Explanation | None = None
 
 
 class HistoryResponse(BaseModel):
@@ -151,13 +155,13 @@ class HealthResponse(BaseModel):
     postgres_connected: bool
     qdrant_connected: bool
     timestamp: datetime
-    ollama_reachable: Optional[bool] = None
-    llm_provider: Optional[str] = None
+    ollama_reachable: bool | None = None
+    llm_provider: str | None = None
     models: dict[str, Any] = Field(default_factory=dict)
     models_loaded: dict[str, bool] = Field(default_factory=dict)
-    qdrant_points: Optional[int] = None
-    local_only_mode: Optional[bool] = None
-    version: Optional[str] = None
+    qdrant_points: int | None = None
+    local_only_mode: bool | None = None
+    version: str | None = None
 
 
 class ErrorResponse(BaseModel):
@@ -174,7 +178,7 @@ class ErrorResponse(BaseModel):
         ...,
         description="Pre-vetted clinically safe fallback message for the patient",
     )
-    details: Optional[Any] = Field(
+    details: Any | None = Field(
         default=None,
         description="Optional field-level or contextual error details",
     )

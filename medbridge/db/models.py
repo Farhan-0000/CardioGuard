@@ -41,19 +41,19 @@ class Base(DeclarativeBase):
     pass
 
 
-class Gate1ActionEnum(str, enum.Enum):
+class Gate1ActionEnum(enum.StrEnum):
     SOFT_ASK = "SOFT-ASK"
     PROCEED = "PROCEED"
 
 
-class Gate2ActionEnum(str, enum.Enum):
+class Gate2ActionEnum(enum.StrEnum):
     ANSWER = "ANSWER"
     GENERALIZE = "GENERALIZE"
     ABSTAIN = "ABSTAIN"
     ESCALATE = "ESCALATE"
 
 
-class FinalActionEnum(str, enum.Enum):
+class FinalActionEnum(enum.StrEnum):
     SOFT_ASK = "SOFT-ASK"
     ANSWER = "ANSWER"
     GENERALIZE = "GENERALIZE"

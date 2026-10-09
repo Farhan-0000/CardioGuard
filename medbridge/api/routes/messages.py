@@ -11,6 +11,10 @@ Message routes (Module M-04): JSON, Server-Sent Events and regeneration.
 * ``POST /api/sessions/{id}/regenerate`` — re-run the last user message
   (JSON, or SSE with ``?stream=true``).
 
+Every route first checks the session (404 unknown, 410 ``SESSION_ERASED`` for a
+crypto-shredded session) before any pipeline or LLM work starts; the SSE routes
+do this in a pre-check so the error is a normal JSON response, not a stream.
+
 The SSE routes run the orchestrator in its own task with its own database
 session (committed when the turn finishes), so a client that disconnects
 mid-stream does not abort the turn: it still completes and is persisted.
@@ -43,7 +47,7 @@ from medbridge.db.connection import get_session, get_sessionmaker
 from medbridge.db.models import Session as SessionModel
 from medbridge.privacy.deps import require_session_access
 from medbridge.state import turn_store
-from medbridge.state.session_manager import SessionNotFoundError
+from medbridge.state.session_manager import SessionErasedError, SessionNotFoundError
 
 logger = structlog.get_logger(__name__)
 
@@ -64,8 +68,12 @@ _running_turns: set[asyncio.Task[MessageResponse]] = set()
 
 
 async def _ensure_session(db: AsyncSession, session_id: uuid.UUID) -> None:
-    if await db.get(SessionModel, session_id) is None:
+    """404 for an unknown session, 410 for an erased one — checked before any LLM work."""
+    session = await db.get(SessionModel, session_id)
+    if session is None:
         raise SessionNotFoundError(session_id)
+    if getattr(session, "erased_at", None) is not None:
+        raise SessionErasedError(session_id)
 
 
 async def _ensure_regenerable(db: AsyncSession, session_id: uuid.UUID) -> None:

@@ -17,7 +17,8 @@ os.environ.setdefault("POSTGRES_PASSWORD", "password")
 from medbridge.ai.schemas.extractor import DeltaEvent
 from medbridge.api.schemas.enums import EventTypeEnum
 from medbridge.db.connection import get_engine, get_sessionmaker
-from medbridge.db.models import ClinicalEvent, ContextSnapshot, Session as SessionModel
+from medbridge.db.models import ClinicalEvent, ContextSnapshot
+from medbridge.db.models import Session as SessionModel
 from medbridge.privacy.crypto import get_session_cipher
 from medbridge.state.projector import StateProjector
 
@@ -143,6 +144,7 @@ async def test_persist_upserts_existing_snapshot(
     stored = await _plain(db_session, test_session_id, stored_row.snapshot)
     assert stored["demographics"]["age"] == 55
     assert len(stored["recent_bp_readings"]) == 1
+    assert stored == snap2  # the persisted snapshot is the returned projection
 
     # Total events should be 2 (1 + 1)
     rows = (await db_session.execute(

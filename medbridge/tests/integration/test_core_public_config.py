@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from medbridge.api.routes import config as config_module
 from medbridge.api.routes.config import (
     SUGGESTED_PROMPTS,
+    SUGGESTIONS,
     PublicConfig,
     build_disclaimer,
     config_router,
@@ -104,3 +105,13 @@ def test_disclaimer_uses_custom_numbers():
     text = build_disclaimer(custom)
     assert "call 999 (or 999 for an ambulance in the UK)" in text
     assert "does not diagnose" in text
+
+
+def test_public_config_suggestions_have_title_and_prompt():
+    body = client().get("/api/config/public").json()
+    suggestions = body["suggestions"]
+    assert len(suggestions) == 6 == len(SUGGESTIONS)
+    assert all(set(item) == {"title", "prompt"} for item in suggestions)
+    assert all(item["title"].strip() and item["prompt"].strip() for item in suggestions)
+    # the plain list stays in sync for older clients
+    assert [item["prompt"] for item in suggestions] == body["suggested_prompts"]

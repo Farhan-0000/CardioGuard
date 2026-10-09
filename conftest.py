@@ -20,7 +20,7 @@ import os
 import socket
 import subprocess
 import sys
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -57,7 +57,7 @@ def _port_open(host: str, port: int, timeout: float = 0.5) -> bool:
         return False
 
 
-@lru_cache(maxsize=None)
+@cache
 def _service_available(name: str) -> bool:
     from medbridge.config import get_settings
 

@@ -5,6 +5,7 @@ Tests all 6 event projection rules individually, truncation limits,
 deduplication logic, and snapshot reconstruction.
 """
 import copy
+
 import pytest
 
 from medbridge.ai.schemas.extractor import DeltaEvent
@@ -105,9 +106,11 @@ class TestMedicationAdded:
         ]
         result = projector.apply_events(empty_snapshot, events)
         assert len(result["current_medications"]) == 1
-        # First one wins — keeps original casing and dosage
-        assert result["current_medications"][0]["drug"] == "Amlodipine"
-        assert result["current_medications"][0]["dosage"] == "5mg"
+        # Same drug (case-insensitive): keeps the original name, records a dose change
+        med = result["current_medications"][0]
+        assert med["drug"] == "Amlodipine"
+        assert med["dosage"] == "10mg"
+        assert med["history"] == [{"dosage": "5mg", "frequency": ""}]
 
     def test_adds_different_medications(self, projector, empty_snapshot):
         events = [
@@ -318,7 +321,7 @@ class TestLabResult:
         ]
         result = projector.apply_events(empty_snapshot, events)
         potassium_labs = [
-            l for l in result["lab_results"] if l["lab_type"] == "potassium"
+            lab for lab in result["lab_results"] if lab["lab_type"] == "potassium"
         ]
         assert len(potassium_labs) == 3
         # Last 3 values should be i=2,3,4 → 4.2, 4.3, 4.4
@@ -342,8 +345,8 @@ class TestLabResult:
         ]
         result = projector.apply_events(empty_snapshot, events)
 
-        potassium = [l for l in result["lab_results"] if l["lab_type"] == "potassium"]
-        creatinine = [l for l in result["lab_results"] if l["lab_type"] == "creatinine"]
+        potassium = [lab for lab in result["lab_results"] if lab["lab_type"] == "potassium"]
+        creatinine = [lab for lab in result["lab_results"] if lab["lab_type"] == "creatinine"]
         assert len(potassium) == 3  # Truncated from 4 → 3
         assert len(creatinine) == 2  # Under limit, all kept
 
@@ -493,3 +496,88 @@ class TestLabResultKeepsLastThreePerType:
         events = [self._lab(None, v) for v in range(5)]
         labs = projector.apply_events({}, events)["lab_results"]
         assert [lab["value"] for lab in labs] == [2, 3, 4]
+
+
+# ---------------------------------------------------------------------------
+# Dose changes, normaliser labels and demographic profile (round 2)
+# ---------------------------------------------------------------------------
+
+def _med(drug: str, **payload: object) -> DeltaEvent:
+    return DeltaEvent(event_type=EventTypeEnum.MEDICATION_ADDED,
+                      payload={"drug_name": drug, **payload})
+
+
+class TestDoseChange:
+    def test_dose_change_updates_entry_and_records_history(self, projector):
+        events = [
+            _med("amlodipine", dosage="5 mg", frequency="once daily", brand_name="Amlong",
+                 drug_class="calcium channel blocker"),
+            _med("amlodipine", dosage="10 mg", frequency="", changed_at="2026-10-01"),
+            _med("Amlodipine", dosage="10 mg", frequency="twice daily"),
+        ]
+        result = projector.apply_events({}, events)
+        assert result["current_medications"] == [{
+            "drug": "amlodipine",
+            "dosage": "10 mg",
+            "frequency": "twice daily",
+            "brand_name": "Amlong",
+            "drug_class": "calcium channel blocker",
+            "history": [
+                {"dosage": "5 mg", "frequency": "once daily", "changed_at": "2026-10-01"},
+                {"dosage": "10 mg", "frequency": "once daily"},
+            ],
+        }]
+
+    def test_same_dose_repeated_is_not_a_change(self, projector):
+        events = [_med("telmisartan", dosage="40 mg"), _med("telmisartan", dosage="40 mg"),
+                  _med("telmisartan")]
+        med = projector.apply_events({}, events)["current_medications"][0]
+        assert med["dosage"] == "40 mg" and "history" not in med
+
+    def test_labels_kept_and_filled_in_later(self, projector):
+        events = [_med("metoprolol", dosage="25 mg"),
+                  _med("metoprolol", brand_name="Betaloc", drug_class="beta blocker")]
+        med = projector.apply_events({}, events)["current_medications"][0]
+        assert med["brand_name"] == "Betaloc" and med["drug_class"] == "beta blocker"
+        assert med["dosage"] == "25 mg" and "history" not in med
+
+    def test_dose_change_is_a_pure_deterministic_fold(self, projector):
+        events = [_med("ramipril", dosage="2.5 mg"), _med("ramipril", dosage="5 mg")]
+        snapshot = {"current_medications": []}
+        first = projector.apply_events(snapshot, events)
+        assert first == projector.apply_events(snapshot, events)
+        assert first == projector.reconstruct_from_events(events)
+        assert snapshot == {"current_medications": []}  # input not mutated
+
+    def test_stop_keeps_dose_history(self, projector):
+        events = [_med("lisinopril", dosage="10 mg"), _med("lisinopril", dosage="20 mg"),
+                  DeltaEvent(event_type=EventTypeEnum.MEDICATION_STOPPED,
+                             payload={"drug_name": "lisinopril", "reason": "dry cough"})]
+        result = projector.apply_events({}, events)
+        assert result["current_medications"] == []
+        stopped = result["discontinued_medications"][0]
+        assert stopped["dosage"] == "20 mg" and stopped["history"] == [
+            {"dosage": "10 mg", "frequency": ""}
+        ]
+
+
+class TestDemographicProfile:
+    def test_pregnancy_status_and_conditions_in_snapshot(self, projector):
+        events = [
+            DeltaEvent(event_type=EventTypeEnum.DEMOGRAPHIC,
+                       payload={"age": 31, "sex": "female", "pregnancy_status": "pregnant",
+                                "conditions": ["diabetes"]}),
+            DeltaEvent(event_type=EventTypeEnum.DEMOGRAPHIC,
+                       payload={"conditions": ["Diabetes", "chronic kidney disease"]}),
+        ]
+        demo = projector.apply_events({}, events)["demographics"]
+        assert demo == {"age": 31, "sex": "female", "pregnancy_status": "pregnant",
+                        "conditions": ["diabetes", "chronic kidney disease"]}
+
+    def test_condition_string_and_bad_types(self, projector):
+        events = [
+            DeltaEvent(event_type=EventTypeEnum.DEMOGRAPHIC, payload={"conditions": "asthma"}),
+            DeltaEvent(event_type=EventTypeEnum.DEMOGRAPHIC, payload={"conditions": 5}),
+        ]
+        demo = projector.apply_events({}, events)["demographics"]
+        assert demo["conditions"] == ["asthma"]

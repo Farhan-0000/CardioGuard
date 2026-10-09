@@ -280,3 +280,13 @@ class TestCalibratedDecision:
                                       features={}, overridden=False)
         gate_output = decision.to_gate_output()
         assert gate_output.action == "ANSWER" and gate_output.evidence_sufficient
+
+
+def test_redaction_placeholders_are_not_entities() -> None:
+    from medbridge.ai.evidence_calibration import salient_entities
+
+    redacted = "my name is [NAME], phone [PHONE], email [EMAIL], my bp is 138/88 is that ok?"
+    entities = salient_entities(redacted)
+    assert not any(e in entities for e in ("kw:name", "kw:phone", "kw:email"))
+    assert entities == salient_entities("my bp is 138/88 is that ok?")
+    assert salient_entities("I am [AGE: 54], is salt bad?") == salient_entities("is salt bad?")

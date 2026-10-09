@@ -6,6 +6,7 @@ Guarantees zero raw 500 errors, structured ErrorResponse schemas, safe clinical
 fallbacks, and strict server-side stack trace containment.
 """
 import uuid
+
 import pytest
 from fastapi import FastAPI, HTTPException, status
 from fastapi.testclient import TestClient
@@ -235,10 +236,22 @@ class TestPrivacyAndAuthErrors:
         assert response.status_code == 404
         assert response.json()["error_code"] == "MESSAGE_NOT_FOUND"
 
-    def test_validation_errors_do_not_echo_or_log_the_input(self, client: TestClient) -> None:
+    def test_validation_errors_do_not_echo_or_log_the_input(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import structlog
         from structlog.testing import capture_logs
 
+        from medbridge.api.middleware import error_handler
+
         with capture_logs() as logs:  # "x" is too short → the error carries the input
+            # The module logger is cached on first use (cache_logger_on_first_use) and
+            # keeps the processor chain of that moment; an earlier test that reset
+            # structlog (structlog.reset_defaults) would hide it from capture_logs.
+            # A fresh proxy bound inside capture_logs is captured whatever ran before.
+            monkeypatch.setattr(
+                error_handler, "logger", structlog.get_logger(error_handler.__name__)
+            )
             response = client.post("/test/validation", json={"message": "x"})
         assert response.status_code == 422
         for err in response.json()["details"]:

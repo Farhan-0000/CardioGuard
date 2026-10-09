@@ -144,7 +144,15 @@ def test_compute_metrics_aggregates_everything():
         "discard_rate": 0.25,
         "mean_saved_ms": 40.0,
     }
-    assert result.grounding_verifier == {"verified_turns": 1, "action_changes": 1}
+    assert result.grounding_verifier == {
+        "verified_turns": 1,
+        "failures": 0,
+        "unavailable": 0,
+        "action_changes": 1,
+        "claims": 3,
+        "unsupported_claims": 0,
+        "removed_sentences": 0,
+    }
     assert result.redaction == {"redacted_items": 2, "turns_with_redaction": 1}
     assert result.feedback.count == 4
     assert result.feedback.thumbs_up == 2 and result.feedback.thumbs_down == 1
@@ -220,3 +228,50 @@ def test_metrics_requires_admin():
 
 def test_metrics_limit_validated():
     assert make_app(FakeDB([], [])).get("/api/metrics?limit=0").status_code == 422
+
+
+def test_stage_latency_excludes_skipped_and_discarded_timings():
+    row_trace = {
+        "timings": [
+            {"stage": "retrieval", "ms": 300.0, "status": "discarded"},
+            {"stage": "rerank", "ms": 80.0, "status": "discarded"},
+            {"stage": "evidence_gate", "ms": 0.0, "status": "skipped"},
+            {"stage": "generation", "ms": 700.0, "status": "ok"},
+        ]
+    }
+    ok_trace = {"timings": [{"stage": "retrieval", "ms": 100.0, "status": "ok"}]}
+    result = compute_metrics(
+        [
+            ("SOFT-ASK", "SOFT-ASK", None, 900, row_trace),
+            ("ANSWER", "PROCEED", "ANSWER", 1, ok_trace),
+        ],
+        [],
+        window=10,
+    )
+    assert set(result.stage_latency) == {"generation", "retrieval"}
+    assert result.stage_latency["retrieval"].count == 1
+    assert result.stage_latency["retrieval"].p50_ms == 100.0
+
+
+
+def test_metrics_route_reports_grounding_counters():
+    gate3_rows = [
+        {"status": "ok", "available": True, "n_claims": 4, "n_unsupported": 1,
+         "unsupported_fraction": 0.25, "threshold": 0.34, "attempts": 1, "action_change": None,
+         "removed_sentences_count": 1},
+        {"status": "unavailable", "available": False, "n_claims": 2, "n_unsupported": 0,
+         "unsupported_fraction": 0.0, "threshold": 0.34, "attempts": 1, "action_change": None,
+         "removed_sentences_count": 0},
+        {"status": "failed", "error": "RuntimeError"},
+    ]
+    rows = [("ANSWER", "PROCEED", "ANSWER", 100, {"gate3": g, "timings": []}) for g in gate3_rows]
+    body = make_app(FakeDB(rows, ratings=[])).get("/api/metrics").json()
+    assert body["grounding_verifier"] == {
+        "verified_turns": 3,
+        "failures": 1,
+        "unavailable": 1,
+        "action_changes": 0,
+        "claims": 6,
+        "unsupported_claims": 1,
+        "removed_sentences": 1,
+    }

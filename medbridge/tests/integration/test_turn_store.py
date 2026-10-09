@@ -97,6 +97,36 @@ def test_split_trace_keeps_only_phi_free_fields_public() -> None:
     assert merge_trace(public, private) == TRACE
 
 
+def test_split_trace_keeps_gate_features_and_gate3_numbers_public() -> None:
+    trace = {
+        "gate2": {
+            "action": "GENERALIZE", "rationale": "patient said 150/95", "source": "calibrated",
+            "votes": ["ANSWER", "GENERALIZE"],
+            "features": {"max_rerank": 2.5, "mean_top3_rerank": 1.25, "entity_coverage": 0.5,
+                         "n_chunks": 5.0, "overridden": True, "note": "free text 150/95"},
+        },
+        "gate3": {"status": "unavailable", "available": False, "n_claims": 3,
+                  "n_unsupported": 0, "unsupported_fraction": 0.0, "threshold": 0.34,
+                  "attempts": 1, "action_change": None, "removed_sentences_count": 0},
+        "emergency": {"action": "ESCALATE", "matched_rules": ["bp_crisis"], "negated": [],
+                      "suppressed": ["chest_pain"], "bp": [200, 125]},
+    }
+    public, private = split_trace(trace)
+    assert public["gate2"]["features"] == {
+        "max_rerank": 2.5, "mean_top3_rerank": 1.25, "entity_coverage": 0.5, "n_chunks": 5.0,
+        "overridden": True,
+    }
+    assert public["gate2"]["votes"] == ["ANSWER", "GENERALIZE"]
+    assert private["gate2"] == {"rationale": "patient said 150/95",
+                                "features": {"note": "free text 150/95"}}
+    assert public["gate3"] == trace["gate3"] and "gate3" not in private
+    # rule lists and the BP reading are health data: encrypted, never plaintext
+    assert public["emergency"] == {"action": "ESCALATE"}
+    assert private["emergency"]["bp"] == [200, 125]
+    assert "150/95" not in str(public) and "200" not in str(public["emergency"])
+    assert merge_trace(public, private) == trace
+
+
 # ---------------------------------------------------------------------------
 # persist_turn with a mocked session: exactly one flush, everything encrypted
 # ---------------------------------------------------------------------------

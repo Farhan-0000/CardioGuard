@@ -244,3 +244,16 @@ def test_factory_returns_singleton():
     first = get_hybrid_retriever()
     assert isinstance(first, HybridRetriever)
     assert get_hybrid_retriever() is first
+
+
+def test_payload_source_format_is_read():
+    html = chunk_from_payload(
+        "id-2",
+        {"chunk_id": "h", "chunk_text": "t", "guideline_id": "MEDLINEPLUS_HIGH_BP",
+         "section_title": "Treatment", "page_number": 3, "source_format": "HTML"},
+        0.5,
+        "hybrid",
+    )
+    assert html.source_format == "html" and html.page_number == 3
+    legacy = chunk_from_payload("id-3", {"chunk_id": "p", "chunk_text": "t"}, 0.5, "hybrid")
+    assert legacy.source_format is None
