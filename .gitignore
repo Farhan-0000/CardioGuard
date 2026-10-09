@@ -1,11 +1,30 @@
+# Python / tooling
 .venv/
+.venv*/
 __pycache__/
-.env
-.pytest_cache/
 *.pyc
-data/
-pgdata/
-qdrant_data/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
-*.egg-info/
+
+# Secrets
+.env
+
+# Local data (documents are downloaded by scripts/download_corpus.py; licences
+# of several guidelines do not allow redistribution)
+data/*
+!data/corpus_manifest.json
+!data/README.md
+pgdata/
+qdrant_data/
+
+# Evaluation caches (results themselves are committed)
+evaluation/cache/
+
+# Report build intermediates
+report/build/
+~$*.docx
+~$*.pptx

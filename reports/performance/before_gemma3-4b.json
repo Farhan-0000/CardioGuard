@@ -1,0 +1,238 @@
+{
+  "label": "before",
+  "base_url": "http://127.0.0.1:8000",
+  "cold": [
+    {
+      "scenario": "S1",
+      "turn": 1,
+      "status": 200,
+      "action": "ESCALATE",
+      "latency_s": 0.028,
+      "trace": null
+    },
+    {
+      "scenario": "S2",
+      "turn": 1,
+      "status": 200,
+      "action": "ABSTAIN",
+      "latency_s": 15.751,
+      "trace": null
+    },
+    {
+      "scenario": "S3",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 7.554,
+      "trace": null
+    },
+    {
+      "scenario": "S4",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 6.712,
+      "trace": null
+    },
+    {
+      "scenario": "S4",
+      "turn": 2,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 19.726,
+      "trace": null
+    },
+    {
+      "scenario": "S5",
+      "turn": 1,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 37.476,
+      "trace": null
+    }
+  ],
+  "warm": [
+    {
+      "scenario": "S1",
+      "turn": 1,
+      "status": 200,
+      "action": "ESCALATE",
+      "latency_s": 0.028,
+      "trace": null
+    },
+    {
+      "scenario": "S2",
+      "turn": 1,
+      "status": 200,
+      "action": "ABSTAIN",
+      "latency_s": 5.146,
+      "trace": null
+    },
+    {
+      "scenario": "S3",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 7.406,
+      "trace": null
+    },
+    {
+      "scenario": "S4",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 7.387,
+      "trace": null
+    },
+    {
+      "scenario": "S4",
+      "turn": 2,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 17.767,
+      "trace": null
+    },
+    {
+      "scenario": "S5",
+      "turn": 1,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 31.121,
+      "trace": null
+    },
+    {
+      "scenario": "S1",
+      "turn": 1,
+      "status": 200,
+      "action": "ESCALATE",
+      "latency_s": 0.024,
+      "trace": null
+    },
+    {
+      "scenario": "S2",
+      "turn": 1,
+      "status": 200,
+      "action": "ABSTAIN",
+      "latency_s": 5.077,
+      "trace": null
+    },
+    {
+      "scenario": "S3",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 8.011,
+      "trace": null
+    },
+    {
+      "scenario": "S4",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 6.864,
+      "trace": null
+    },
+    {
+      "scenario": "S4",
+      "turn": 2,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 15.615,
+      "trace": null
+    },
+    {
+      "scenario": "S5",
+      "turn": 1,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 52.069,
+      "trace": null
+    },
+    {
+      "scenario": "S1",
+      "turn": 1,
+      "status": 200,
+      "action": "ESCALATE",
+      "latency_s": 0.024,
+      "trace": null
+    },
+    {
+      "scenario": "S2",
+      "turn": 1,
+      "status": 200,
+      "action": "ABSTAIN",
+      "latency_s": 5.158,
+      "trace": null
+    },
+    {
+      "scenario": "S3",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 7.628,
+      "trace": null
+    },
+    {
+      "scenario": "S4",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 7.233,
+      "trace": null
+    },
+    {
+      "scenario": "S4",
+      "turn": 2,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 18.059,
+      "trace": null
+    },
+    {
+      "scenario": "S5",
+      "turn": 1,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 28.992,
+      "trace": null
+    }
+  ],
+  "warm_summary": {
+    "S1-t1:ESCALATE": {
+      "n": 3,
+      "p50": 0.024,
+      "p95": 0.028,
+      "mean": 0.025
+    },
+    "S2-t1:ABSTAIN": {
+      "n": 3,
+      "p50": 5.146,
+      "p95": 5.158,
+      "mean": 5.127
+    },
+    "S3-t1:SOFT-ASK": {
+      "n": 3,
+      "p50": 7.628,
+      "p95": 8.011,
+      "mean": 7.682
+    },
+    "S4-t1:SOFT-ASK": {
+      "n": 3,
+      "p50": 7.233,
+      "p95": 7.387,
+      "mean": 7.161
+    },
+    "S4-t2:ANSWER": {
+      "n": 3,
+      "p50": 17.767,
+      "p95": 18.059,
+      "mean": 17.147
+    },
+    "S5-t1:ANSWER": {
+      "n": 3,
+      "p50": 31.121,
+      "p95": 52.069,
+      "mean": 37.394
+    }
+  }
+}

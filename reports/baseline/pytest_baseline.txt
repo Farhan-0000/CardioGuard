@@ -1,0 +1,90 @@
+medbridge/api/__init__.py                                               0      0   100%
+medbridge/api/middleware/__init__.py                                    2      0   100%
+medbridge/api/middleware/error_handler.py                              34      0   100%
+medbridge/api/routes/__init__.py                                        9      0   100%
+medbridge/api/routes/health.py                                         44      6    86%
+medbridge/api/routes/messages.py                                       16      0   100%
+medbridge/api/routes/sessions.py                                       23      0   100%
+medbridge/api/schemas/__init__.py                                       0      0   100%
+medbridge/api/schemas/enums.py                                         14      0   100%
+medbridge/api/schemas/requests.py                                       3      0   100%
+medbridge/api/schemas/responses.py                                     40      0   100%
+medbridge/config.py                                                    34      0   100%
+medbridge/core/__init__.py                                              0      0   100%
+medbridge/core/emergency_classifier.py                                  9      0   100%
+medbridge/core/orchestrator.py                                        174     12    93%
+medbridge/core/templates.py                                            12      0   100%
+medbridge/db/__init__.py                                                0      0   100%
+medbridge/db/connection.py                                             42      3    93%
+medbridge/db/migrations/__init__.py                                     0      0   100%
+medbridge/db/models.py                                                 73      0   100%
+medbridge/frontend/__init__.py                                          0      0   100%
+medbridge/frontend/app.py                                              77      5    94%
+medbridge/frontend/components/__init__.py                               5      0   100%
+medbridge/frontend/components/chat.py                                  22      0   100%
+medbridge/frontend/components/citations.py                             29      4    86%
+medbridge/frontend/components/disclaimer.py                             4      0   100%
+medbridge/frontend/components/sidebar.py                               24      0   100%
+medbridge/frontend/services/__init__.py                                 3      0   100%
+medbridge/frontend/services/api_client.py                             178     75    58%
+medbridge/frontend/services/session.py                                 63      7    89%
+medbridge/ingestion/__init__.py                                         4      0   100%
+medbridge/ingestion/__main__.py                                        57     29    49%
+medbridge/ingestion/chunker.py                                         90      5    94%
+medbridge/ingestion/indexer.py                                         73     11    85%
+medbridge/ingestion/parser.py                                          64      9    86%
+medbridge/logging_config.py                                            22      1    95%
+medbridge/main.py                                                      54      6    89%
+medbridge/retrieval/__init__.py                                         0      0   100%
+medbridge/retrieval/embedder.py                                        53      0   100%
+medbridge/retrieval/hybrid_retriever.py                                48      0   100%
+medbridge/retrieval/reranker.py                                        46      1    98%
+medbridge/state/__init__.py                                             0      0   100%
+medbridge/state/projector.py                                           80      3    96%
+medbridge/state/session_manager.py                                     53      1    98%
+medbridge/tests/conftest.py                                             6      0   100%
+medbridge/tests/evaluation/test_security_adversarial.py                 1      0   100%
+medbridge/tests/integration/test_database.py                            0      0   100%
+medbridge/tests/integration/test_db_connection.py                      21      0   100%
+medbridge/tests/integration/test_e2e_pipeline.py                      205      6    97%
+medbridge/tests/integration/test_guideline_collection_indexing.py      57      8    86%
+medbridge/tests/integration/test_hybrid_retriever_qdrant.py            76      0   100%
+medbridge/tests/integration/test_main_app.py                           58      0   100%
+medbridge/tests/integration/test_migrations.py                         36      2    94%
+medbridge/tests/integration/test_projector_db.py                       53      0   100%
+medbridge/tests/integration/test_retrieval.py                           1      0   100%
+medbridge/tests/integration/test_routes.py                            179      2    99%
+medbridge/tests/integration/test_session_manager.py                    96      0   100%
+medbridge/tests/unit/test_benchmark_runner.py                          81      0   100%
+medbridge/tests/unit/test_config.py                                    51      0   100%
+medbridge/tests/unit/test_context_extractor.py                         42      0   100%
+medbridge/tests/unit/test_context_gate.py                              75      0   100%
+medbridge/tests/unit/test_db_models.py                                 38      0   100%
+medbridge/tests/unit/test_embedder.py                                  35      0   100%
+medbridge/tests/unit/test_emergency_classifier.py                      60      0   100%
+medbridge/tests/unit/test_enums.py                                     70      0   100%
+medbridge/tests/unit/test_error_handler.py                            108      1    99%
+medbridge/tests/unit/test_evidence_gate.py                            136      0   100%
+medbridge/tests/unit/test_frontend_app.py                             132      0   100%
+medbridge/tests/unit/test_frontend_components.py                       98      0   100%
+medbridge/tests/unit/test_frontend_services.py                        211      0   100%
+medbridge/tests/unit/test_hybrid_retriever.py                         105      0   100%
+medbridge/tests/unit/test_ingestion.py                                135      0   100%
+medbridge/tests/unit/test_llm_wrapper.py                              208      0   100%
+medbridge/tests/unit/test_logging.py                                   36      0   100%
+medbridge/tests/unit/test_orchestrator.py                             175      0   100%
+medbridge/tests/unit/test_reranker.py                                  29      0   100%
+medbridge/tests/unit/test_response_generator.py                       148      0   100%
+medbridge/tests/unit/test_schemas.py                                  141      0   100%
+medbridge/tests/unit/test_state_projector.py                          160      0   100%
+medbridge/tests/unit/test_templates.py                                 64      0   100%
+---------------------------------------------------------------------------------------
+TOTAL                                                                5011    209    96%
+=========================== short test summary info ============================
+FAILED medbridge/tests/integration/test_e2e_pipeline.py::test_soft_ask_loop_breaker_forces_generalize
+FAILED medbridge/tests/integration/test_guideline_collection_indexing.py::test_collection_point_count_and_guideline_representation
+FAILED medbridge/tests/integration/test_guideline_collection_indexing.py::test_hybrid_search_across_clinical_topics[hypertension diagnostic criteria and blood pressure thresholds-blood pressure]
+FAILED medbridge/tests/integration/test_guideline_collection_indexing.py::test_hybrid_search_across_clinical_topics[first line pharmacotherapy calcium channel blocker amlodipine-therapy]
+FAILED medbridge/tests/integration/test_guideline_collection_indexing.py::test_hybrid_search_across_clinical_topics[resistant hypertension aldosterone antagonist spironolactone-hypertension]
+5 failed, 480 passed, 12 warnings in 98.82s (0:01:38)
+sys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
