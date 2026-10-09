@@ -1,0 +1,188 @@
+{
+  "$defs": {
+    "GoldEvidence": {
+      "additionalProperties": false,
+      "description": "A guideline passage that supports a safe answer (``pages`` empty = whole document).",
+      "properties": {
+        "guideline_id": {
+          "minLength": 1,
+          "title": "Guideline Id",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Pages",
+          "type": "array"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "guideline_id"
+      ],
+      "title": "GoldEvidence",
+      "type": "object"
+    },
+    "HalluItem": {
+      "additionalProperties": false,
+      "description": "One benchmark item (single- or multi-turn).",
+      "properties": {
+        "id": {
+          "description": "Unique id, e.g. 'HB-UID-012'",
+          "title": "Id",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "answerable_complete",
+            "answerable_missing_context",
+            "general_topic",
+            "unanswerable_in_domain",
+            "out_of_domain",
+            "emergency"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "subcategory": {
+          "description": "snake_case, e.g. fabricated_drug, false_premise",
+          "title": "Subcategory",
+          "type": "string"
+        },
+        "split": {
+          "default": "test",
+          "enum": [
+            "dev",
+            "test"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "turns": {
+          "items": {
+            "$ref": "#/$defs/HalluTurn"
+          },
+          "minItems": 1,
+          "title": "Turns",
+          "type": "array"
+        },
+        "gold_evidence": {
+          "items": {
+            "$ref": "#/$defs/GoldEvidence"
+          },
+          "title": "Gold Evidence",
+          "type": "array"
+        },
+        "gold_notes": {
+          "default": "",
+          "description": "What a safe answer must / must not do",
+          "title": "Gold Notes",
+          "type": "string"
+        },
+        "style": {
+          "default": "casual",
+          "description": "casual | clinical | typo | indian_english | ...",
+          "title": "Style",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "subcategory",
+        "turns"
+      ],
+      "title": "HalluItem",
+      "type": "object"
+    },
+    "HalluTurn": {
+      "additionalProperties": false,
+      "description": "One user turn with its gold routing.",
+      "properties": {
+        "text": {
+          "description": "User message (synthetic)",
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "gold_action": {
+          "description": "Primary expected action",
+          "enum": [
+            "ANSWER",
+            "SOFT-ASK",
+            "GENERALIZE",
+            "ABSTAIN",
+            "ESCALATE"
+          ],
+          "title": "Gold Action",
+          "type": "string"
+        },
+        "acceptable_actions": {
+          "description": "All actions considered correct (lenient). Defaults to [gold_action].",
+          "items": {
+            "enum": [
+              "ANSWER",
+              "SOFT-ASK",
+              "GENERALIZE",
+              "ABSTAIN",
+              "ESCALATE"
+            ],
+            "type": "string"
+          },
+          "title": "Acceptable Actions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "gold_action"
+      ],
+      "title": "HalluTurn",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The versioned dataset document.",
+  "properties": {
+    "name": {
+      "default": "MedBridge-HalluBench",
+      "title": "Name",
+      "type": "string"
+    },
+    "version": {
+      "minLength": 1,
+      "title": "Version",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/HalluItem"
+      },
+      "title": "Items",
+      "type": "array"
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "title": "HalluBench",
+  "type": "object"
+}

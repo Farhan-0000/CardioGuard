@@ -1,0 +1,176 @@
+"""NLI judge with a fake scorer: windows, threshold rule, relabelling, staleness, CLI loop."""
+
+import json
+
+import pytest
+
+from evaluation import judge as jg
+from evaluation.io import append_jsonl, load_judgments
+from evaluation.judges.common import EvidenceSidecar
+from evaluation.judges.nli_judge import (
+    NLIJudge,
+    _label_index,
+    claims_fingerprint,
+    load_thresholds,
+    nli_label,
+    premise_windows,
+    relabel,
+)
+
+
+class OverlapScorer:
+    """Entailment = token overlap of hypothesis with premise; contradiction when 'never' is in it."""
+
+    name = "fake-nli"
+
+    def __init__(self):
+        self.pairs = []
+
+    def score(self, pairs):
+        self.pairs.extend(pairs)
+        out = []
+        for premise, hypothesis in pairs:
+            p, h = set(premise.lower().split()), set(hypothesis.lower().split())
+            entail = len(p & h) / len(h)
+            out.append((entail, 0.9 if "never" in p else 0.0))
+        return out
+
+
+def _llm_judgment(claims):
+    return {
+        "condition": "C5",
+        "item_id": "I1",
+        "turn_index": 0,
+        "attempt_id": "a",
+        "split": "test",
+        "category": "answerable_complete",
+        "subcategory": "x",
+        "action": "ANSWER",
+        "template": None,
+        "claims": claims,
+        "error": None,
+    }
+
+
+def test_premise_windows():
+    text = "One. Two! Three? Four; five.\nSix."
+    windows = premise_windows(text, 3)
+    assert windows[0] == "One. Two! Three?" and len(windows) == 4
+    assert premise_windows("Only one sentence.", 3) == ["Only one sentence."]
+    assert premise_windows("", 3) == []
+
+
+@pytest.mark.parametrize(
+    "entail,contra,label",
+    [
+        (0.7, 0.9, "SUPPORTED"),
+        (0.2, 0.6, "CONTRADICTED"),
+        (0.4, 0.3, "UNSUPPORTED"),
+        (0.5, 0.5, "SUPPORTED"),
+        (0.6, 0.55, "SUPPORTED"),
+    ],
+)
+def test_label_rule(entail, contra, label):
+    assert nli_label(entail, contra, 0.5, 0.5) == label
+
+
+def test_judge_turn_uses_llm_evidence_ids():
+    claims = [
+        {
+            "index": 1,
+            "claim": "salt raises blood pressure",
+            "evidence_ids": ["c1"],
+            "pool_ids": ["c1", "c2"],
+        },
+        {
+            "index": 2,
+            "claim": "aspirin cures hypertension",
+            "evidence_ids": ["c2"],
+            "pool_ids": ["c2"],
+        },
+        {"index": 3, "claim": "orphan claim", "evidence_ids": ["missing"], "pool_ids": []},
+    ]
+    texts = {
+        "c1": "High salt intake raises blood pressure. Other text here.",
+        "c2": "Aspirin should never be used to treat hypertension.",
+    }
+    scorer = OverlapScorer()
+    out = NLIJudge(scorer, 0.75, 0.5).judge_turn(_llm_judgment(claims), texts.get)
+    labels = [c["label"] for c in out["claims"]]
+    assert labels == ["SUPPORTED", "CONTRADICTED", "UNSUPPORTED"]
+    assert out["claims"][0]["best_chunk_id"] == "c1"
+    assert out["claims"][2]["n_windows"] == 0 and out["claims"][2]["entailment"] == 0.0
+    assert out["n_supported"] == 1 and out["n_contradicted"] == 1 and out["n_unsupported"] == 1
+    assert out["claims_fingerprint"] == claims_fingerprint(_llm_judgment(claims))
+    assert all(h in {c["claim"] for c in claims} for _, h in scorer.pairs)
+
+
+def test_relabel_and_thresholds(tmp_path):
+    judgment = {
+        "claims": [
+            {"entailment": 0.6, "contradiction": 0.1},
+            {"entailment": 0.3, "contradiction": 0.8},
+        ]
+    }
+    strict = relabel(judgment, 0.7, 0.5)
+    assert [c["label"] for c in strict["claims"]] == ["UNSUPPORTED", "CONTRADICTED"]
+    assert strict["n_unsupported"] == 1 and strict["theta"] == 0.7
+    assert load_thresholds(tmp_path / "missing.json") == (0.5, 0.5)
+    (tmp_path / "cal.json").write_text(json.dumps({"nli": {"theta": 0.35, "theta_c": 0.8}}))
+    assert load_thresholds(tmp_path / "cal.json") == (0.35, 0.8)
+
+
+def test_label_index_mapping():
+    id2label = {0: "contradiction", 1: "entailment", 2: "neutral"}
+    assert _label_index(id2label, "entail") == 1 and _label_index(id2label, "contradict") == 0
+    with pytest.raises(ValueError):
+        _label_index({0: "yes"}, "entail")
+
+
+def test_judge_with_nli_cli_loop(tmp_path):
+    claims = [
+        {
+            "index": 1,
+            "claim": "salt raises blood pressure",
+            "evidence_ids": ["c1", "judge_1"],
+            "pool_ids": ["c1", "judge_1"],
+        }
+    ]
+    llm = _llm_judgment(claims)
+    append_jsonl(tmp_path / "llm" / "C5.jsonl", llm)
+    append_jsonl(
+        tmp_path / "evidence_chunks.jsonl",
+        {"chunk_id": "judge_1", "text": "Salt raises blood pressure."},
+    )
+    records = {
+        "C5": [
+            {
+                "item_id": "I1",
+                "turn_index": 0,
+                "attempt_id": "a",
+                "evidence_texts": [{"chunk_id": "c1", "text": "unrelated"}],
+            },
+            {"item_id": "I2", "turn_index": 0, "attempt_id": "z", "evidence_texts": []},
+        ]
+    }
+    sidecar = EvidenceSidecar(tmp_path)
+    judge = NLIJudge(OverlapScorer())
+    counts = jg.judge_with_nli(
+        judge, records, tmp_path, sidecar, resume=False, fresh=False, log=lambda m: None
+    )
+    assert counts["C5"] == {"records": 2, "judged": 1, "missing_llm": 1}
+    saved = load_judgments(tmp_path / "nli" / "C5.jsonl")[("I1", 0)]
+    assert (
+        saved["claims"][0]["label"] == "SUPPORTED"
+        and saved["claims"][0]["best_chunk_id"] == "judge_1"
+    )
+    counts = jg.judge_with_nli(
+        judge, records, tmp_path, sidecar, resume=True, fresh=False, log=lambda m: None
+    )
+    assert counts["C5"]["judged"] == 0
+    llm["claims"][0]["claim"] = "salt is fine"  # LLM judgment changed → NLI judgment is stale
+    append_jsonl(tmp_path / "llm" / "C5.jsonl", llm)
+    counts = jg.judge_with_nli(
+        judge, records, tmp_path, sidecar, resume=True, fresh=False, log=lambda m: None
+    )
+    assert counts["C5"]["judged"] == 1
