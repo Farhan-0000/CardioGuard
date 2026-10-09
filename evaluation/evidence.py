@@ -230,13 +230,22 @@ class CorpusRetriever:
         self._cache: dict[tuple[str, int], list[EvidenceChunk]] = {}
 
     async def search(self, query: str, top_k: int = 3) -> list[EvidenceChunk]:
-        """Top-``top_k`` reranked corpus chunks for ``query``."""
+        """Top-``top_k`` reranked corpus chunks for ``query``.
+
+        Retrieval errors propagate (the judge records them as a judgment error).
+        An empty result is never memoised: dense k-NN always returns neighbours
+        from a reachable, non-empty collection, so an empty list signals an
+        outage that a later call must not keep replaying.
+        """
         key = (query, top_k)
-        if key not in self._cache:
-            chunks = await self._retriever.hybrid_search(query, top_k=self._candidates)
-            ranked = await rerank_chunks(self._reranker, query, chunks, top_k)
-            self._cache[key] = [EvidenceChunk.from_retrieved(c, s, "judge") for c, s in ranked]
-        return list(self._cache[key])
+        if key in self._cache:
+            return list(self._cache[key])
+        chunks = await self._retriever.hybrid_search(query, top_k=self._candidates)
+        ranked = await rerank_chunks(self._reranker, query, chunks, top_k)
+        result = [EvidenceChunk.from_retrieved(c, s, "judge") for c, s in ranked]
+        if result:
+            self._cache[key] = result
+        return list(result)
 
     async def score(
         self, query: str, chunks: Sequence[EvidenceChunk]

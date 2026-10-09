@@ -170,3 +170,50 @@ class TestFindDrugs:
 
     def test_fabricated_drug_not_found(self) -> None:
         assert find_drugs("Is Cardiozepam better than the BP vaccine?") == []
+
+
+class TestCombinationSuffixesAndArni:
+    """Regression (llm-prompts-07): '<brand> at/am/h' false combos; sacubitril aliases."""
+
+    @pytest.mark.parametrize(("text", "expected"), [
+        ("I take Telma 40 am and Concor 5 pm", [("telmisartan", "Telma"), ("bisoprolol", "Concor")]),
+        ("Amlopres 5 at night gives me swollen ankles", [("amlodipine", "Amlopres")]),
+        ("Amlopres at night", [("amlodipine", "Amlopres")]),
+        ("AMLOPRES AT NIGHT", [("amlodipine", "Amlopres")]),
+        ("telma am", [("telmisartan", "Telma")]),
+    ])
+    def test_english_words_after_a_brand_are_not_suffixes(
+        self, text: str, expected: list[tuple[str, str]]
+    ) -> None:
+        assert [(d.generic, d.brand) for d in find_drugs(text)] == expected
+
+    @pytest.mark.parametrize(("text", "generic"), [
+        ("Telma-AM 40", "telmisartan + amlodipine"),
+        ("Telma AM 40 daily", "telmisartan + amlodipine"),
+        ("Amlopres-AT", "amlodipine + atenolol"),
+        ("Amlopres AT 50", "amlodipine + atenolol"),
+        ("telma h 40", "telmisartan + hydrochlorothiazide"),
+        ("Ecosprin AV 75", "aspirin + atorvastatin"),
+        ("met xl 50", "metoprolol succinate"),
+        ("Diovan HCT", "valsartan + hydrochlorothiazide"),
+    ])
+    def test_real_combination_and_release_names_still_match(self, text: str, generic: str) -> None:
+        assert [d.generic for d in find_drugs(text)] == [generic]
+
+    @pytest.mark.parametrize("name", [
+        "sacubitril", "valsartan/sacubitril", "valsartan sacubitril", "sacubitril/valsartan",
+        "Sacubitril-Valsartan 49/51", "Entresto",
+    ])
+    def test_sacubitril_spellings_resolve_to_the_arni(self, name: str) -> None:
+        info = normalize_drug(name)
+        assert info is not None and info.generic == "sacubitril + valsartan"
+        assert "ARNI" in info.drug_class
+        assert [d.generic for d in find_drugs(f"I take {name} twice a day")] == [
+            "sacubitril + valsartan"
+        ]
+
+    def test_plain_valsartan_is_still_an_arb(self) -> None:
+        assert [d.generic for d in find_drugs("valsartan 80 daily")] == ["valsartan"]
+
+    def test_strength_between_tokens_breaks_a_two_word_generic(self) -> None:
+        assert [d.generic for d in find_drugs("metoprolol 50 succinate")] == ["metoprolol"]

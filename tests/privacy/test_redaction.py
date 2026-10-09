@@ -252,3 +252,110 @@ def test_latency_is_bounded() -> None:
         redact(text)
     per_call_ms = (time.perf_counter() - start) * 1000 / 20
     assert per_call_ms < 50
+
+
+# ---------------------------------------------------------------------------
+# ADDRESS boundaries (code-review finding privacy-security-1, fixed after the blind run).
+# Self-authored probes; none of them is a blind-set item.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # letter+digit tokens inside a locality ("15A", "2B", "C3", "No. 12A")
+        ("I live at House No. 45, Sector 15A, Gurgaon 122001 and my BP is 150/95",
+         "I live at [ADDRESS] [PINCODE] and my BP is 150/95"),
+        ("Flat 3, Phase 2B, Electronic City, Bangalore 560100", "[ADDRESS] [PINCODE]"),
+        ("Flat 9, Tower C3, Prestige Shantiniketan, Whitefield, Bengaluru 560048",
+         "[ADDRESS] [PINCODE]"),
+        ("Flat 2, Road No. 12A, Banjara Hills, Hyderabad 500034", "[ADDRESS] [PINCODE]"),
+        ("Flat 2, Road No.7, Jubilee Hills, Hyderabad", "[ADDRESS]"),
+        ("Flat 4, No. 12, 5th Cross, Malleswaram, Bangalore 560003", "[ADDRESS] [PINCODE]"),
+        # a bare 4-digit number is a token; 5/6-digit PIN/ZIP codes stay PINCODE
+        ("Flat 101, Tower 4567, Gachibowli, Hyderabad 500032", "[ADDRESS] [PINCODE]"),
+        ("Flat 3, Indiranagar, Bangalore 560 038. Sugar 7.2 mmol/L",
+         "[ADDRESS] [PINCODE]. Sugar 7.2 mmol/L"),
+        ("Apt 4C, Dayton, OH 45402", "[ADDRESS] [PINCODE]"),
+        # UK postcodes are alphanumeric tokens of the address
+        ("14 Elm Close, Derby DE1 2AB", "[ADDRESS]"),
+        ("8 Mill Lane, Withington, Manchester M20 4QT. BP 140/90", "[ADDRESS]. BP 140/90"),
+        # parenthesised parts, abbreviations and initials do not end the address
+        ("Flat 4, Andheri (East), Mumbai 400069", "[ADDRESS] [PINCODE]"),
+        ("House 5, St. Mary's Road, Bangalore 560001", "[ADDRESS] [PINCODE]"),
+        ("Flat 2B, J.P. Nagar 7th Phase, Bangalore 560078", "[ADDRESS] [PINCODE]"),
+        # the street core continues over its own locality; a prefixed house number is kept
+        ("D-7, Kalkaji Nagar III, New Delhi 110019", "[ADDRESS] [PINCODE]"),
+        ("7/2 Ferguson Road, Shivajinagar, Pune", "[ADDRESS]"),
+    ],
+)
+def test_address_never_stops_inside_a_token(text: str, expected: str) -> None:
+    assert redact(text, today=TODAY).text == expected
+
+
+@pytest.mark.parametrize(
+    "locality",
+    ["Sector 15A", "Phase 2B", "Tower C3", "Road No. 12A", "Tower 4567", "Block K9",
+     "Leicester LE3 9QT", "Wing B2", "Pocket 4C"],
+)
+@pytest.mark.parametrize("tail", ["", " 122001", ". BP 150/95", ", Pune", " and pulse 80"])
+def test_address_span_boundaries_fall_between_words(locality: str, tail: str) -> None:
+    """Fail closed: an ADDRESS span never starts or ends inside a word, whatever follows."""
+    text = f"I stay at Flat 12, {locality}{tail}"
+    for span in detect(text, today=TODAY):
+        if span.category != "ADDRESS":
+            continue
+        assert span.end == len(text) or not text[span.end].isalnum(), (text, span)
+        assert span.start == 0 or not text[span.start - 1].isalnum(), (text, span)
+    redacted = redact(text, today=TODAY).text
+    for part in locality.split():
+        assert part not in redacted.split(), redacted
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # a drug name, a dose or a lab value after an address is never swallowed
+        ("Flat 4, Andheri East, Mumbai, Atorvastatin 40mg daily",
+         "[ADDRESS], Atorvastatin 40mg daily"),
+        ("Plot 7, Sector 21, Noida, Telma 40 since 2 weeks", "[ADDRESS], Telma 40 since 2 weeks"),
+        ("Flat 3, Indiranagar, Bangalore. Sugar 7.2 mmol/L", "[ADDRESS]. Sugar 7.2 mmol/L"),
+        ("Flat 4, Andheri East, Mumbai My BP is 150/95", "[ADDRESS] My BP is 150/95"),
+        ("Flat 7, Sector 4, Noida 40 mg", "[ADDRESS] 40 mg"),
+        ("Flat 7, Sector 4, Noida 25%", "[ADDRESS] 25%"),
+        ("Flat 7, Sector 4, Noida 4 times a day", "[ADDRESS] 4 times a day"),
+        ("Flat 7, Tower 4, Noida 10:30 am reading 150/95", "[ADDRESS] 10:30 am reading 150/95"),
+        ("House 3, Sector 9, Rohini, Delhi, HbA1c 7.2 and LDL 130",
+         "[ADDRESS], HbA1c 7.2 and LDL 130"),
+        ("I live at 12 Park Street Kolkata and my BP is 150/95",
+         "I live at [ADDRESS] and my BP is 150/95"),
+        ("45 Station Road In the morning BP is 150/95", "[ADDRESS] In the morning BP is 150/95"),
+        ("Flat 7, Sector 4, Noida, Weight 82 kg", "[ADDRESS], Weight 82 kg"),
+    ],
+)
+def test_address_extension_keeps_clinical_text(text: str, expected: str) -> None:
+    assert redact(text, today=TODAY).text == expected
+
+
+# ---------------------------------------------------------------------------
+# Title cue followed by a non-person word (blind error group 9, fixed post-hoc)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "I asked Dr. Internet about Telma 40 and BP 150/95",
+        "Doctor YouTube says salt is fine for 140/90",
+        "Dr Wikipedia scared me about my 160/100 reading",
+        "Mr. Facebook told my mother to stop amlodipine",
+    ],
+)
+def test_title_cue_skips_information_sources(text: str) -> None:
+    result = redact(text, today=TODAY)
+    assert result.text == text
+    assert result.count == 0
+
+
+def test_title_cue_still_redacts_people() -> None:
+    assert redact("Dr. Mehta and Doctor Iyer changed my dose", today=TODAY).text == (
+        "Dr. [NAME] and Doctor [NAME] changed my dose"
+    )

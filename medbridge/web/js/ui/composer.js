@@ -1,6 +1,8 @@
 /**
  * Sticky, auto-growing composer: Enter sends, Shift+Enter inserts a newline,
- * 2,000-character limit with a live counter, stop button while streaming.
+ * 2,000-character limit with a live counter, stop button while streaming, and a
+ * "hold" state (sending paused with a visible reason) while another write to the
+ * same conversation is still in flight.
  */
 
 import { byId } from './dom.js';
@@ -16,7 +18,10 @@ export function createComposer({ onSubmit, onStop }) {
   const counter = byId('char-count');
   const send = /** @type {HTMLButtonElement} */ (byId('send-btn'));
   const stop = /** @type {HTMLButtonElement} */ (byId('stop-btn'));
+  const holdNote = byId('composer-hold');
   let busy = false;
+  /** @type {string | null} */
+  let hold = null;
 
   const update = () => {
     input.style.height = 'auto';
@@ -25,12 +30,12 @@ export function createComposer({ onSubmit, onStop }) {
     counter.textContent = `${length.toLocaleString()} / ${MAX_CHARS.toLocaleString()}`;
     counter.classList.toggle('is-near', length > MAX_CHARS * 0.9);
     counter.classList.toggle('is-full', length >= MAX_CHARS);
-    send.disabled = busy || input.value.trim().length === 0;
+    send.disabled = busy || hold !== null || input.value.trim().length === 0;
   };
 
   const submit = () => {
     const text = input.value.trim();
-    if (busy || !text) return;
+    if (busy || hold !== null || !text) return;
     if (text.length > MAX_CHARS) return;
     input.value = '';
     update();
@@ -58,6 +63,17 @@ export function createComposer({ onSubmit, onStop }) {
       form.classList.toggle('is-busy', value);
       send.hidden = value;
       stop.hidden = !value;
+      update();
+    },
+    /**
+     * Pause sending (the typed text is kept) and show why; `null` resumes.
+     * @param {string | null} reason
+     */
+    setHold(reason) {
+      hold = reason;
+      form.classList.toggle('is-held', reason !== null);
+      holdNote.textContent = reason ?? '';
+      holdNote.hidden = reason === null;
       update();
     },
     focus() {

@@ -5,6 +5,7 @@
  */
 
 import { ACTION_META } from '../actions.js';
+import { startCountdown } from '../errors.js';
 import { renderMarkdown } from '../markdown.js';
 import { emergencyCard } from './emergency.js';
 import { explanationPanel } from './explanation.js';
@@ -219,26 +220,43 @@ export function createAssistantMessage(deps, { streaming, onRetry, onReload }) {
     },
     /**
      * Show an error / stopped state inside the message.
+     * With `retryAfter` (seconds, e.g. from a 429 `Retry-After`), "Try again"
+     * stays disabled and counts down; `retryText(remaining)` refreshes the notice.
      * @param {string} textMessage
      * @param {'failed' | 'stopped'} outcome
+     * @param {{retryAfter?: number, retryText?: (remaining: number) => string}} [options]
      */
-    fail(textMessage, outcome) {
+    fail(textMessage, outcome, { retryAfter = 0, retryText } = {}) {
       if (frame) cancelAnimationFrame(frame);
       el.classList.remove('is-streaming');
       el.classList.add(outcome === 'stopped' ? 'is-stopped' : 'is-error');
       stepper?.finish({ outcome });
       const partial = text ? renderMarkdown(text, { citations: false }) : '';
       content.innerHTML = partial;
+      const noticeText = h('span', { text: textMessage });
       content.append(
         h('p', { class: `notice notice--${outcome === 'stopped' ? 'muted' : 'error'}` },
-          icon(outcome === 'stopped' ? 'info' : 'alert', { size: 16 }), textMessage),
+          icon(outcome === 'stopped' ? 'info' : 'alert', { size: 16 }), noticeText),
       );
       const handler = outcome === 'stopped' ? onReload : onRetry;
       if (handler) {
         const label = outcome === 'stopped' ? 'Reload conversation' : 'Try again';
-        const button = h('button', { type: 'button', class: 'btn btn--ghost btn--sm' }, icon('refresh', { size: 15 }), label);
+        const labelNode = h('span', { text: label });
+        const button = /** @type {HTMLButtonElement} */ (h('button', { type: 'button', class: 'btn btn--ghost btn--sm' }, icon('refresh', { size: 15 }), labelNode));
         button.addEventListener('click', handler, { once: true });
         actions.replaceChildren(button);
+        if (outcome === 'failed' && retryAfter > 0) {
+          let cancel = () => {};
+          cancel = startCountdown(retryAfter, (remaining) => {
+            if (!el.isConnected && remaining < retryAfter) {
+              cancel(); // the message was removed (retry, new chat): stop ticking
+              return;
+            }
+            button.disabled = remaining > 0;
+            labelNode.textContent = remaining > 0 ? `${label} in ${remaining} s` : label;
+            if (retryText) noticeText.textContent = retryText(remaining);
+          });
+        }
       }
     },
   };

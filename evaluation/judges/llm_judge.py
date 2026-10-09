@@ -24,14 +24,28 @@ Three structured-JSON calls per (non-template) response, all at temperature
 Template responses (see ``common.template_reason``) get zero claims and a
 deterministic behaviour without any LLM call. After decomposition the
 rubric's exclusions are also enforced deterministically
-(``common.non_clinical_reason``: self-references, generic referrals and generic
-emergency advice); excluded items are kept in ``excluded_claims``.
+(``common.non_clinical_reason``: pure boilerplate only — self-references,
+generic referrals and generic emergency advice without any clinical entity,
+number or explanatory clause). Excluded items are kept in ``excluded_claims``
+and ARE labelled too, in separate batches after the primary claims (so they
+never change the evidence the primary claims are judged against): the
+analysis reports the primary outcome with the filter (pre-registered) and,
+as a sensitivity analysis, without it.
+
+Truncation (finding statistics-judges-5): every judge call records its LLM
+call statistics. A length-capped output (``done_reason == "length"``) is never
+accepted as a (silently repaired) partial result: when the wrapper reports a
+truncation it could not recover from (``LLMCallStat.truncated`` with no result),
+or — with a wrapper that does not report truncation — when
+``completion_tokens >= num_predict``, the call is retried once with twice the
+token budget; if it is still truncated the judgment gets an ``error`` (it then
+counts as missing, never as "no hallucination").
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol, TypeVar
 
 from pydantic import BaseModel, Field, field_validator
@@ -248,9 +262,85 @@ class LLMJudgeConfig:
     max_evidence_per_call: int = 8
     evidence_chars: int = 1800
     max_claims: int = 25
-    max_tokens_decompose: int = 1500
+    max_tokens_decompose: int = 3000
     max_tokens_label: int = 1200
     max_tokens_behaviour: int = 300
+    #: A truncated call is retried once with ``max_tokens * truncation_retry_factor``.
+    truncation_retry_factor: int = 2
+    #: Label the excluded (non-clinical) items too, for the filter sensitivity analysis.
+    label_excluded: bool = True
+
+
+class JudgeOutputTruncated(RuntimeError):
+    """A judge call hit its token cap even after the larger retry."""
+
+    def __init__(self, call_name: str, max_tokens: int) -> None:
+        super().__init__(f"{call_name} truncated at num_predict={max_tokens}")
+        self.call_name = call_name
+        self.max_tokens = max_tokens
+
+
+@dataclass
+class JudgeCallLog:
+    """Statistics of the LLM calls made for ONE judgment (safe under concurrent judgments)."""
+
+    n: int = 0
+    cached: int = 0
+    latency_ms: float = 0.0
+    completion_tokens: int = 0
+    truncated: int = 0
+    retried_larger: int = 0
+    failed: int = 0
+    calls: list[dict[str, Any]] = field(default_factory=list)
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "n": self.n,
+            "cached": self.cached,
+            "latency_ms": round(self.latency_ms, 1),
+            "completion_tokens": self.completion_tokens,
+            "truncated": self.truncated,
+            "retried_larger": self.retried_larger,
+            "failed": self.failed,
+            "calls": self.calls,
+        }
+
+
+def stat_truncated(stat: Any, max_tokens: int) -> bool:
+    """Whether an ``LLMCallStat`` reports a length-capped generation (for auditing).
+
+    Uses the wrapper's ``truncated`` / ``done_reason`` field when present, else
+    ``completion_tokens >= num_predict`` on an uncached call (Ollama stops with
+    ``done_reason == "length"`` exactly when the generated token count reaches
+    ``num_predict``).
+    """
+    if stat is None:
+        return False
+    if getattr(stat, "done_reason", None) == "length":
+        return True
+    flag = getattr(stat, "truncated", None)
+    if flag is not None:
+        return bool(flag)
+    if getattr(stat, "cached", False):
+        return False
+    tokens = int(getattr(stat, "completion_tokens", 0) or 0)
+    return max_tokens > 0 and tokens >= max_tokens
+
+
+def output_unusable(stat: Any, max_tokens: int, result: Any) -> bool:
+    """True when the call's outcome is a truncation the judge must not accept.
+
+    * A wrapper that reports ``truncated`` discards cut-off attempts itself (and
+      retries once with a doubled budget), so a returned result is complete; only
+      ``None`` caused by truncation is unusable.
+    * An older wrapper without the flag returns a cut-off reply "repaired" into
+      valid JSON; any length-capped call is then unusable, whatever it returned.
+    """
+    if stat is None:
+        return False
+    if getattr(stat, "truncated", None) is not None and getattr(stat, "done_reason", None) is None:
+        return bool(stat.truncated) and result is None
+    return stat_truncated(stat, max_tokens)
 
 
 def assemble_batch_evidence(
@@ -289,7 +379,11 @@ def _dedupe_claims(items: Sequence[ClaimItem], limit: int) -> list[ClaimItem]:
 
 
 class LLMJudge:
-    """Claim decomposition, claim labelling and behaviour classification for one turn."""
+    """Claim decomposition, claim labelling and behaviour classification for one turn.
+
+    Stateless across turns (per-judgment call statistics live in a
+    ``JudgeCallLog``), so several turns can be judged concurrently.
+    """
 
     def __init__(
         self,
@@ -303,7 +397,42 @@ class LLMJudge:
         self.config = config or LLMJudgeConfig()
         self.on_evidence = on_evidence
 
-    async def _call(
+    async def _call_once(
+        self,
+        name: str,
+        system: str,
+        user: str,
+        schema: type[T],
+        max_tokens: int,
+        log: JudgeCallLog,
+    ) -> tuple[T | None, bool]:
+        """One wrapper call; returns (result, truncated) and records its statistics."""
+        from medbridge.ai.llm_wrapper import llm_call_log
+
+        with llm_call_log() as recorded:
+            result = await self._invoke(name, system, user, schema, max_tokens)
+        stat = recorded[-1] if recorded else None
+        reported = stat_truncated(stat, max_tokens)
+        unusable = output_unusable(stat, max_tokens, result)
+        log.n += 1
+        log.cached += int(bool(getattr(stat, "cached", False)))
+        log.latency_ms += float(getattr(stat, "latency_ms", 0.0) or 0.0)
+        log.completion_tokens += int(getattr(stat, "completion_tokens", 0) or 0)
+        log.truncated += int(reported)
+        log.failed += int(result is None)
+        log.calls.append(
+            {
+                "call_name": name,
+                "max_tokens": max_tokens,
+                "cached": bool(getattr(stat, "cached", False)),
+                "completion_tokens": int(getattr(stat, "completion_tokens", 0) or 0),
+                "truncated": reported,
+                "success": result is not None and not unusable,
+            }
+        )
+        return (None if unusable else result), unusable
+
+    async def _invoke(
         self, name: str, system: str, user: str, schema: type[T], max_tokens: int
     ) -> T | None:
         return await self.llm.call(
@@ -316,6 +445,31 @@ class LLMJudge:
             model=self.config.model,
             seed=self.config.seed,
         )
+
+    async def _call(
+        self,
+        name: str,
+        system: str,
+        user: str,
+        schema: type[T],
+        max_tokens: int,
+        log: JudgeCallLog,
+    ) -> T | None:
+        """A judge call that never accepts a length-capped output.
+
+        A truncated output (even one the wrapper could repair into valid JSON) is
+        discarded and the call is retried once with a larger ``num_predict``;
+        ``JudgeOutputTruncated`` is raised when the retry is truncated too.
+        """
+        result, truncated = await self._call_once(name, system, user, schema, max_tokens, log)
+        if not truncated:
+            return result
+        larger = max_tokens * max(2, self.config.truncation_retry_factor)
+        log.retried_larger += 1
+        result, truncated = await self._call_once(name, system, user, schema, larger, log)
+        if truncated:
+            raise JudgeOutputTruncated(name, larger)
+        return result
 
     def empty_judgment(self, record: dict[str, Any]) -> dict[str, Any]:
         """Judgment skeleton for ``record`` (no claims, no behaviour, no error)."""
@@ -334,6 +488,7 @@ class LLMJudge:
             "template": None,
             "claims": [],
             "excluded_claims": [],
+            "excluded_labels_error": None,
             "n_claims": 0,
             "n_supported": 0,
             "n_unsupported": 0,
@@ -342,6 +497,7 @@ class LLMJudge:
             **dict.fromkeys(FLAGS, False),
             "behaviour_rationale": "",
             "error": None,
+            "judge_calls": JudgeCallLog().summary(),
             "timestamp": utc_now(),
         }
 
@@ -354,6 +510,27 @@ class LLMJudge:
         if reason is not None:
             out.update(template=reason, behaviour=template_behaviour(record.get("action")))
             return out
+        log = JudgeCallLog()
+        try:
+            await self._judge_content(record, gold_notes, history, out, log)
+        except JudgeOutputTruncated as exc:
+            stage = {
+                "judge_decompose": "claim decomposition",
+                "judge_label": "claim labelling",
+                "judge_behaviour": "behaviour classification",
+            }.get(exc.call_name, exc.call_name)
+            out["error"] = f"{stage} truncated (num_predict={exc.max_tokens})"
+        out["judge_calls"] = log.summary()
+        return out
+
+    async def _judge_content(
+        self,
+        record: dict[str, Any],
+        gold_notes: str,
+        history: Sequence[dict[str, str]],
+        out: dict[str, Any],
+        log: JudgeCallLog,
+    ) -> None:
         question = str(record.get("user_text", ""))
         response = str(record.get("response_text", ""))
 
@@ -363,22 +540,29 @@ class LLMJudge:
             build_decompose_prompt(question, response),
             ClaimDecomposition,
             self.config.max_tokens_decompose,
+            log,
         )
         if decomposition is None:
             out["error"] = "claim decomposition failed"
-            return out
+            return
         claims: list[ClaimItem] = []
+        excluded: list[tuple[ClaimItem, str]] = []
         for item in _dedupe_claims(decomposition.claims, self.config.max_claims):
             why = non_clinical_reason(item.claim)
             if why is None:
                 claims.append(item)
             else:
-                out["excluded_claims"].append({"claim": item.claim, "reason": why})
+                excluded.append((item, why))
+        out["excluded_claims"] = [
+            {"claim": item.claim, "source_sentence": item.source_sentence, "reason": why}
+            for item, why in excluded
+        ]
 
-        claim_rows = await self._label_claims(claims, condition_evidence(record))
+        evidence = condition_evidence(record)
+        claim_rows = await self._label_claims(claims, evidence, log)
         if claim_rows is None:
             out["error"] = "claim labelling failed"
-            return out
+            return
         out["claims"] = claim_rows
         out["n_claims"] = len(claim_rows)
         for label, key in zip(
@@ -386,21 +570,48 @@ class LLMJudge:
         ):
             out[key] = sum(1 for c in claim_rows if c["label"] == label)
 
+        if excluded and self.config.label_excluded:
+            await self._label_excluded(excluded, evidence, out, log)
+
         behaviour = await self._call(
             "judge_behaviour",
             BEHAVIOUR_SYSTEM,
             build_behaviour_prompt(question, response, gold_notes, history),
             BehaviourJudgement,
             self.config.max_tokens_behaviour,
+            log,
         )
         if behaviour is None:
             out["error"] = "behaviour classification failed"
-            return out
+            return
         out["behaviour"] = behaviour.behaviour
         out["behaviour_rationale"] = behaviour.rationale
         for flag in FLAGS:
             out[flag] = bool(getattr(behaviour, flag))
-        return out
+
+    async def _label_excluded(
+        self,
+        excluded: Sequence[tuple[ClaimItem, str]],
+        evidence: Sequence[EvidenceChunk],
+        out: dict[str, Any],
+        log: JudgeCallLog,
+    ) -> None:
+        """Label the filtered items in their own batches (sensitivity analysis only).
+
+        A failure here never invalidates the primary judgment; it is recorded in
+        ``excluded_labels_error`` and the turn drops out of the sensitivity analysis.
+        """
+        try:
+            rows = await self._label_claims([item for item, _ in excluded], evidence, log)
+        except JudgeOutputTruncated as exc:
+            out["excluded_labels_error"] = str(exc)
+            return
+        if rows is None:
+            out["excluded_labels_error"] = "excluded-claim labelling failed"
+            return
+        out["excluded_claims"] = [
+            {**row, "reason": why} for row, (_, why) in zip(rows, excluded, strict=True)
+        ]
 
     async def _rank_evidence(
         self, claim: str, condition_chunks: Sequence[EvidenceChunk]
@@ -416,7 +627,10 @@ class LLMJudge:
         return ranked, list(pool)
 
     async def _label_claims(
-        self, claims: Sequence[ClaimItem], condition_chunks: Sequence[EvidenceChunk]
+        self,
+        claims: Sequence[ClaimItem],
+        condition_chunks: Sequence[EvidenceChunk],
+        log: JudgeCallLog,
     ) -> list[dict[str, Any]] | None:
         rows: list[dict[str, Any]] = []
         size = max(1, self.config.claims_per_call)
@@ -429,7 +643,7 @@ class LLMJudge:
                 rankings.append(ranked[: self.config.evidence_per_claim])
                 pools.append(pool_ids)
             evidence = assemble_batch_evidence(rankings, self.config.max_evidence_per_call)
-            labels = await self._label_batch([c.claim for c in batch], evidence)
+            labels = await self._label_batch([c.claim for c in batch], evidence, log)
             if labels is None:
                 return None
             for offset, item in enumerate(batch):
@@ -449,7 +663,7 @@ class LLMJudge:
         return rows
 
     async def _label_batch(
-        self, claims: list[str], evidence: list[EvidenceChunk]
+        self, claims: list[str], evidence: list[EvidenceChunk], log: JudgeCallLog
     ) -> dict[int, ClaimLabelItem] | None:
         """Labels keyed by 1-based claim index; one retry for claims the model skipped."""
         result = await self._call(
@@ -458,6 +672,7 @@ class LLMJudge:
             build_label_prompt(claims, evidence, self.config.evidence_chars),
             ClaimLabelling,
             self.config.max_tokens_label,
+            log,
         )
         if result is None:
             return None
@@ -472,6 +687,7 @@ class LLMJudge:
                 ),
                 ClaimLabelling,
                 self.config.max_tokens_label,
+                log,
             )
             for item in retry.labels if retry is not None else []:
                 if 1 <= item.index <= len(missing):

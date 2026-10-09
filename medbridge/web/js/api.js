@@ -3,7 +3,8 @@
  *
  * Session routes send `Authorization: Bearer <session_token>` taken from the
  * conversation record kept in the browser store. Errors are raised as
- * `ApiError` carrying the server's `safe_fallback` text when present.
+ * `ApiError` carrying the server's message, its `safe_fallback` text, the
+ * field-level validation details and the `Retry-After` delay when present.
  */
 
 import { consumeSSE } from './sse.js';
@@ -11,7 +12,8 @@ import { consumeSSE } from './sse.js';
 export class ApiError extends Error {
   /**
    * @param {string} message
-   * @param {{status?: number, code?: string, safeFallback?: string, aborted?: boolean}} [info]
+   * @param {{status?: number, code?: string, safeFallback?: string, aborted?: boolean,
+   *          retryAfter?: number | null, details?: {msg: string}[]}} [info]
    */
   constructor(message, info = {}) {
     super(message);
@@ -22,12 +24,41 @@ export class ApiError extends Error {
       info.safeFallback ??
       "We're unable to process your question right now. Please try again, or consult your healthcare provider.";
     this.aborted = Boolean(info.aborted);
+    /** Seconds to wait before retrying (HTTP 429 `Retry-After`), or null. */
+    this.retryAfter = info.retryAfter ?? null;
+    /** Field-level validation messages (HTTP 422), PHI-free. */
+    this.details = info.details ?? [];
   }
 
   /** True when the session token is missing, expired or the session is gone. */
   get sessionUnavailable() {
-    return this.status === 401 || this.status === 403 || this.status === 404 || this.status === 410;
+    return this.sessionGone || this.accessDenied;
   }
+
+  /** The server no longer has the conversation (never existed, or already erased). */
+  get sessionGone() {
+    return this.status === 404 || this.status === 410;
+  }
+
+  /** The session token was rejected (missing, expired or signed with another key). */
+  get accessDenied() {
+    return this.status === 401 || this.status === 403;
+  }
+}
+
+/**
+ * Parse a `Retry-After` header (delay in seconds or an HTTP date) into whole seconds.
+ * @param {string | null | undefined} value
+ * @param {number} [now] - epoch ms, for HTTP-date values
+ * @returns {number | null}
+ */
+export function parseRetryAfter(value, now = Date.now()) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) return Number(raw);
+  const at = Date.parse(raw);
+  if (Number.isNaN(at)) return null;
+  return Math.max(0, Math.ceil((at - now) / 1000));
 }
 
 /**
@@ -47,10 +78,16 @@ async function errorFromResponse(response) {
     body = null;
   }
   const detail = body && typeof body.detail === 'string' ? body.detail : '';
+  const rawDetails = Array.isArray(body?.details) ? body.details : Array.isArray(body?.detail) ? body.detail : [];
+  const details = rawDetails
+    .filter((d) => d && typeof d.msg === 'string' && d.msg.trim())
+    .map((d) => ({ msg: String(d.msg).trim() }));
   return new ApiError(body?.message || detail || `Request failed (HTTP ${response.status})`, {
     status: response.status,
     code: body?.error_code || `HTTP_${response.status}`,
     safeFallback: body?.safe_fallback || undefined,
+    retryAfter: parseRetryAfter(response.headers?.get?.('Retry-After')),
+    details,
   });
 }
 

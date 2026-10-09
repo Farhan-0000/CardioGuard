@@ -347,6 +347,17 @@ class TestJsonExtraction:
     def test_extract(self, raw: str) -> None:
         assert json.loads(ResilientLLMWrapper._extract_json(raw))["action"] == "PROCEED"
 
+    @pytest.mark.parametrize(("raw", "expected"), [
+        ('{"response_text": "Fine [1]."}\u201d}', '{"response_text": "Fine [1]."}'),
+        ('{"action": "PROCEED", "rationale": "a } inside"} trailing }',
+         '{"action": "PROCEED", "rationale": "a } inside"}'),
+        ('note {not json} then {"action": "PROCEED", "rationale": "x"}',
+         '{"action": "PROCEED", "rationale": "x"}'),
+    ])
+    def test_first_complete_object_extracted_exactly(self, raw: str, expected: str) -> None:
+        """Regression (llm-prompts-03): the end is never taken from a later or quoted '}'."""
+        assert ResilientLLMWrapper._extract_json(raw) == expected
+
 
 class TestJsonRepair:
     @pytest.mark.parametrize(("malformed", "key", "expected"), [
@@ -496,3 +507,164 @@ class TestWarmupHealth:
     def test_singleton(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(llm_wrapper, "_llm_wrapper_instance", None)
         assert get_llm_wrapper() is get_llm_wrapper()
+
+
+# ---------------------------------------------------------------------------
+# Regression (llm-prompts-03): truncated output is a failure, never repaired or cached
+# ---------------------------------------------------------------------------
+
+TRUNCATED_ANSWER = (
+    '{"response_text": "Yes, it is generally fine to stop taking your amlodipine [1]. '
+    "However, never stop it"
+)
+FULL_ANSWER = json.dumps({"response_text": "Do not stop amlodipine suddenly [1]."})
+
+
+def _ollama_reply(content: str, done_reason: str) -> httpx.Response:
+    return httpx.Response(200, json={
+        "message": {"role": "assistant", "content": content},
+        "prompt_eval_count": 10, "eval_count": 900, "done_reason": done_reason,
+    })
+
+
+class TestTruncation:
+    @pytest.fixture(autouse=True)
+    def _reset_cache(self):
+        yield
+        set_request_cache(None)
+
+    async def test_length_stop_retried_once_with_double_budget(self, server: FakeServer) -> None:
+        replies = [_ollama_reply(TRUNCATED_ANSWER, "length"), _ollama_reply(FULL_ANSWER, "stop")]
+        server.chat_handler = lambda request: replies.pop(0)
+        cache = DictCache()
+        set_request_cache(cache)
+        with llm_call_log() as stats:
+            result = await call(make_wrapper(server), ResponseGeneratorOutput, max_tokens=900)
+        assert result is not None and result.response_text == "Do not stop amlodipine suddenly [1]."
+        budgets = [b["options"]["num_predict"] for b in server.bodies("/api/chat")]
+        assert budgets == [900, 1800]
+        assert stats[0].truncated is True and stats[0].success is True
+        # Only the complete answer is cached (under the original request).
+        assert list(cache.store.values()) == [FULL_ANSWER]
+
+    async def test_truncated_twice_fails_without_repair_or_cache(self, server: FakeServer) -> None:
+        server.chat_handler = lambda request: _ollama_reply(TRUNCATED_ANSWER, "length")
+        cache = DictCache()
+        set_request_cache(cache)
+        with llm_call_log() as stats:
+            result = await call(make_wrapper(server), ResponseGeneratorOutput, max_tokens=900)
+        assert result is None  # the orchestrator then uses its pre-vetted fallback
+        assert len(server.bodies("/api/chat")) == 2  # no third identical (deterministic) request
+        assert stats[0].truncated is True and stats[0].success is False
+        assert cache.store == {}
+
+    async def test_truncated_gate_output_is_not_accepted(self, server: FakeServer) -> None:
+        cut = '{"rationale": "Known.", "action": "PROCEED", "missing_fields": ["age"'
+        server.chat_handler = lambda request: _ollama_reply(cut, "length")
+        assert await call(make_wrapper(server)) is None
+
+    async def test_remote_finish_reason_length_is_truncation(self, server: FakeServer) -> None:
+        wrapper = make_wrapper(server, LLM_PROVIDER="groq", GROQ_API_KEY="k", LOCAL_ONLY_MODE=False)
+        replies = [
+            httpx.Response(200, json={"choices": [{"message": {"content": TRUNCATED_ANSWER},
+                                                   "finish_reason": "length"}]}),
+            httpx.Response(200, json={"choices": [{"message": {"content": FULL_ANSWER},
+                                                   "finish_reason": "stop"}]}),
+        ]
+        server.chat_handler = lambda request: replies.pop(0)
+        result = await call(wrapper, ResponseGeneratorOutput, max_tokens=300)
+        assert result is not None
+        assert [json.loads(r.content)["max_tokens"] for r in server.requests] == [300, 600]
+
+    async def test_incomplete_json_without_done_reason_is_not_repaired(
+        self, server: FakeServer
+    ) -> None:
+        server.chat_contents = [TRUNCATED_ANSWER]
+        with llm_call_log() as stats:
+            assert await call(make_wrapper(server), ResponseGeneratorOutput) is None
+        assert stats[0].attempts == 3
+
+    async def test_truncated_entry_in_an_old_cache_is_ignored(self, server: FakeServer) -> None:
+        cache = DictCache()
+        set_request_cache(cache)
+        server.chat_contents = [FULL_ANSWER]
+        wrapper = make_wrapper(server)
+        await call(wrapper, ResponseGeneratorOutput)
+        key = next(iter(cache.store))
+        cache.store[key] = TRUNCATED_ANSWER  # written by an older version of the wrapper
+        with llm_call_log() as stats:
+            result = await call(wrapper, ResponseGeneratorOutput)
+        assert result is not None and result.response_text.endswith("suddenly [1].")
+        assert stats[0].cached is False and cache.store[key] == FULL_ANSWER
+
+    def test_incomplete_detection(self) -> None:
+        assert ResilientLLMWrapper._is_incomplete('{"a": "unterminated')
+        assert ResilientLLMWrapper._is_incomplete('{"a": [1, 2')
+        assert not ResilientLLMWrapper._is_incomplete('{"a": "x}"}')
+        assert not ResilientLLMWrapper._is_incomplete('{"a": "ok",}')
+        assert not ResilientLLMWrapper._is_incomplete("{'a': 'single quotes'}")
+
+
+# ---------------------------------------------------------------------------
+# Regression (llm-prompts-08): LOCAL_ONLY_MODE fails closed on a non-loopback Ollama
+# ---------------------------------------------------------------------------
+
+
+class TestLocalOnlyEnforcement:
+    @pytest.mark.parametrize("url", [
+        "http://192.168.1.20:11434", "https://ollama.example.com/v1", "http://10.0.0.5:11434",
+        "http://host.docker.internal:11434", "http://localhost.evil.com:11434",
+    ])
+    async def test_non_loopback_host_refused_and_never_contacted(self, url: str) -> None:
+        requests: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json={"message": {"content": VALID_JSON}})
+
+        wrapper = ResilientLLMWrapper(
+            make_settings(OLLAMA_BASE_URL=url, LOCAL_ONLY_MODE=True),
+            transport=httpx.MockTransport(handler),
+        )
+        assert wrapper.blocked_reason
+        with llm_call_log() as stats:
+            assert await call(wrapper) is None
+        assert stats[0].success is False
+        assert await wrapper.warmup() == dict.fromkeys(
+            dict.fromkeys([wrapper._settings.gates_model, wrapper._settings.generator_model]),
+            False,
+        )
+        health = await wrapper.health()
+        assert health["reachable"] is False and health["blocked"]
+        assert requests == []
+
+    @pytest.mark.parametrize("url", [
+        "http://127.0.0.1:11434", "http://localhost:11434/v1", "http://[::1]:11434",
+        "http://127.0.1.1:11434", "http://LOCALHOST.:11434",
+    ])
+    async def test_loopback_hosts_allowed(self, server: FakeServer, url: str) -> None:
+        wrapper = make_wrapper(server, OLLAMA_BASE_URL=url)
+        assert wrapper.blocked_reason == ""
+        assert await call(wrapper) is not None
+
+    async def test_non_loopback_allowed_when_local_only_disabled(self, server: FakeServer) -> None:
+        wrapper = make_wrapper(server, OLLAMA_BASE_URL="http://192.168.1.20:11434",
+                               LOCAL_ONLY_MODE=False)
+        assert wrapper.blocked_reason == ""
+        assert await call(wrapper) is not None
+        assert server.requests[-1].url.host == "192.168.1.20"
+
+    @pytest.mark.parametrize("model", ["gpt-oss:120b-cloud", "qwen3-coder:480b-cloud", "x:cloud"])
+    async def test_cloud_models_refused_in_local_only(self, server: FakeServer, model: str) -> None:
+        wrapper = make_wrapper(server)
+        assert await call(wrapper, model=model) is None
+        assert server.bodies("/api/chat") == [] and server.bodies("/api/show") == []
+        assert await wrapper.warmup([model]) == {model: False}
+        assert server.bodies("/api/generate") == []
+
+    def test_loopback_helper(self) -> None:
+        assert llm_wrapper.is_loopback_host("127.0.0.1")
+        assert llm_wrapper.is_loopback_host("[::1]")
+        assert not llm_wrapper.is_loopback_host("")
+        assert not llm_wrapper.is_loopback_host("0.0.0.0")
+        assert not llm_wrapper.is_loopback_host("host.docker.internal")

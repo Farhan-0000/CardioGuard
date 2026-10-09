@@ -13,7 +13,7 @@ import pytest
 from qdrant_client import AsyncQdrantClient, models
 
 from medbridge.retrieval.embedder import EmbeddingClient, get_embedding_client
-from medbridge.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk
+from medbridge.retrieval.hybrid_retriever import HybridRetriever, RetrievalError, RetrievedChunk
 
 COLLECTION_NAME = "test_clinical_guidelines"
 EMPTY_COLLECTION_NAME = "test_empty_guidelines"
@@ -179,10 +179,12 @@ async def test_real_hybrid_retrieval_empty_collection(qdrant_client, real_embedd
 
 
 async def test_real_hybrid_retrieval_nonexistent_collection(qdrant_client, real_embedder):
+    """A missing collection is a failure (RetrievalError), not an empty result."""
     missing = HybridRetriever(
         client=qdrant_client, embedder=real_embedder, collection_name="nonexistent_collection_404"
     )
-    assert await missing.hybrid_search("hypertension medication") == []
+    with pytest.raises(RetrievalError):
+        await missing.hybrid_search("hypertension medication")
     assert await missing.collection_points() is None
 
 

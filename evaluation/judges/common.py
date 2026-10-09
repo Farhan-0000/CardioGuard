@@ -62,12 +62,15 @@ _ADVICE_LEAD = (
     r" to|please|you should|you may want to|always|be sure to|make sure (?:to|you)|remember to"
     r"|consider)\s+)?"
 )
-# The referral is the main action ("Talk to your doctor…", "Your doctor can…"), not a clause
-# attached to a clinical statement ("Do not stop beta-blockers abruptly without talking to…").
+# The referral is the main action ("Talk to your doctor…", "Your doctor can help…"), not a
+# clause attached to a clinical statement ("Do not stop beta-blockers abruptly without
+# talking to…"). "Your <professional> …" only counts with a non-clinical predicate.
 _REFERRAL_RE = re.compile(
     _ADVICE_LEAD + r"(?:consult|talk|speak|discuss|check|ask|contact|see|visit|follow up|reach out"
     r"|let)\b.*\b" + _PROFESSIONAL + r"\b"
-    r"|^\s*your " + _PROFESSIONAL + r"\b",
+    r"|^\s*your " + _PROFESSIONAL + r"\s+(?:(?:can|will|may|could|should|is|are)\s+)?"
+    r"(?:(?:best|always|also)\s+)?(?:help|advise|explain|answer|discuss|decide|choose|guide"
+    r"|review|assess|check|tailor|adjust|recommend|tell|work with|know|be (?:able|happy|the best))",
     re.IGNORECASE,
 )
 _EMERGENCY_ADVICE_RE = re.compile(
@@ -76,12 +79,63 @@ _EMERGENCY_ADVICE_RE = re.compile(
     r"|go to (?:the |your )?(?:nearest )?(?:emergency|er\b|a&e|hospital))",
     re.IGNORECASE,
 )
-_SELF_REFERENCE_RE = re.compile(
-    r"^\s*(?:i\b|i'm\b|i’m\b|as an ai\b|this (?:tool|assistant|service|chatbot)\b"
-    r"|(?:my|our) (?:guidelines|knowledge|sources|information)\b)",
+# Statements about the assistant's own limits or scope ("I can't help with…", "Our
+# guidelines focus on…"). A clinical statement merely prefixed by a self-reference ("I
+# recommend taking…", "My information indicates…") does not match.
+_SELF_LIMIT_RE = re.compile(
+    r"^\s*(?:as an ai\b[^,]*,\s*)?(?:"
+    r"i(?:'m|’m| am)\s+(?:not (?:a doctor|a medical|able|qualified|a substitute)|unable"
+    r"|an? (?:ai|virtual|digital|chat)|only an?|designed|here to (?:help|provide|share))"
+    r"|i\s+(?:(?:only|really|currently)\s+)?(?:can(?:not|'t|’t| not)|do(?:n't|n’t| not)"
+    r" (?:have|know|cover|provide|give|offer)|can only|can help)"
+    r"|this (?:tool|assistant|service|chatbot)\s+(?:can(?:not|'t|’t| not)|is not|isn't|isn’t"
+    r"|does(?: not|n't|n’t)|can only|is (?:only|designed|here))"
+    r"|(?:my|our) (?:guidelines|knowledge|sources|information|role)\s+(?:focus(?:es)? on|covers?"
+    r"|(?:do(?:es)?(?: not|n't|n’t)) (?:cover|include|mention)|(?:is|are) (?:limited|focused))"
+    r"|as an ai\b)",
+    re.IGNORECASE,
+)
+# Empathy about the user ("I understand…", "I'm sorry to hear…"): non-clinical only
+# when it carries no clinical entity.
+_EMPATHY_RE = re.compile(
+    r"^\s*i(?:'m|’m| am)?\s+(?:really\s+)?(?:understand|hear|hope|sorry|glad|appreciate)\b",
     re.IGNORECASE,
 )
 _DIGIT_RE = re.compile(r"\d")
+# A causal/explanatory clause or an appositive turns advice into an assertion
+# ("…, because it is safe to stop warfarin", "Cardiozepam, a newer calcium channel blocker").
+_FACTUAL_CLAUSE_RE = re.compile(
+    r"\b(?:because|since|which|therefore|thus|hence|due to|so that"
+    r"|as (?!soon as\b|needed\b|directed\b|well\b|an ai\b)(?:it|this|that|they|these|those|the|a|an"
+    r"|your|you|high|low|there))\b"
+    r"|,\s*(?:a|an)\s",
+    re.IGNORECASE,
+)
+# Clinical entities: conditions, measurements, symptoms, tests, drug classes and common drugs.
+_CLINICAL_TERM_RE = re.compile(
+    r"\b(?:blood pressure|bp|hypertensi\w*|hypotensi\w*|cholesterol|ldl|hdl|triglycerides?"
+    r"|lipids?|statins?|heart (?:attack|failure|disease|rate|rhythm|beat)|cardiac|cardiovascular"
+    r"|stroke|tia|chest pain|angina|palpitations?|arrhythmias?|atrial|fibrillation|kidneys?"
+    r"|renal|diabet\w*|glucose|blood sugar|insulin|potassium|sodium|salt|pregnan\w*"
+    r"|pre-?eclampsia|doses?|dosage|dosing|mg|mcg|mmhg|tablets?|capsules?|pills?|inhibitors?"
+    r"|blockers?|antagonists?|diuretics?|water pills?|anticoagulants?|antiplatelets?"
+    r"|blood thinners?|nsaids?|painkillers?|aspirin|ibuprofen|naproxen|diclofenac|paracetamol"
+    r"|acetaminophen|warfarin|heparin|nitroglycerin|digoxin|bleed\w*|headaches?|dizz\w*"
+    r"|faint\w*|light-?headed\w*|shortness of breath|breathless\w*|swelling|swollen|o?edema"
+    r"|numb\w*|weakness|blurred vision|vision|confusion|seizures?|nosebleeds?|cough\w*"
+    r"|ecg|ekg|echocardiogram|blood tests?|urine tests?|cuff|readings?|side effects?"
+    r"|interactions?|interacts?|overdose|allerg\w*|grapefruit|alcohol|caffeine|exercise"
+    r"|weight|diet|smoking|vaccines?)\b",
+    re.IGNORECASE,
+)
+_DRUG_SUFFIX_RE = re.compile(
+    r"\b[a-z]{3,}(?:pril|sartan|olol|ilol|alol|dipine|pamil|tiazem|statin|thiazide|semide"
+    r"|tanide|xaban|gatran|parin|farin|grel|gliflozin|gliptin|formin|glutide|azosin|lactone"
+    r"|renone|arone|zepam|zolam|profen|fenac|coxib|cillin|mycin|floxacin|oxetine|triptyline)\b",
+    re.IGNORECASE,
+)
+_ALLOWED_CAPS = frozenset({"i", "gp", "gps", "er", "a&e", "ai", "nhs", "us", "uk", "ok"})
+_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z&'’\-]*")
 _GENERIC_MAX_WORDS = 30
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+|\n+")
 _MARKER_RE = re.compile(r"\[(\d+)\]")
@@ -120,30 +174,67 @@ def template_reason(record: dict[str, Any]) -> str | None:
     return None
 
 
+def has_clinical_entity(text: str) -> bool:
+    """True when ``text`` names a drug, condition, symptom, test, measurement or other entity.
+
+    Signals: the drug lexicon (``medbridge.nlp.drugs.find_drugs``, brands and
+    generics), drug-name suffixes (catches unknown / fabricated names such as
+    "cardiozepam"), a clinical-term lexicon, and proper nouns or acronyms after
+    the first word ("Cardiozepam", "ACE", "BP").
+    """
+    if _CLINICAL_TERM_RE.search(text) or _DRUG_SUFFIX_RE.search(text):
+        return True
+    tokens = _TOKEN_RE.findall(text)
+    for token in tokens[1:]:
+        if token.lower() in _ALLOWED_CAPS:
+            continue
+        if token[0].isupper():
+            return True
+    try:
+        from medbridge.nlp.drugs import find_drugs
+    except Exception:  # the lexicon is an optional enrichment
+        return False
+    try:
+        return bool(find_drugs(text))
+    except Exception:
+        return False
+
+
 def non_clinical_reason(claim: str) -> str | None:
-    """Deterministic enforcement of the decomposition rubric's exclusions.
+    """Deterministic enforcement of the decomposition rubric's exclusions — pure boilerplate only.
 
     Returns why a "claim" is not a verifiable clinical claim, or ``None``:
 
-    * ``self_reference`` — statements about the assistant or its sources
-      ("I can't help with…", "Our guidelines focus on…");
-    * ``generic_referral`` — advice to consult / discuss with a doctor,
-      pharmacist or other professional;
+    * ``self_reference`` — the assistant's own limits or scope ("I can't help
+      with…", "Our guidelines focus on…"); empathy ("I understand…") only without
+      a clinical entity;
+    * ``generic_referral`` — advice to consult / discuss with a doctor, pharmacist
+      or other professional, or "your doctor can help/advise/…";
     * ``generic_emergency_advice`` — "call 112", "seek immediate medical attention".
 
-    Referral and emergency advice are only excluded when the advice is the
-    sentence's main action, it contains no number and has at most 30 words, so
-    clinical content wrapped in advice ("do not stop beta-blockers abruptly
-    without talking to your doctor", "if BP is above 180/120 with chest pain,
-    call 911") is still judged.
+    A claim is NEVER excluded when it contains a number, a causal/explanatory
+    clause or appositive ("…, because …", "…, a newer calcium channel blocker"),
+    or more than 30 words; referral, emergency and empathy statements are also
+    kept when they name any clinical entity (``has_clinical_entity``: drug,
+    condition, symptom, test, dose…). So false, fabricated-drug and dose claims
+    wrapped in advice or self-reference ("Talk to your doctor before stopping
+    warfarin, because it is safe to stop it abruptly", "Your doctor may prescribe
+    Cardiozepam…", "I recommend taking 81 mg aspirin daily") are always judged.
     """
     text = claim.strip()
-    if _SELF_REFERENCE_RE.match(text):
+    if _DIGIT_RE.search(text) or len(text.split()) > _GENERIC_MAX_WORDS:
+        return None
+    if _FACTUAL_CLAUSE_RE.search(text):
+        return None
+    if _SELF_LIMIT_RE.match(text):
         return "self_reference"
-    generic = not _DIGIT_RE.search(text) and len(text.split()) <= _GENERIC_MAX_WORDS
-    if generic and _EMERGENCY_ADVICE_RE.search(text):
+    if has_clinical_entity(text):
+        return None
+    if _EMPATHY_RE.match(text):
+        return "self_reference"
+    if _EMERGENCY_ADVICE_RE.search(text):
         return "generic_emergency_advice"
-    if generic and _REFERRAL_RE.search(text):
+    if _REFERRAL_RE.search(text):
         return "generic_referral"
     return None
 
@@ -191,6 +282,35 @@ def link_claim_to_sentence(
         if score > best_score:
             best, best_score = i, score
     return best if best_score >= min_overlap else None
+
+
+def marker_chunks(record: dict[str, Any]) -> dict[int, str]:
+    """``{marker number: chunk_id}`` from the run record's validated citations."""
+    out: dict[int, str] = {}
+    for citation in record.get("citations") or []:
+        numbers = citation_markers(str(citation.get("marker", "")))
+        if numbers and citation.get("chunk_id"):
+            out[numbers[0]] = str(citation["chunk_id"])
+    return out
+
+
+def cited_chunks_by_claim(
+    record: dict[str, Any], claims: Iterable[dict[str, Any]]
+) -> dict[Any, list[str]]:
+    """Chunk ids cited (``[n]`` markers) in the response sentence each claim comes from.
+
+    Keyed by the claim's ``index``; a claim that cannot be linked to a sentence,
+    or whose sentence has no valid marker, maps to an empty list.
+    """
+    sentences = split_sentences(str(record.get("response_text") or ""))
+    by_marker = marker_chunks(record)
+    out: dict[Any, list[str]] = {}
+    for claim in claims:
+        index = link_claim_to_sentence(claim, sentences)
+        markers = citation_markers(sentences[index]) if index is not None else []
+        ids = [by_marker[m] for m in markers if m in by_marker]
+        out[claim.get("index")] = list(dict.fromkeys(ids))
+    return out
 
 
 def condition_evidence(record: dict[str, Any]) -> list[EvidenceChunk]:

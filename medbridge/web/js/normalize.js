@@ -105,6 +105,11 @@ export function normalizePublicConfig(raw) {
     corpusCount: pickNumber(corpus, ['documents', 'count']) ?? corpusItems.length,
     corpusOrgs: corpusOrgs.slice(0, 5),
     version: str(cfg.version),
+    /** Days of inactivity after which stored conversations are purged (null: not published). */
+    retentionDays: (() => {
+      const days = pickNumber(cfg, ['data_retention_days', 'retention_days']);
+      return days !== null && days > 0 ? Math.round(days) : null;
+    })(),
   };
 }
 

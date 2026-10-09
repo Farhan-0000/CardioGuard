@@ -5,10 +5,15 @@
  * lazy session creation, POST-SSE streaming with a non-streaming fallback,
  * conversation switching (hash routes #/c/<id>), regenerate, feedback,
  * patient/clinician mode, theming, consent and data actions.
+ *
+ * Writes to one conversation (turn, regenerate, manual BP reading) never run
+ * concurrently, including a stopped turn the server is still finishing
+ * (writeguard.js). The browser tab title never contains message text.
  */
 
 import { ApiError, createApi } from './api.js';
-import { dateStamp, titleFromMessage } from './format.js';
+import { classifyEraseError, errorMessage, mayStillRunOnServer, rateLimitText, retryAfterSeconds } from './errors.js';
+import { dateStamp, documentTitle, neutralConversationTitle, titleFromMessage } from './format.js';
 import { conversationToMarkdown, normalizeMessage, normalizePublicConfig } from './normalize.js';
 import { tokenText } from './sse.js';
 import { createStore } from './store.js';
@@ -22,11 +27,13 @@ import { createAssistantMessage, findCitation, userMessage } from './ui/messages
 import { confirmDialog, openModal, showToast } from './ui/overlay.js';
 import { createSidebar } from './ui/sidebar.js';
 import { initThemeToggle } from './ui/theme.js';
+import { busyMessage, countAssistantMessages, createWriteGuard, waitForSavedTurn } from './writeguard.js';
 
 const NARROW = window.matchMedia('(max-width: 899px)');
 
 const api = createApi();
 const store = createStore();
+const writeGuard = createWriteGuard();
 
 /**
  * @typedef {import('./store.js').Conversation} Conversation
@@ -42,6 +49,8 @@ const state = {
   /** @type {AbortController | null} */
   controller: null,
   loadSeq: 0,
+  /** @type {Promise<Conversation> | null} pending session creation (shared by callers) */
+  creating: null,
 };
 
 const el = {
@@ -121,10 +130,26 @@ function markLastAssistant() {
 }
 
 function setTitle() {
+  // The in-page header may show the (browser-local) conversation title; the tab
+  // title must not, because browsers keep page titles in their history.
   el.title.textContent = state.conversation?.title ?? 'New conversation';
-  document.title = state.conversation
-    ? `${state.conversation.title} · ${state.config.appName}`
-    : `${state.config.appName} — guideline-based heart health assistant`;
+  document.title = documentTitle(state.conversation, state.config.appName);
+}
+
+/**
+ * Why writes to conversation `id` are paused right now, or null.
+ * @param {string | null | undefined} id
+ */
+function writeBlocked(id) {
+  const kind = writeGuard.activeKind(id);
+  return kind ? busyMessage(kind) : null;
+}
+
+/** Reflect the open conversation's write lock in the composer and the BP form. */
+function syncWriteState() {
+  const reason = writeBlocked(state.conversation?.id);
+  composer.setHold(!state.busy && reason ? reason : null);
+  contextPanel.syncWriteState();
 }
 
 /** @param {{streaming: boolean, onRetry?: () => void, onReload?: () => void}} options */
@@ -147,10 +172,10 @@ function newAssistant(options) {
 /**
  * Inline notice in the thread (errors, unavailable conversations).
  * @param {string} text
- * @param {Node | null} [action]
+ * @param {...(Node | null)} actions
  */
-function threadNotice(text, action = null) {
-  const node = h('div', { class: 'thread-notice', role: 'status' }, icon('info', { size: 16 }), h('span', { text }), action);
+function threadNotice(text, ...actions) {
+  const node = h('div', { class: 'thread-notice', role: 'status' }, icon('info', { size: 16 }), h('span', { text }), ...actions);
   el.thread.append(node);
   return node;
 }
@@ -174,12 +199,26 @@ function renderStored(message) {
 // ---------------------------------------------------------------------------
 
 /**
- * Create the server session lazily (on the first message).
+ * Create the server session lazily (on the first message or BP reading).
+ * Concurrent callers share one creation, so two writes never make two sessions.
  * @param {string} title
- * @returns {Promise<Conversation | null>}
+ * @returns {Promise<Conversation>}
  */
 async function ensureSession(title) {
   if (state.conversation) return state.conversation;
+  if (!state.creating) {
+    state.creating = createConversation(title).finally(() => {
+      state.creating = null;
+    });
+  }
+  return state.creating;
+}
+
+/**
+ * @param {string} title
+ * @returns {Promise<Conversation>}
+ */
+async function createConversation(title) {
   const data = await api.createSession();
   const id = String(data?.session_id ?? '');
   if (!id) throw new ApiError('Session could not be created', { code: 'NO_SESSION' });
@@ -191,14 +230,16 @@ async function ensureSession(title) {
   history.replaceState(null, '', `#/c/${encodeURIComponent(id)}`);
   sidebar.render(id);
   setTitle();
+  syncWriteState();
   return conversation;
 }
 
-function touchConversation() {
-  if (!state.conversation) return;
-  const updated = store.updateConversation(state.conversation.id, { updatedAt: Date.now() });
-  if (updated) state.conversation = updated;
-  sidebar.render(state.conversation.id);
+/** @param {string | undefined} [id] - defaults to the open conversation */
+function touchConversation(id = state.conversation?.id) {
+  if (!id) return;
+  const updated = store.updateConversation(id, { updatedAt: Date.now() });
+  if (updated && state.conversation?.id === id) state.conversation = updated;
+  sidebar.render(state.conversation?.id ?? null);
 }
 
 function abortStream() {
@@ -214,6 +255,7 @@ function newChat() {
   el.thread.replaceChildren();
   showWelcome(true);
   setTitle();
+  syncWriteState();
   if (location.hash) history.replaceState(null, '', location.pathname);
   sidebar.render(null);
   contextPanel.refresh();
@@ -238,6 +280,7 @@ async function openConversation(id, { force = false } = {}) {
   state.conversation = conversation;
   state.messages = [];
   setTitle();
+  syncWriteState();
   sidebar.render(id);
   showWelcome(false);
   drawer.close();
@@ -255,16 +298,24 @@ async function openConversation(id, { force = false } = {}) {
   } catch (error) {
     if (seq !== state.loadSeq) return;
     el.thread.replaceChildren();
-    const err = /** @type {ApiError} */ (error);
-    if (err.sessionUnavailable) {
+    const err = toApiError(error);
+    if (err.sessionGone) {
       const remove = h('button', { type: 'button', class: 'btn btn--ghost btn--sm', text: 'Remove from list' });
-      remove.addEventListener('click', () => {
-        store.removeConversation(id);
-        newChat();
-      });
-      threadNotice('This conversation is no longer available — it may have expired or been erased.', remove);
+      remove.addEventListener('click', () => removeLocal(id));
+      threadNotice('This conversation is no longer available on the server — it was erased or has expired.', remove);
+    } else if (err.accessDenied) {
+      // The token was rejected: the server copy still exists and was NOT erased.
+      const erase = h('button', { type: 'button', class: 'btn btn--ghost btn--sm', text: 'Try to delete it' });
+      erase.addEventListener('click', () => eraseConversation(conversation, deleteCopy(conversation)));
+      const remove = h('button', { type: 'button', class: 'btn btn--ghost btn--sm', text: 'Remove from this browser only' });
+      remove.addEventListener('click', () => offerLocalRemoval(conversation));
+      threadNotice(
+        `Access to this conversation has expired in this browser. Its stored copy was not erased; ${retentionText()}`,
+        erase,
+        remove,
+      );
     } else {
-      threadNotice(err.safeFallback || 'Could not load this conversation.');
+      threadNotice(errorMessage(err, 'Could not load this conversation.'));
     }
   }
   contextPanel.refresh();
@@ -290,15 +341,40 @@ function setBusy(value) {
   state.busy = value;
   composer.setBusy(value);
   el.thread.setAttribute('aria-busy', String(value));
+  syncWriteState();
+}
+
+/**
+ * @param {unknown} error
+ * @returns {ApiError}
+ */
+function toApiError(error) {
+  return error instanceof ApiError ? error : new ApiError(String(error));
+}
+
+/**
+ * Show a failed turn: the server's actionable message for refused requests
+ * (409/413/422/429, the latter with a Retry-After countdown on "Try again"),
+ * the pre-vetted safe fallback for outages and network failures.
+ * @param {ReturnType<typeof newAssistant>} view
+ * @param {ApiError} err
+ */
+function failTurn(view, err) {
+  const retryAfter = retryAfterSeconds(err);
+  view.fail(errorMessage(err), 'failed', retryAfter ? { retryAfter, retryText: rateLimitText } : {});
 }
 
 /**
  * Stream one turn into `view`. Falls back to `fallback()` when the stream
  * could not start (no events received).
+ *
+ * `pending` is true when the turn did not finish here but may still be
+ * running on the server (stopped, or the connection dropped): the server then
+ * finishes and saves it on its own.
  * @param {ReturnType<typeof newAssistant>} view
  * @param {(signal: AbortSignal, onEvent: (e: {type: string, data: any}) => void) => Promise<void>} start
  * @param {(signal: AbortSignal) => Promise<any>} fallback
- * @returns {Promise<Message | null>}
+ * @returns {Promise<{message: Message | null, pending: boolean}>}
  */
 async function runTurn(view, start, fallback) {
   const controller = new AbortController();
@@ -331,39 +407,72 @@ async function runTurn(view, start, fallback) {
     await start(controller.signal, onEvent);
     if (!final) throw streamError ?? new ApiError('The response ended unexpectedly.', { code: 'STREAM_INCOMPLETE' });
   } catch (error) {
-    const err = error instanceof ApiError ? error : new ApiError(String(error));
+    const err = toApiError(error);
     if (err.aborted || controller.signal.aborted) {
       view.fail('Response stopped. MedBridge may still finish and save this answer in the background.', 'stopped');
-      return null;
+      return { message: null, pending: true };
     }
-    const canFallback = !gotEvent && !err.sessionUnavailable && ![409, 413, 422, 429].includes(err.status);
+    const canFallback = !gotEvent && !err.sessionUnavailable && ![400, 409, 413, 422, 429].includes(err.status);
     if (canFallback) {
       try {
         final = normalizeMessage(await fallback(controller.signal));
         view.finalize(final, { live: true });
       } catch (fallbackError) {
-        const ferr = /** @type {ApiError} */ (fallbackError);
-        view.fail(ferr.aborted ? 'Response stopped.' : ferr.safeFallback, ferr.aborted ? 'stopped' : 'failed');
-        return null;
+        const ferr = toApiError(fallbackError);
+        if (ferr.aborted || controller.signal.aborted) {
+          view.fail('Response stopped. MedBridge may still finish and save this answer in the background.', 'stopped');
+          return { message: null, pending: true };
+        }
+        failTurn(view, ferr);
+        return { message: null, pending: mayStillRunOnServer(ferr) };
       }
     } else {
-      view.fail(
-        err.sessionUnavailable
-          ? 'This conversation is no longer available. Please start a new chat.'
-          : err.safeFallback,
-        'failed',
-      );
-      return null;
+      failTurn(view, err);
+      return { message: null, pending: mayStillRunOnServer(err) };
     }
   } finally {
     if (state.controller === controller) state.controller = null;
   }
-  return final;
+  return { message: final, pending: false };
+}
+
+/**
+ * Keep conversation writes locked until the server has saved a turn the
+ * client stopped (or lost), then show the saved answer.
+ * @param {Conversation} conversation
+ * @param {number} baseline - assistant messages on the server before the turn
+ * @param {{release: () => void, relabel: (kind: import('./writeguard.js').WriteKind) => void}} lock
+ */
+async function finishInBackground(conversation, baseline, lock) {
+  lock.relabel('finishing');
+  let outcome;
+  try {
+    outcome = await waitForSavedTurn({
+      fetchHistory: () => api.getHistory(conversation),
+      baseline,
+      isCancelled: () => !store.getConversation(conversation.id),
+    });
+  } finally {
+    lock.release();
+  }
+  if (outcome === 'cancelled' || outcome === 'gone') return;
+  if (state.conversation?.id === conversation.id && !state.busy) {
+    await openConversation(conversation.id, { force: true });
+  }
+  if (outcome === 'timeout') {
+    showToast('The previous answer is taking longer than expected. You can continue now; reload the conversation later to see it.');
+  }
 }
 
 /** @param {string} text */
 async function send(text) {
   if (state.busy) return;
+  const blocked = writeBlocked(state.conversation?.id);
+  if (blocked) {
+    composer.setText(text);
+    showToast(blocked);
+    return;
+  }
   showWelcome(false);
   setBusy(true);
   let conversation;
@@ -372,10 +481,18 @@ async function send(text) {
   } catch (error) {
     setBusy(false);
     composer.setText(text);
-    showToast(/** @type {ApiError} */ (error).safeFallback || 'Could not start a conversation.', { tone: 'error' });
+    showToast(errorMessage(toApiError(error), 'Could not start a conversation.'), { tone: 'error' });
     if (!state.messages.length) showWelcome(true);
     return;
   }
+  const lock = writeGuard.acquire(conversation.id, 'turn');
+  if (!lock) {
+    setBusy(false);
+    composer.setText(text);
+    showToast(writeBlocked(conversation.id) ?? busyMessage(null));
+    return;
+  }
+  const baseline = countAssistantMessages(state.messages);
   const userMsg = normalizeMessage({ role: 'user', content: text, timestamp: new Date().toISOString() });
   state.messages.push(userMsg);
   const userNode = userMessage(userMsg);
@@ -395,15 +512,19 @@ async function send(text) {
   el.thread.append(view.el);
   scrollToBottom(true);
 
-  const final = await runTurn(
+  const { message: final, pending } = await runTurn(
     view,
     (signal, onEvent) => api.streamMessage(conversation, text, signal, onEvent),
     (signal) => api.sendMessage(conversation, text, signal),
   );
-  if (final) state.messages.push(final);
-  markLastAssistant();
-  touchConversation();
+  const stillOpen = state.conversation?.id === conversation.id;
+  if (final && stillOpen) state.messages.push(final);
+  if (pending) finishInBackground(conversation, baseline, lock);
+  else lock.release();
+  if (stillOpen) markLastAssistant();
+  touchConversation(conversation.id);
   setBusy(false);
+  if (!stillOpen) return;
   scrollToBottom();
   contextPanel.refresh();
   composer.focus();
@@ -412,24 +533,35 @@ async function send(text) {
 async function regenerate() {
   const conversation = state.conversation;
   if (state.busy || !conversation) return;
+  const blocked = writeBlocked(conversation.id);
+  if (blocked) {
+    showToast(blocked);
+    return;
+  }
   const nodes = el.thread.querySelectorAll('.msg--assistant');
   const lastNode = nodes[nodes.length - 1];
   if (!lastNode) return;
+  const lock = writeGuard.acquire(conversation.id, 'regenerate');
+  if (!lock) return;
+  const baseline = countAssistantMessages(state.messages);
   setBusy(true);
   const view = newAssistant({ streaming: true, onRetry: () => regenerate(), onReload: reloadCurrent });
   lastNode.replaceWith(view.el);
-  const final = await runTurn(
+  const { message: final, pending } = await runTurn(
     view,
     (signal, onEvent) => api.streamRegenerate(conversation, signal, onEvent),
     (signal) => api.regenerate(conversation, signal),
   );
-  if (final) {
+  const stillOpen = state.conversation?.id === conversation.id;
+  if (final && stillOpen) {
     const idx = state.messages.map((m) => m.role).lastIndexOf('assistant');
     if (idx >= 0) state.messages[idx] = final;
     else state.messages.push(final);
   }
-  markLastAssistant();
-  touchConversation();
+  if (pending) finishInBackground(conversation, baseline, lock);
+  else lock.release();
+  if (stillOpen) markLastAssistant();
+  touchConversation(conversation.id);
   setBusy(false);
 }
 
@@ -466,7 +598,7 @@ async function feedback(message, rating, buttons) {
     buttons.forEach((b, i) => b.setAttribute('aria-pressed', String((i === 0 ? 1 : -1) === rating)));
     showToast('Thanks — your feedback was saved', { tone: 'success' });
   } catch (error) {
-    showToast(/** @type {ApiError} */ (error).safeFallback || 'Feedback could not be saved.', { tone: 'error' });
+    showToast(errorMessage(toApiError(error), 'Feedback could not be saved.'), { tone: 'error' });
   }
 }
 
@@ -474,28 +606,98 @@ async function feedback(message, rating, buttons) {
 // Data actions
 // ---------------------------------------------------------------------------
 
+/** When stored data is purged without an explicit erase. */
+function retentionText() {
+  const days = state.config.retentionDays;
+  return days
+    ? `it is deleted automatically after ${days} days of inactivity.`
+    : 'it is deleted automatically after a period of inactivity.';
+}
+
+/** @param {Conversation} conversation */
+function deleteCopy(conversation) {
+  return {
+    title: 'Delete conversation?',
+    message: `“${conversation.title}” will be erased from the server (its encryption key is destroyed) and removed from this browser. This cannot be undone.`,
+    confirmLabel: 'Delete',
+  };
+}
+
+/**
+ * Drop a conversation (its access key and title) from this browser.
+ * @param {string} id
+ */
+function removeLocal(id) {
+  store.removeConversation(id);
+  if (state.conversation?.id === id) newChat();
+  else sidebar.render(state.conversation?.id ?? null);
+}
+
+/**
+ * Replace the browser-local title (taken from the first, unredacted message)
+ * with a neutral label. Clearing data always does this, even when the server
+ * erase fails and the record (with its access key) has to stay.
+ * @param {Conversation} conversation
+ */
+function scrubLocalTitle(conversation) {
+  const updated = store.updateConversation(conversation.id, { title: neutralConversationTitle(conversation.createdAt) });
+  if (updated && state.conversation?.id === conversation.id) {
+    state.conversation = updated;
+    setTitle();
+  }
+  sidebar.render(state.conversation?.id ?? null);
+}
+
+/**
+ * The token was rejected (expired / foreign key): the server copy could not be
+ * erased. Removing the local record is offered only as an explicit, labelled step.
+ * @param {Conversation} conversation
+ */
+async function offerLocalRemoval(conversation) {
+  const remove = await confirmDialog({
+    title: 'Could not erase on the server',
+    message:
+      'Access to this conversation has expired in this browser, so MedBridge could not erase its stored copy. ' +
+      `The copy stays encrypted on the server; ${retentionText()} ` +
+      'You can remove the conversation from this browser, but that does not erase the server copy.',
+    confirmLabel: 'Remove from this browser only',
+    danger: true,
+  });
+  if (!remove) return;
+  removeLocal(conversation.id);
+  showToast('Removed from this browser only. The server copy was not erased.');
+}
+
 /**
  * Delete a conversation on the server (crypto-shredding) and locally.
+ * Success is reported only when the server erased it (204) or no longer has
+ * it (404/410). A rejected token (401/403) means nothing was erased: the
+ * local record and its access key are kept and the user is told so.
  * @param {Conversation} conversation
  * @param {{title: string, message: string, confirmLabel: string}} copy
  */
 async function eraseConversation(conversation, copy) {
   const ok = await confirmDialog({ ...copy, danger: true });
   if (!ok) return;
+  scrubLocalTitle(conversation);
   try {
     await api.deleteSession(conversation);
-    showToast('Conversation erased', { tone: 'success' });
   } catch (error) {
-    const err = /** @type {ApiError} */ (error);
-    if (!err.sessionUnavailable) {
-      showToast(err.safeFallback || 'Could not erase the conversation. Please try again.', { tone: 'error' });
-      return;
+    const err = toApiError(error);
+    const outcome = classifyEraseError(err);
+    if (outcome === 'gone') {
+      removeLocal(conversation.id);
+      showToast('Removed from this browser (the server no longer had this conversation).');
+    } else if (outcome === 'denied') {
+      showToast('Could not erase: access to this conversation has expired.', { tone: 'error' });
+      await offerLocalRemoval(conversation);
+    } else {
+      showToast(errorMessage(err, 'Could not erase the conversation. Please try again.'), { tone: 'error' });
     }
-    showToast('Removed from this browser (the server no longer had this conversation).');
+    return;
   }
-  store.removeConversation(conversation.id);
-  if (state.conversation?.id === conversation.id) newChat();
-  else sidebar.render(state.conversation?.id ?? null);
+  removeLocal(conversation.id);
+  showToast('Conversation erased', { tone: 'success' });
 }
 
 function exportConversation() {
@@ -514,7 +716,7 @@ async function downloadSummary() {
     const md = await api.getSummaryMarkdown(state.conversation);
     downloadText(`medbridge-clinician-summary-${dateStamp()}.md`, md);
   } catch (error) {
-    showToast(/** @type {ApiError} */ (error).safeFallback || 'The summary could not be created.', { tone: 'error' });
+    showToast(errorMessage(toApiError(error), 'The summary could not be created.'), { tone: 'error' });
   }
 }
 
@@ -609,12 +811,7 @@ const composer = createComposer({ onSubmit: (text) => send(text), onStop: () => 
 const drawer = createSourceDrawer();
 const sidebar = createSidebar({
   store,
-  onDelete: (conversation) =>
-    eraseConversation(conversation, {
-      title: 'Delete conversation?',
-      message: `“${conversation.title}” will be erased from the server (its encryption key is destroyed) and removed from this browser. This cannot be undone.`,
-      confirmLabel: 'Delete',
-    }),
+  onDelete: (conversation) => eraseConversation(conversation, deleteCopy(conversation)),
   onRenamed: (conversation) => {
     if (state.conversation?.id === conversation.id) {
       state.conversation = conversation;
@@ -631,10 +828,12 @@ const contextPanel = createContextPanel({
       showWelcome(false);
       return conversation;
     } catch (error) {
-      showToast(/** @type {ApiError} */ (error).safeFallback || 'Could not start a conversation.', { tone: 'error' });
+      showToast(errorMessage(toApiError(error), 'Could not start a conversation.'), { tone: 'error' });
       return null;
     }
   },
+  writeBlocked: (sessionId) => writeBlocked(sessionId),
+  beginWrite: (sessionId) => writeGuard.acquire(sessionId, 'bp'),
   onCrisis: showCrisis,
   onSummary: downloadSummary,
   onExport: exportConversation,
@@ -654,6 +853,8 @@ const contextPanel = createContextPanel({
     updateScrim();
   },
 });
+
+writeGuard.subscribe(() => syncWriteState());
 
 byId('new-chat').addEventListener('click', newChat);
 el.sidebarToggle.addEventListener('click', () => setSidebar(!sidebarOpen()));

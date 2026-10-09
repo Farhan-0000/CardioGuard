@@ -53,13 +53,23 @@ _BOUNDARY = re.compile(r"([.!?]+[\"')\]]*)((?:\s*\[\d+(?:\s*[,–-]\s*\d+)*\])*)
 _MARKER = re.compile(r"\[(\d+(?:\s*[,–-]\s*\d+)*)\]")
 _LIST_ITEM = re.compile(r"^(\s*(?:[-*•+]|\d+[.)])\s+)(.*)$")
 _HEADING = re.compile(r"^\s*(?:#{1,6}\s+.*|\*\*[^*]+\*\*:?|__[^_]+__:?)\s*$")
-_NON_CLAIM_START = re.compile(
-    r"^(?:hi|hello|hey|thanks|thank you|you're welcome|i hope (?:this|that) helps|"
-    r"(?:i'm |i am )?sorry to hear|great question|good question|i understand|i know|"
-    r"it's understandable|it is understandable|it can (?:feel|be) (?:worrying|stressful|"
-    r"confusing|overwhelming)|it's (?:great|good) that you|here (?:is|are) )",
+_HEADING_MARK = re.compile(r"^(\s*#{1,6}\s+)(.*)$")
+# A line whose content is wholly bold/underlined: "**...**", "__...__:".
+_WRAPPED = re.compile(r"^(\*\*|__)(.+?)\1(:?)\s*$")
+# A heading of this many words or more (or one with a [n] marker or a full stop)
+# is a sentence written as a heading, and is verified like any other sentence.
+HEADING_MAX_WORDS = 6
+# Greeting / empathy / signposting lead-ins. Word boundaries matter: "hi" must not
+# match "High blood pressure ...". The rest of the sentence is still checked.
+_LEAD_IN = re.compile(
+    r"^(?:(?:hi|hello|hey|thanks)\b|thank you\b|you're welcome\b|i hope (?:this|that) helps\b|"
+    r"(?:i'm |i am )?sorry to hear\b|(?:great|good) question\b|i understand\b|i know\b|"
+    r"it's understandable\b|it is understandable\b|it can (?:feel|be) (?:worrying|stressful|"
+    r"confusing|overwhelming)\b|it's (?:great|good) that you\b|here (?:is|are)\b)",
     re.IGNORECASE,
 )
+# Disclaimer / referral clauses. A clause that matches (and carries no number with a
+# unit) is boilerplate; the rest of its sentence is still checked.
 _BOILERPLATE = re.compile(
     r"^(?:please\s+)?(?:always\s+)?(?:consult|talk to|talk with|speak to|speak with|discuss|"
     r"check with|ask|contact|see|reach out to)\b.*\b(?:doctor|clinician|healthcare|"
@@ -67,11 +77,27 @@ _BOILERPLATE = re.compile(
     r"|\bnot (?:a substitute for|medical advice|personalised|personalized)\b"
     r"|\b(?:general|educational) information\b"
     r"|\binformational purposes\b"
-    r"|\bi(?: am|'m) not a doctor\b"
-    r"|\b(?:emergency services|call (?:911|112|108|999)|emergency room|emergency department)\b"
-    r"|\bseek (?:immediate|urgent|emergency) (?:medical )?(?:care|help|attention)\b",
+    r"|\bi(?: am|'m) not a doctor\b",
     re.IGNORECASE,
 )
+# Advice to get emergency care. Such sentences are safety advice: never checked and
+# never removed, whatever else they contain.
+_EMERGENCY_ADVICE = re.compile(
+    r"\b(?:call|dial|phone|ring|contact)\s+(?:\d{3}\b|an ambulance|(?:your local )?emergency)"
+    r"|\b(?:go|get|head)\s+(?:straight\s+|immediately\s+|right away\s+)?to\s+(?:the\s+|an\s+|a\s+"
+    r"|your nearest\s+|the nearest\s+)?(?:emergency|er\b|a&e\b|hospital)"
+    r"|\b(?:seek|get) (?:immediate|urgent|emergency) (?:medical )?(?:care|help|attention|treatment)\b"
+    r"|\bemergency services\b",
+    re.IGNORECASE,
+)
+# A number with a clinical unit ("20 mg", "130/80 mmHg", "5 %", "2 weeks").
+_NUMBER_UNIT = re.compile(
+    r"\b\d+(?:[.,]\d+)?(?:\s*/\s*\d+)?\s*(?:mg|mcg|µg|g|kg|ml|l|mmhg|mmol|mg/dl|%|percent|"
+    r"bpm|units?|iu|tablets?|times|hours?|days?|weeks?|months?|years?|cups?|drinks?|kcal|"
+    r"mins?|minutes?)\b|\b\d{2,3}\s*/\s*\d{2,3}\b",
+    re.IGNORECASE,
+)
+_CLAUSE_SPLIT = re.compile(r"(?<=[,:;])\s+|\s+[–—-]\s+")
 
 
 class NLIModel(Protocol):
@@ -147,16 +173,50 @@ def plain_text(sentence: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def is_claim(sentence: str) -> bool:
-    """Whether a sentence makes a checkable clinical statement.
+def _strip_boilerplate(text: str) -> tuple[str, bool]:
+    """``text`` without lead-ins and boilerplate clauses, and whether anything was removed."""
+    exempt = False
+    lead = _LEAD_IN.match(text)
+    if lead:
+        exempt = True
+        text = re.sub(r"^[\s,:;!.–—-]*(?:that\s+)?", "", text[lead.end():], flags=re.IGNORECASE)
+    kept: list[str] = []
+    for clause in _CLAUSE_SPLIT.split(text):
+        body = clause.strip(" ,:;–—-")
+        if body and _BOILERPLATE.search(body) and not _NUMBER_UNIT.search(body):
+            exempt = True
+            continue
+        kept.append(clause)
+    return " ".join(kept).strip(" ,:;–—-"), exempt
 
-    Questions, greetings, empathy, lead-ins ending with ':', "talk to your
-    doctor"/disclaimer boilerplate and emergency-safety advice are not claims.
+
+def claim_text(sentence: str) -> str | None:
+    """The checkable clinical statement in a sentence, or ``None`` if it makes none.
+
+    Questions, lead-ins ending with ':' and emergency-care advice are never
+    claims. Greetings, empathy, "talk to your doctor" referrals and disclaimers
+    are removed from the sentence first; when that leaves text *and* the sentence
+    carries a citation marker or a number with a unit, the remainder is the claim
+    ("This is general information: X [1]" → "X"). Sentences without such
+    boilerplate are claims as written.
     """
     text = plain_text(sentence)
     if len(text.split()) < 3 or text.endswith("?") or text.endswith(":"):
-        return False
-    return not (_NON_CLAIM_START.search(text) or _BOILERPLATE.search(text))
+        return None
+    if _EMERGENCY_ADVICE.search(text):
+        return None
+    remainder, exempt = _strip_boilerplate(text)
+    if not exempt:
+        return text
+    has_signal = bool(_MARKER.search(sentence)) or bool(_NUMBER_UNIT.search(text))
+    if not has_signal or len(remainder.split()) < 3:
+        return None
+    return remainder
+
+
+def is_claim(sentence: str) -> bool:
+    """Whether a sentence makes a checkable clinical statement (see :func:`claim_text`)."""
+    return claim_text(sentence) is not None
 
 
 def evidence_windows(text: str) -> list[str]:
@@ -177,18 +237,42 @@ def evidence_windows(text: str) -> list[str]:
 class _Line:
     prefix: str
     sentences: list[str]
-    structural: bool  # blank line or heading/lead-in — kept as is
+    structural: bool  # blank line or short heading/lead-in — kept as is
+    suffix: str = ""  # closing emphasis of a wholly bold line ("**")
+
+
+def _is_short_heading(content: str) -> bool:
+    text = plain_text(content)
+    if _MARKER.search(content) or text.endswith((".", "!")):
+        return False
+    return len(text.split()) < HEADING_MAX_WORDS or text.endswith(":")
 
 
 def _segment(text: str) -> list[_Line]:
+    """Split markdown into lines of sentences.
+
+    Short headings and bold lead-ins stay structural; a heading or wholly bold
+    line that is really a sentence (long, cited or ending with a full stop) is
+    split and verified like any other line, its markers kept around the text.
+    """
     lines: list[_Line] = []
     for raw in text.split("\n"):
-        if not raw.strip() or _HEADING.match(raw):
+        if not raw.strip():
             lines.append(_Line(raw, [], True))
             continue
-        item = _LIST_ITEM.match(raw)
-        prefix, content = (item.group(1), item.group(2)) if item else ("", raw)
-        lines.append(_Line(prefix, split_sentences(content), False))
+        heading = _HEADING_MARK.match(raw)
+        item = None if heading else _LIST_ITEM.match(raw)
+        match = heading or item
+        prefix, content = (match.group(1), match.group(2)) if match else ("", raw)
+        suffix = ""
+        wrapped = _WRAPPED.match(content.strip())
+        if wrapped:
+            prefix += content[:len(content) - len(content.lstrip())] + wrapped.group(1)
+            content, suffix = wrapped.group(2), wrapped.group(1) + wrapped.group(3)
+        if (heading or wrapped) and _is_short_heading(content):
+            lines.append(_Line(raw, [], True))
+            continue
+        lines.append(_Line(prefix, split_sentences(content), False, suffix))
     return lines
 
 
@@ -209,7 +293,7 @@ def _rebuild(lines: list[_Line], drop: set[tuple[int, int]]) -> str:
             texts.append(line.prefix)
             continue
         kept = [s for si, s in enumerate(line.sentences) if (li, si) not in drop]
-        texts.append(line.prefix + " ".join(kept) if kept else None)
+        texts.append(line.prefix + " ".join(kept) + line.suffix if kept else None)
     emptied = [text is None for text in texts]
 
     def is_blank(i: int) -> bool:
@@ -217,7 +301,9 @@ def _rebuild(lines: list[_Line], drop: set[tuple[int, int]]) -> str:
 
     def is_lead_in(i: int) -> bool:
         text = texts[i]
-        return bool(text and text.strip()) and _is_lead_in(text or "")
+        if not (text and text.strip()):
+            return False
+        return (lines[i].structural and _is_lead_in(text)) or text.rstrip().endswith(":")
 
     out: list[str] = []
     for i, text in enumerate(texts):
@@ -368,7 +454,8 @@ class GroundingVerifier:
             for si, sentence in enumerate(line.sentences):
                 markers = parse_markers(sentence)
                 valid = [m for m in markers if 1 <= m <= len(chunk_windows)]
-                claim = is_claim(sentence)
+                hypothesis = claim_text(sentence)
+                claim = hypothesis is not None
                 records.append({
                     "text": sentence, "markers": markers, "cited": bool(valid),
                     "is_claim": claim, "supported": True,
@@ -376,11 +463,10 @@ class GroundingVerifier:
                 })
                 positions.append((li, si))
                 start = len(pairs)
-                if claim:
+                if hypothesis is not None:
                     premises = (
                         [w for m in valid for w in chunk_windows[m - 1]] if valid else all_windows
                     )
-                    hypothesis = plain_text(sentence)
                     pairs.extend((premise, hypothesis) for premise in premises)
                 spans.append((start, len(pairs)))
 

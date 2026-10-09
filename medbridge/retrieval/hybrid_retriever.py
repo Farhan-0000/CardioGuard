@@ -12,6 +12,14 @@ Performance (ADL-027): the two query encoders run concurrently in worker
 threads, query embeddings are LRU-cached by the embedding client and fused
 results are cached here (LRU + TTL keyed by ``(query, top_k, mode)``).
 
+Failure vs. no results: an empty query or a search that matches nothing
+returns ``[]``; an infrastructure failure (Qdrant unreachable or timing out,
+missing collection, embedder crash) raises :class:`RetrievalError`. The
+orchestrator catches it, records the retrieval stage as ``failed`` and lets
+Gate 2 decide on empty evidence, so a degraded turn is visible in the trace
+(``explanation.retrieval_status == "failed"``) instead of passing for a turn
+whose corpus simply had nothing relevant.
+
 Constitution §6.4: the retrieval module has strictly read-only access to Qdrant.
 """
 
@@ -35,6 +43,10 @@ SearchMode = Literal["hybrid", "dense", "sparse"]
 
 RRF_K: int = 60
 _WARMUP_QUERY = "blood pressure target"
+
+
+class RetrievalError(RuntimeError):
+    """The search could not run (vector store or embedder failure) — not "no results"."""
 
 
 class RetrievedChunk(BaseModel):
@@ -158,8 +170,11 @@ class HybridRetriever:
     async def hybrid_search(self, query: str, top_k: int | None = None) -> list[RetrievedChunk]:
         """Hybrid (dense + sparse, RRF k=60) search — the production retrieval path.
 
-        Returns an empty list on an empty query, an empty/missing collection or
-        any connection/embedding failure (the Evidence Gate then decides).
+        Returns an empty list for an empty query or when nothing matches.
+
+        Raises:
+            RetrievalError: Qdrant/embedder failure (connection, timeout, missing
+                collection, model crash). Failures are never cached.
         """
         return await self.search(query, top_k=top_k, mode="hybrid")
 
@@ -174,6 +189,9 @@ class HybridRetriever:
 
         ``mode="dense"`` and ``mode="sparse"`` exist for the retrieval
         evaluation (dense-only vs sparse-only vs hybrid ablation).
+
+        Raises:
+            RetrievalError: the search could not run (see :meth:`hybrid_search`).
         """
         if not query or not query.strip():
             return []
@@ -228,7 +246,10 @@ class HybridRetriever:
                 error=type(exc).__name__,
                 detail=str(exc)[:200],
             )
-            return []
+            raise RetrievalError(
+                f"{mode} retrieval failed on collection {self.collection_name!r}: "
+                f"{type(exc).__name__}"
+            ) from exc
 
         logger.info(
             "retrieval_complete", mode=mode, count=len(chunks), collection=self.collection_name

@@ -240,6 +240,89 @@ class TestVerify:
         assert get_grounding_verifier() is get_grounding_verifier()
 
 
+class SelectiveNLI(OverlapNLI):
+    """Fake NLI that entails only hypotheses containing one of ``supported`` words."""
+
+    def __init__(self, *supported: str) -> None:
+        super().__init__()
+        self.supported = supported
+
+    def predict(self, pairs: list[tuple[str, str]], **kwargs: Any) -> list[list[float]]:
+        self.calls.append(pairs)
+        return [[0.05, 0.95 if any(w in h.lower() for w in self.supported) else 0.05, 0.0]
+                for _, h in pairs]
+
+
+class TestClaimsInEmphasisHeadingsAndBoilerplate:
+    """Regression (llm-prompts-02): such claims are verified, removed and counted."""
+
+    CHUNK = [{"chunk_text": "Ankle swelling is a known side effect of amlodipine."}]
+
+    async def test_finding_draft_contradicted_claims_removed(self) -> None:
+        draft = (
+            "**Yes, you can safely double your amlodipine to 20 mg [1].**\n"
+            "Ankle swelling is a known side effect of amlodipine [1].\n"
+            "This is general information from the guidelines: amlodipine can be stopped "
+            "suddenly without risk [1]."
+        )
+        result = await verifier(SelectiveNLI("swelling"), threshold=0.5).verify(draft, self.CHUNK)
+        assert result.n_claims == 3 and result.n_unsupported == 2
+        assert result.unsupported_fraction == pytest.approx(0.6667)
+        assert result.cleaned_text == "Ankle swelling is a known side effect of amlodipine [1]."
+
+    @pytest.mark.parametrize("sentence", [
+        "Talk to your doctor about raising amlodipine to 20 mg, which is the usual next step [1].",
+        "I understand amlodipine is safe to stop abruptly [1].",
+        "High blood pressure raises stroke risk [1].",
+        "Here is the key point: amlodipine can be doubled to 20 mg [1].",
+        "Ankle swelling is not an emergency room matter [1].",
+    ])
+    def test_boilerplate_words_do_not_exempt_cited_claims(self, sentence: str) -> None:
+        assert is_claim(sentence)
+
+    def test_claim_text_drops_the_boilerplate_lead(self) -> None:
+        assert gv.claim_text(
+            "This is general information from the guidelines: amlodipine can be stopped "
+            "suddenly without risk [1]."
+        ) == "amlodipine can be stopped suddenly without risk ."
+        assert gv.claim_text("I understand amlodipine is safe to stop abruptly [1].") == (
+            "amlodipine is safe to stop abruptly ."
+        )
+
+    @pytest.mark.parametrize("sentence", [
+        "This is general information from the guidelines, not personalised advice.",
+        "This is general information from the guidelines [1].",
+        "Please talk to your doctor before changing your dose.",
+        "If your BP is above 180/120 mmHg with symptoms, call emergency services [2].",
+        "Go to the nearest emergency department now if you have chest pain [1].",
+        "I understand how worrying this can be.",
+    ])
+    def test_pure_boilerplate_and_emergency_advice_stay_exempt(self, sentence: str) -> None:
+        assert not is_claim(sentence)
+
+    async def test_heading_claim_verified_but_short_headings_kept(self) -> None:
+        text = (
+            "## What the guidelines say\n"
+            "## Amlodipine can be stopped suddenly without any risk [1]\n"
+            "- Ankle swelling is a known side effect of amlodipine [1]."
+        )
+        result = await verifier(SelectiveNLI("swelling"), threshold=0.5).verify(text, self.CHUNK)
+        assert result.n_claims == 2 and result.n_unsupported == 1
+        assert result.cleaned_text == (
+            "## What the guidelines say\n- Ankle swelling is a known side effect of amlodipine [1]."
+        )
+
+    async def test_supported_bold_claim_keeps_its_emphasis(self) -> None:
+        text = "**Ankle swelling is a known side effect of amlodipine [1].**"
+        result = await verifier(SelectiveNLI("swelling"), threshold=0.5).verify(text, self.CHUNK)
+        assert result.n_claims == 1 and result.cleaned_text == text
+
+    async def test_emergency_advice_never_removed(self) -> None:
+        text = "If your reading is over 180/120 mmHg with chest pain, call emergency services [1]."
+        result = await verifier(SelectiveNLI("swelling"), threshold=0.5).verify(text, self.CHUNK)
+        assert result.n_claims == 0 and result.cleaned_text == text
+
+
 def _model_cached(model_name: str) -> bool:
     try:
         from huggingface_hub import try_to_load_from_cache

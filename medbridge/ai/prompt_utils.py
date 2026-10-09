@@ -17,6 +17,8 @@ from __future__ import annotations
 import html
 import json
 import re
+import sys
+import unicodedata
 from collections.abc import Sequence
 from typing import Any, Protocol
 
@@ -31,9 +33,45 @@ _ANGLE_LOOKALIKES = str.maketrans({
     "＜": "<", "﹤": "<", "‹": "<", "⟨": "<", "〈": "<", "〈": "<",
     "＞": ">", "﹥": ">", "›": ">", "⟩": ">", "〉": ">", "〉": ">",
 })
-# Whitespace plus invisible format characters (zero-width space/joiners, BOM, soft
-# hyphen) that could be slipped between "<" and a tag name.
-_GAP = r"[\s­​-‏⁠-⁤﻿]*"
+# Characters that render as nothing (or only modify the previous character) and
+# could be slipped between "<" and a tag name: every code point whose Unicode
+# category is a format character (Cf), a combining mark (Mn/Me), a separator
+# (Zs/Zl/Zp) or a control character (Cc), plus the remaining
+# Default_Ignorable_Code_Point ranges (Hangul fillers, reserved ignorables and the
+# tag/variation-selector planes). Built once at import; only used *inside* tag
+# matches, so ZWJ emoji sequences and bidi marks in ordinary text are untouched.
+_INVISIBLE_CATEGORIES: frozenset[str] = frozenset({"Cf", "Mn", "Me", "Zs", "Zl", "Zp", "Cc"})
+_DEFAULT_IGNORABLE_EXTRA: tuple[tuple[int, int], ...] = (
+    (0x115F, 0x1160), (0x2065, 0x2065), (0x3164, 0x3164), (0xFFA0, 0xFFA0),
+    (0xFFF0, 0xFFF8), (0xE0000, 0xE0FFF),
+)
+
+
+def _invisible_ranges() -> list[tuple[int, int]]:
+    points = {
+        cp for cp in range(sys.maxunicode + 1)
+        if unicodedata.category(chr(cp)) in _INVISIBLE_CATEGORIES
+    }
+    for low, high in _DEFAULT_IGNORABLE_EXTRA:
+        points.update(range(low, high + 1))
+    ranges: list[tuple[int, int]] = []
+    for cp in sorted(points):
+        if ranges and cp == ranges[-1][1] + 1:
+            ranges[-1] = (ranges[-1][0], cp)
+        else:
+            ranges.append((cp, cp))
+    return ranges
+
+
+def _char_class(ranges: list[tuple[int, int]]) -> str:
+    return "[" + "".join(
+        f"\\U{low:08x}" if low == high else f"\\U{low:08x}-\\U{high:08x}"
+        for low, high in ranges
+    ) + "]"
+
+
+_INVISIBLE = _char_class(_invisible_ranges())
+_GAP = rf"(?:\s|{_INVISIBLE})*"
 # Anything that looks like an XML/HTML tag: <tag>, </tag>, <tag attr="x">.
 _TAG_LIKE = re.compile(rf"<{_GAP}(/?){_GAP}([A-Za-z_][\w:.-]*)([^<>]*)>")
 # A "<" that starts a tag-like token even when the tag is never closed
@@ -56,7 +94,8 @@ def neutralize_tags(text: str) -> str:
     close nor open a prompt block:
 
     * complete tags (``<x>``, ``</x>``, ``< / x >``, ``<x attr="…">``) are escaped,
-      also with zero-width characters between ``<`` and the name;
+      also with invisible characters (format, combining, separator, control or
+      other default-ignorable code points) between ``<`` and the name;
     * an unterminated tag opener (``</untrusted_user_input`` at the end of the
       text, ``<!--``, ``<?xml``) has its ``<`` escaped;
     * Unicode look-alike angle brackets (``＜``/``＞``, ``‹``/``›``, ``⟨``/``⟩``…)

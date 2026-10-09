@@ -7,6 +7,7 @@ deterministic wrapper parameters (temperature 0.0, gates model).
 """
 from __future__ import annotations
 
+import re
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -94,7 +95,32 @@ class TestEvidenceGateSystemPrompt:
     def test_few_shot_examples_present_for_all_actions(self) -> None:
         for action in ("ANSWER", "GENERALIZE", "ABSTAIN", "ESCALATE"):
             assert f'"action": "{action}"' in SYSTEM_PROMPT
-        assert "Cardiozepam" in SYSTEM_PROMPT
+        # Fabricated-drug example uses an invented name that HalluBench does not use.
+        assert "Quilvetan" in SYSTEM_PROMPT and "Cardiozepam" not in SYSTEM_PROMPT
+
+    def test_four_labels_only(self) -> None:
+        labels = set(re.findall(r'"action": "([A-Z-]+)"', SYSTEM_PROMPT))
+        assert labels == {"ANSWER", "GENERALIZE", "ABSTAIN", "ESCALATE"}
+
+
+class TestEvidenceGateRoutingRules:
+    """Prompt content rules derived from the dev-split error analysis (over-abstaining)."""
+
+    def test_absent_term_rule_is_limited_to_named_products(self) -> None:
+        rule = SYSTEM_PROMPT.split("   c. ")[1].split("   d. ")[0]
+        assert "specific named products" in rule
+        for covered in ("concepts", "procedures", "guideline bodies", "other words"):
+            assert covered in rule
+        assert "do not ABSTAIN just because" in rule
+
+    def test_follow_up_format_judges_the_original_question(self) -> None:
+        assert '"Original question: ... Follow-up details: ..."' in SYSTEM_PROMPT
+        assert "judge the ORIGINAL question" in SYSTEM_PROMPT
+        assert "never ABSTAIN merely because" in SYSTEM_PROMPT
+
+    def test_examples_cover_procedure_wording_and_named_product(self) -> None:
+        assert "rule 2c does not apply to tests or procedures" in SYSTEM_PROMPT
+        assert "Rule 2c: the named drug Quilvetan" in SYSTEM_PROMPT
 
     def test_scope_is_broad_cardiology(self) -> None:
         for topic in ("heart failure", "atrial fibrillation", "coronary", "cholesterol", "pregnancy"):

@@ -78,7 +78,12 @@ class PipelineEvent:
 
 EventCallback = Callable[[PipelineEvent], Awaitable[None]]
 
-GeneratorMode = Literal["grounded", "direct", "prompt_safety"]
+# Response-generator prompt variants (see medbridge.ai.response_generator):
+#   "grounded"      production prompt (strict grounding + safety rules), used by C3-C5/V*
+#   "direct"        no evidence; answers from parametric knowledge (C0)
+#   "vanilla"       plain RAG: answer from the evidence with [n] citations, no safety rules (C1)
+#   "prompt_safety" vanilla + a prose safety block that asks for the gates' behaviour (C2)
+GeneratorMode = Literal["grounded", "direct", "prompt_safety", "vanilla"]
 
 
 @dataclass(frozen=True)
@@ -86,15 +91,30 @@ class AblationConfig:
     """Pipeline switches for the hallucination study (evaluation only).
 
     Conditions (CLAUDE_AGENT_PROMPT §6.2 / §6.7):
-      C0 Direct LLM          — no retrieval, no gates, generator answers from parametric knowledge
-      C1 Vanilla RAG         — retrieval + grounded generation, no gates
-      C2 RAG + prompt safety — retrieval + generator with safety instructions, no gates
-      C3 Context Gate only   — Gate 1 active, Gate 2 bypassed (always ANSWER)
-      C4 Evidence Gate only  — Gate 1 bypassed (always PROCEED), Gate 2 active
-      C5 Full MedBridge      — Dual Answerability Gate
+      C0 Direct LLM          — no retrieval, no gates; generator mode ``direct`` answers from
+                               parametric knowledge (no evidence block).
+      C1 Vanilla RAG         — retrieval, no gates; generator mode ``vanilla``: "answer the
+                               question from the provided guideline passages with [n]
+                               citations" and nothing else (no safety, grounding-strictness,
+                               false-premise, dose or abstention instructions).
+      C2 RAG + prompt safety — retrieval, no gates; generator mode ``prompt_safety`` = the
+                               vanilla prompt plus an explicit safety block that asks, in prose,
+                               for what the gates do: ask for missing personal facts instead of
+                               personalising, say it cannot answer when the evidence does not
+                               cover the question, decline non-cardiovascular topics, correct
+                               false premises, never invent drugs or doses, and send red flags
+                               to emergency care. C2 − C1 is the effect of prompt-only safety.
+      C3 Context Gate only   — Gate 1 active, Gate 2 bypassed (always ANSWER); ``grounded``.
+      C4 Evidence Gate only  — Gate 1 bypassed (always PROCEED), Gate 2 active; ``grounded``.
+      C5 Full MedBridge      — Dual Answerability Gate; ``grounded`` (production prompt).
       V1 Calibrated Gate 2   — C5 + quantitative evidence signal + permutation votes
       V2 Triple Gate         — C5 + post-generation Grounding Verifier (Gate 3)
       V12                    — C5 + V1 + V2
+
+    Optional reference (not in :meth:`all_names`): ``C1G`` = retrieval + the production
+    ``grounded`` prompt with no gates. C3, C4 and C5 differ from C1G only by their gates, so
+    gate-effect deltas (waterfalls) should be anchored at C1G rather than at the vanilla C1,
+    whose prompt also differs.
     """
 
     name: str = "C5"
@@ -120,8 +140,11 @@ class AblationConfig:
                       generator_mode="direct", calibrated_evidence_gate=False,
                       grounding_verifier=False),
             "C1": cls(name="C1", use_context_gate=False, use_evidence_gate=False,
-                      generator_mode="grounded", calibrated_evidence_gate=False,
+                      generator_mode="vanilla", calibrated_evidence_gate=False,
                       grounding_verifier=False),
+            "C1G": cls(name="C1G", use_context_gate=False, use_evidence_gate=False,
+                       generator_mode="grounded", calibrated_evidence_gate=False,
+                       grounding_verifier=False),
             "C2": cls(name="C2", use_context_gate=False, use_evidence_gate=False,
                       generator_mode="prompt_safety", calibrated_evidence_gate=False,
                       grounding_verifier=False),

@@ -123,6 +123,43 @@ async def test_corpus_retriever_search_and_score():
     assert [c.chunk_id for c, _ in scored] == ["l", "s"]
 
 
+async def test_corpus_retriever_does_not_memoise_an_outage():
+    """ablation-study-validity-2 (judge side): an empty result is retried, not replayed."""
+
+    class Flaky(FakeHybrid):
+        def __init__(self):
+            self.calls = 0
+
+        async def hybrid_search(self, query, top_k=20):
+            self.calls += 1
+            return [] if self.calls == 1 else await super().hybrid_search(query, top_k)
+
+    hybrid = Flaky()
+    retriever = CorpusRetriever(retriever=hybrid, reranker=FakeReranker())
+    assert await retriever.search("claim", top_k=2) == []
+    assert [c.chunk_id for c in await retriever.search("claim", top_k=2)] == ["c4", "c3"]
+    await retriever.search("claim", top_k=2)
+    assert hybrid.calls == 2  # the non-empty result is memoised
+
+
+def test_ollama_models_matches_latest_tags(monkeypatch):
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "models": [
+                    {"name": "llama3:latest", "digest": "d1", "details": {}},
+                    {"name": "qwen3:8b", "digest": "d2", "details": {}},
+                ]
+            }
+
+    monkeypatch.setattr(mf.httpx, "get", lambda *a, **k: Response())
+    info = mf.ollama_models("http://127.0.0.1:11434/v1", ["llama3", "qwen3:8b"])
+    assert set(info) == {"llama3:latest", "qwen3:8b"} and info["llama3:latest"]["digest"] == "d1"
+
+
 def test_evidence_chunk_roundtrip():
     chunk = EvidenceChunk(chunk_id="x", text="t", page=2)
     assert EvidenceChunk.from_dict({**chunk.to_dict(), "unknown": 1}) == chunk

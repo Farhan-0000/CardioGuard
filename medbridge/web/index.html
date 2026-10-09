@@ -85,6 +85,7 @@
           <label for="composer-input" class="visually-hidden">Message MedBridge</label>
           <textarea id="composer-input" rows="1" maxlength="2000" placeholder="Ask about blood pressure, medicines or heart health…" aria-describedby="char-count disclaimer"></textarea>
           <div class="composer__bar">
+            <span class="composer__hold" id="composer-hold" role="status" hidden></span>
             <span class="char-count" id="char-count" aria-live="polite">0 / 2,000</span>
             <button type="submit" class="send-btn" id="send-btn" aria-label="Send message" data-icon="send" data-icon-size="18"></button>
             <button type="button" class="send-btn send-btn--stop" id="stop-btn" aria-label="Stop generating" hidden data-icon="stop" data-icon-size="18"></button>

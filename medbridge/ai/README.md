@@ -27,26 +27,56 @@ fallback).
   `num_ctx`, `num_predict`), `keep_alive`, and `think` only for models that
   advertise it.
 * Optional Groq/OpenAI providers are never contacted while
-  `LOCAL_ONLY_MODE=true` (default) — no patient text leaves the machine.
+  `LOCAL_ONLY_MODE=true` (default), and the Ollama endpoint itself must be
+  loopback (`localhost`, `127.0.0.0/8`, `::1`) serving a non-cloud model tag —
+  otherwise every call, warm-up and probe is refused (fail closed; the
+  orchestrator applies its fallbacks) and `health()` reports `blocked`. No
+  patient text leaves the machine. Set `LOCAL_ONLY_MODE=false` to use a LAN host.
 * Exponential-backoff retries, think-block/markdown JSON extraction and repair,
   validation; `warmup(models)` loads models into Ollama; `health()` reports
   reachability and presence of the configured models.
+* Truncation is a failure: a reply stopped by the token limit
+  (`done_reason`/`finish_reason == "length"`) is discarded, retried once with a
+  doubled `num_predict`/`max_tokens`, and never cached; structurally incomplete
+  JSON (open string or bracket) is never "repaired" into a valid result, and
+  such entries in an old request cache are ignored.
 * `llm_call_log()` (context-variable scoped) records an `LLMCallStat` per call
   (`call_name, model, provider, latency_ms, prompt_tokens, completion_tokens,
-  attempts, success, cached`) — the orchestrator stores these in the turn trace.
+  attempts, success, cached, truncated`) — the orchestrator stores these in the
+  turn trace.
 * `set_request_cache(cache)` memoises identical requests (evaluation only).
 
 ### Extractor post-processing (deterministic)
 
 Payload keys are normalised and sanity-checked; BP readings found by
-`nlp.bp_parse` are merged in and LLM "readings" that are really targets are
-dropped; medication names are normalised brand → generic with `brand_name` and
+`nlp.bp_parse` are merged in only when they are the patient's own measured
+values, and LLM "readings" that are really targets or hypothetical values are
+dropped (a number the patient only asks about is never recorded); medication names are normalised brand → generic with `brand_name` and
 `drug_class` kept (`nlp.drugs`); the search query is expanded with clinical
 synonyms (`nlp.query_expansion`).
 
+### Generator modes (ablation)
+
+| Mode | Condition | Prompt |
+|---|---|---|
+| `grounded` | C3–C5, V1, V2 (production) | strict grounding + safety rules, routing action |
+| `direct` | C0 | no evidence; answers from general knowledge |
+| `vanilla` | C1 | plain RAG: answer from the evidence with `[n]` citations, nothing else |
+| `prompt_safety` | C2 | `vanilla` + a prose safety block asking for what the gates do |
+
+All modes keep the `<untrusted_user_input>` isolation rule.
+
+### Few-shot decontamination
+
+Few-shot examples use topics and an invented drug name (`Quilvetan`) that do
+not occur in HalluBench. `tests/unit/test_prompts_contamination.py` compares
+every example string with every HalluBench turn (dev and test) and fails on a
+fabricated HalluBench entity name, high token similarity, shared rare words or
+high distinctive-word overlap.
+
 ### Generator output format
 
-The grounded modes (`grounded`, `prompt_safety`) end the system prompt with a
+The citation modes (`grounded`, `vanilla`, `prompt_safety`) end the system prompt with a
 JSON example whose `response_text` itself carries `[n]` markers. With
 grammar-constrained JSON output local models mirror that example; with a
 marker-free placeholder, qwen3:8b dropped every marker in the live smoke test,

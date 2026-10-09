@@ -16,16 +16,34 @@ CONTRACT (implemented by the persistence/privacy work-stream):
   and never raise.
 * ``clinical_events`` and ``audit_logs`` remain append-only: nothing in this
   module issues UPDATE/DELETE against them.
+* Concurrency: every writer of a session's snapshot (``persist_turn``,
+  ``append_manual_events``) first takes a row lock on its ``context_snapshots``
+  row (``SELECT … FOR UPDATE``) and re-projects the snapshot by folding only
+  *its own* new events onto the row it just locked — never by writing back a
+  snapshot computed from state loaded earlier. Overlapping writers (a second
+  turn, the BP form, another worker) are serialised and none of their events
+  is lost, so ``snapshot == fold(clinical_events)`` always holds. The lock is
+  held only for the single flush and the caller's commit, never across LLM
+  calls. A regenerated answer is stored only while the re-run user message is
+  still the session's latest (otherwise :class:`RegenerateConflictError`).
+* Legacy plaintext: rows written before encryption existed (or with
+  ``ENCRYPTION_ENABLED=false``) are plaintext. Crypto-shredding cannot cover
+  the ones in the append-only tables (they can never be rewritten), so
+  :func:`erase_session` counts them into ``sessions.legacy_plaintext_rows`` and
+  logs a warning; every reader already hides an erased session's rows.
 
 Trace storage: ``audit_logs.trace`` keeps the PHI-free parts of the
 ``Explanation`` in plaintext for metrics and threshold calibration: timings,
 actions, sources, models, retrieved guideline chunks, the numeric Gate 2
 evidence ``features`` (rerank scores, entity coverage, chunk count) and the
 numeric/status members of ``gate3`` (claims, unsupported fraction,
-``available``, action change). Gate rationales, the emergency rule lists and
+``available``, action change), the loop-breaker counter before the turn
+(``soft_ask_count_before``, used by regenerate), ``retrieval_status`` and the
+counts of ``effective_question``. Gate rationales, the emergency rule lists and
 BP reading, any non-numeric member and any unknown key are moved into
-``trace["private"]`` as an encrypted envelope, and ``trace["assistant_message_id"]``
-links the row to its assistant message for the history "Why this answer?" view.
+``trace["private"]`` as an encrypted envelope. ``trace["assistant_message_id"]``
+links the row to its assistant message for the history "Why this answer?" view
+and ``trace["user_message_id"]`` to the user message the turn answered.
 """
 from __future__ import annotations
 
@@ -35,7 +53,8 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import structlog
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, not_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from medbridge.ai.schemas.extractor import DeltaEvent
@@ -52,7 +71,14 @@ from medbridge.db.models import (
     MessageHistory,
     Session,
 )
-from medbridge.privacy.crypto import SessionCipher, get_session_cipher, shred_session_key
+from medbridge.privacy.crypto import (
+    ENC_PREFIX,
+    ENC_VERSION,
+    SessionCipher,
+    get_session_cipher,
+    is_encrypted_text,
+    shred_session_key,
+)
 from medbridge.privacy.redaction import redact
 from medbridge.state.projector import StateProjector, event_type_value
 from medbridge.state.session_manager import (
@@ -105,8 +131,23 @@ class TurnRecord:
     latency_ms: int = 0
     trace: dict[str, Any] = field(default_factory=dict)   # Explanation.model_dump(mode="json")
     delta_events: list[DeltaEvent] = field(default_factory=list)
-    new_snapshot: dict[str, Any] | None = None          # None = unchanged
+    # In-memory projection the gates used. The stored snapshot is re-projected from
+    # ``delta_events`` onto the locked current row (see persist_turn), not copied from here.
+    new_snapshot: dict[str, Any] | None = None
     soft_ask_count: int = 0
+    # The re-run user message of a regenerate (the reply is attached to it).
+    regenerated_user_message_id: uuid.UUID | None = None
+    # False when Gate 1 did not run (emergency fast-path, small talk): the stored
+    # loop-breaker counter is then left exactly as it is.
+    update_soft_ask_count: bool = True
+
+
+class RegenerateConflictError(RuntimeError):
+    """The re-run user message is no longer the session's latest; nothing was stored."""
+
+    def __init__(self, session_id: uuid.UUID) -> None:
+        self.session_id = session_id
+        super().__init__(f"Regenerated message of session {session_id} is no longer the latest")
 
 
 @dataclass
@@ -143,6 +184,8 @@ class AuditEntry:
     request_text: str | None
     response_text: str | None
     erased: bool
+    # Plaintext at rest (pre-encryption row or ENCRYPTION_ENABLED=false); never shown once erased.
+    legacy_plaintext: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -151,16 +194,21 @@ class AuditEntry:
 
 TRACE_PRIVATE_KEY = "private"
 TRACE_MESSAGE_ID_KEY = "assistant_message_id"
+TRACE_USER_MESSAGE_ID_KEY = "user_message_id"
+TRACE_COUNTER_BEFORE_KEY = "soft_ask_count_before"
+_INTERNAL_TRACE_KEYS = frozenset({
+    TRACE_PRIVATE_KEY, TRACE_MESSAGE_ID_KEY, TRACE_USER_MESSAGE_ID_KEY,
+})
 # Explanation keys that never contain patient text (metrics read these in plaintext).
 _PUBLIC_TRACE_KEYS = frozenset({
     "timings", "total_ms", "models", "llm_calls", "redactions", "redaction_categories",
-    "ablation", "regenerated", "retrieval",
+    "ablation", "regenerated", "retrieval", TRACE_COUNTER_BEFORE_KEY, "retrieval_status",
 })
 # Gate decisions are public except their free-text rationale.
 _GATE_TRACE_KEYS = frozenset({"gate1", "gate2"})
 # Only numeric/boolean members and enum-like status strings are public.
 _SCALAR_TRACE_KEYS = frozenset({
-    "citation_validation", "speculative_retrieval", "gate3", "emergency",
+    "citation_validation", "speculative_retrieval", "gate3", "emergency", "effective_question",
 })
 _PUBLIC_STRING_FIELDS = frozenset({"status", "action", "action_change", "error"})
 
@@ -202,7 +250,7 @@ def split_trace(trace: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     public: dict[str, Any] = {}
     private: dict[str, Any] = {}
     for key, value in trace.items():
-        if key in (TRACE_PRIVATE_KEY, TRACE_MESSAGE_ID_KEY):
+        if key in _INTERNAL_TRACE_KEYS:
             continue
         if key in _PUBLIC_TRACE_KEYS or value is None:
             public[key] = value
@@ -233,9 +281,7 @@ def _merge_dicts(current: dict[str, Any], extra: dict[str, Any]) -> dict[str, An
 
 def merge_trace(public: dict[str, Any], private: dict[str, Any]) -> dict[str, Any]:
     """Inverse of :func:`split_trace` (internal keys removed)."""
-    merged = {
-        k: v for k, v in public.items() if k not in (TRACE_PRIVATE_KEY, TRACE_MESSAGE_ID_KEY)
-    }
+    merged = {k: v for k, v in public.items() if k not in _INTERNAL_TRACE_KEYS}
     for key, value in private.items():
         current = merged.get(key)
         if isinstance(value, dict) and isinstance(current, dict):
@@ -315,16 +361,73 @@ async def _last_user_message_row(
 # Writers
 # ---------------------------------------------------------------------------
 
+async def _lock_session_snapshot(db: AsyncSession, session_id: uuid.UUID) -> ContextSnapshot:
+    """Row-lock the session's snapshot row (``SELECT … FOR UPDATE``) and return it fresh.
+
+    Every snapshot writer calls this first, so writers of one session are
+    serialised by PostgreSQL until the caller commits. ``populate_existing``
+    replaces any copy the session's identity map still holds from the turn's
+    ``load_session_state`` with the committed row. A missing row (legacy
+    session) is created race-free first.
+
+    Raises:
+        SessionErasedError: the session was erased while this writer waited.
+    """
+    def _locked() -> Any:
+        return (
+            select(ContextSnapshot)
+            .where(ContextSnapshot.session_id == session_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+
+    row = (await db.execute(_locked())).scalars().first()
+    if row is None:
+        await db.execute(
+            pg_insert(ContextSnapshot)
+            .values(session_id=session_id, snapshot={}, soft_ask_count=0, updated_at=utcnow())
+            .on_conflict_do_nothing(index_elements=[ContextSnapshot.session_id])
+        )
+        row = (await db.execute(_locked())).scalars().first()
+    erased_at = (await db.execute(
+        select(Session.erased_at).where(Session.session_id == session_id)
+    )).scalar_one_or_none()
+    if row is None or erased_at is not None:
+        raise SessionErasedError(session_id)
+    return row
+
+
+def _fold_onto(
+    cipher: SessionCipher,
+    row: ContextSnapshot,
+    events: list[tuple[EventTypeEnum, DeltaEvent]],
+) -> dict[str, Any]:
+    """Apply ``events`` to the (locked) current snapshot row and store the result."""
+    current = safe_decrypt_json(cipher, row.snapshot, {})
+    snapshot = StateProjector().apply_events(
+        current if isinstance(current, dict) else {}, [event for _, event in events]
+    )
+    row.snapshot = cipher.encrypt_json(snapshot)
+    return snapshot
+
+
 async def persist_turn(db: AsyncSession, record: TurnRecord) -> tuple[uuid.UUID, uuid.UUID]:
     """Persist a full turn with a single flush. Returns (user_message_id, assistant_message_id).
 
-    For a regenerated turn (``record.trace["regenerated"]``) no user message and no
-    clinical events are stored and the snapshot is left unchanged (only the
-    soft-ask counter is written), so the snapshot stays a fold over the events.
+    The snapshot row is locked first and the turn's (known) delta events are
+    folded onto its *current* value, so events written meanwhile by another
+    turn or the BP form are never overwritten.
+
+    For a regenerated turn (``record.trace["regenerated"]`` or
+    ``record.regenerated_user_message_id``) no user message and no clinical
+    events are stored, the snapshot is left unchanged and the new answer is
+    attached to the re-run user message.
 
     Raises:
         SessionNotFoundError: the session does not exist.
         SessionErasedError: the session was erased (nothing is written).
+        RegenerateConflictError: the re-run user message is no longer the
+            session's latest (another turn was stored meanwhile; nothing is written).
     """
     session_id = record.session_id
     session = await db.get(Session, session_id)
@@ -332,32 +435,32 @@ async def persist_turn(db: AsyncSession, record: TurnRecord) -> tuple[uuid.UUID,
         raise SessionNotFoundError(session_id)
     if session.erased_at is not None:
         raise SessionErasedError(session_id)
-    snap_row = await db.get(ContextSnapshot, session_id)
-    regenerated = bool(record.trace.get("regenerated"))
+    snap_row = await _lock_session_snapshot(db, session_id)
+    regenerated = (
+        bool(record.trace.get("regenerated")) or record.regenerated_user_message_id is not None
+    )
     previous_user = await _last_user_message_row(db, session_id) if regenerated else None
+    expected_user = record.regenerated_user_message_id
+    if expected_user is not None and (
+        previous_user is None or previous_user.message_id != expected_user
+    ):
+        logger.warning("regenerate_conflict", session_id=str(session_id))
+        raise RegenerateConflictError(session_id)
     cipher = await require_cipher(db, session_id)
-    now = utcnow()
+    now = utcnow()  # taken under the lock: created_at order == commit order
 
     # 1. Clinical events (append-only) — never re-recorded on regenerate.
     if regenerated and record.delta_events:
         logger.info("regenerate_events_ignored", count=len(record.delta_events))
-    if not regenerated:
-        _add_events(db, session_id, cipher, _known_events(record.delta_events), now)
+    known = [] if regenerated else _known_events(record.delta_events)
+    _add_events(db, session_id, cipher, known, now)
 
-    # 2. Snapshot upsert + loop-breaker counter.
-    new_snapshot = None if regenerated else record.new_snapshot
-    if snap_row is None:
-        db.add(ContextSnapshot(
-            session_id=session_id,
-            snapshot=cipher.encrypt_json(new_snapshot or {}),
-            soft_ask_count=record.soft_ask_count,
-            updated_at=now,
-        ))
-    else:
-        if new_snapshot is not None:
-            snap_row.snapshot = cipher.encrypt_json(new_snapshot)
+    # 2. Snapshot = fold of the events (re-projected on the locked row) + counter.
+    if known:
+        _fold_onto(cipher, snap_row, known)
+    if record.update_soft_ask_count:
         snap_row.soft_ask_count = record.soft_ask_count
-        snap_row.updated_at = now
+    snap_row.updated_at = now
 
     # 3. Messages (user first, assistant 1 µs later for a stable order).
     if previous_user is not None:
@@ -388,6 +491,7 @@ async def persist_turn(db: AsyncSession, record: TurnRecord) -> tuple[uuid.UUID,
     # 4. Immutable audit row (text + rationales encrypted, trace PHI-free).
     public_trace, private_trace = split_trace(record.trace)
     public_trace[TRACE_MESSAGE_ID_KEY] = str(assistant_message_id)
+    public_trace[TRACE_USER_MESSAGE_ID_KEY] = str(user_message_id)
     if private_trace:
         public_trace[TRACE_PRIVATE_KEY] = cipher.encrypt_json(private_trace)
     db.add(AuditLog(
@@ -416,36 +520,25 @@ async def append_manual_events(
 ) -> dict[str, Any]:
     """Append user-entered events (e.g. the BP log form) through the same projector.
 
-    Returns the new snapshot.
+    Takes the same snapshot row lock as :func:`persist_turn` and folds the
+    events onto the current row. Returns the new snapshot.
 
     Raises:
         SessionNotFoundError / SessionErasedError.
     """
-    state = await load_session_state(db, session_id)
-    if not state.exists:
+    session = await db.get(Session, session_id)
+    if session is None:
         raise SessionNotFoundError(session_id)
-    if state.erased:
+    if session.erased_at is not None:
         raise SessionErasedError(session_id)
+    snap_row = await _lock_session_snapshot(db, session_id)
     cipher = await require_cipher(db, session_id)
     known = _known_events(events)
-    new_snapshot = StateProjector().apply_events(state.snapshot, [e for _, e in known])
     now = utcnow()
     _add_events(db, session_id, cipher, known, now)
-
-    snap_row = await db.get(ContextSnapshot, session_id)
-    if snap_row is None:
-        db.add(ContextSnapshot(
-            session_id=session_id,
-            snapshot=cipher.encrypt_json(new_snapshot),
-            soft_ask_count=state.soft_ask_count,
-            updated_at=now,
-        ))
-    else:
-        snap_row.snapshot = cipher.encrypt_json(new_snapshot)
-        snap_row.updated_at = now
-    session = await db.get(Session, session_id)
-    if session is not None:
-        session.last_active_at = now
+    new_snapshot = _fold_onto(cipher, snap_row, known)
+    snap_row.updated_at = now
+    session.last_active_at = now
     await db.flush()
     return new_snapshot
 
@@ -459,7 +552,9 @@ async def save_feedback(
 ) -> uuid.UUID:
     """Store 👍(+1)/👎(-1) feedback with an optional (encrypted, redacted) comment.
 
-    A new rating for the same message replaces the previous one.
+    One rating per message: a new rating replaces the previous one atomically
+    (``INSERT … ON CONFLICT (session_id, message_id) DO UPDATE`` on the unique
+    constraint), so concurrent ratings can never leave two rows.
 
     Raises:
         ValueError: rating not in {-1, 1}.
@@ -476,10 +571,7 @@ async def save_feedback(
     text = (comment or "").strip()
     if text and get_settings().PII_REDACTION_ENABLED:
         text = redact(text).text
-    await db.execute(
-        delete(Feedback).where(Feedback.session_id == session_id, Feedback.message_id == message_id)
-    )
-    feedback = Feedback(
+    insert = pg_insert(Feedback).values(
         feedback_id=uuid.uuid4(),
         session_id=session_id,
         message_id=message_id,
@@ -487,9 +579,38 @@ async def save_feedback(
         comment=cipher.encrypt(text) if text else None,
         created_at=utcnow(),
     )
-    db.add(feedback)
-    await db.flush()
-    return feedback.feedback_id
+    upsert = insert.on_conflict_do_update(
+        index_elements=[Feedback.session_id, Feedback.message_id],
+        set_={
+            "feedback_id": insert.excluded.feedback_id,
+            "rating": insert.excluded.rating,
+            "comment": insert.excluded.comment,
+            "created_at": insert.excluded.created_at,
+        },
+    ).returning(Feedback.feedback_id)
+    feedback_id: uuid.UUID = (await db.execute(upsert)).scalar_one()
+    return feedback_id
+
+
+async def count_legacy_plaintext_rows(db: AsyncSession, session_id: uuid.UUID) -> int:
+    """Append-only rows of a session that are plaintext (written before encryption existed).
+
+    Crypto-shredding cannot cover them and they can never be rewritten
+    (immutability rules), so erasure records this count.
+    """
+    audits = (await db.execute(
+        select(func.count()).select_from(AuditLog).where(
+            AuditLog.session_id == session_id,
+            not_(AuditLog.request_message.startswith(ENC_PREFIX, autoescape=True)),
+        )
+    )).scalar_one()
+    events = (await db.execute(
+        select(func.count()).select_from(ClinicalEvent).where(
+            ClinicalEvent.session_id == session_id,
+            func.coalesce(ClinicalEvent.payload.op("->>")("enc"), "") != ENC_VERSION,
+        )
+    )).scalar_one()
+    return int(audits) + int(events)
 
 
 async def erase_session(db: AsyncSession, session_id: uuid.UUID) -> None:
@@ -498,7 +619,11 @@ async def erase_session(db: AsyncSession, session_id: uuid.UUID) -> None:
     Deletes the wrapped data key and the mutable rows (messages, snapshot,
     feedback) and stamps ``sessions.erased_at``. Encrypted rows in the
     append-only ``clinical_events`` / ``audit_logs`` tables stay in place but
-    can never be decrypted again. Idempotent.
+    can never be decrypted again. Legacy plaintext rows in those tables cannot
+    be shredded or rewritten: their number is recorded in
+    ``sessions.legacy_plaintext_rows`` (and logged); like every other row of
+    the session they are never shown again (readers return nothing for an
+    erased session). Idempotent (also used by the retention purge).
 
     Raises:
         SessionNotFoundError: the session does not exist.
@@ -506,12 +631,22 @@ async def erase_session(db: AsyncSession, session_id: uuid.UUID) -> None:
     session = await db.get(Session, session_id)
     if session is None:
         raise SessionNotFoundError(session_id)
+    legacy = await count_legacy_plaintext_rows(db, session_id)
     await shred_session_key(db, session_id)
     for model in (MessageHistory, ContextSnapshot, Feedback):
         await db.execute(delete(model).where(model.session_id == session_id))
     if session.erased_at is None:
         session.erased_at = utcnow()
+    session.legacy_plaintext_rows = legacy
     await db.flush()
+    if legacy:
+        logger.warning(
+            "erasure_legacy_plaintext_retained",
+            session_id=str(session_id),
+            rows=legacy,
+            hint="Append-only rows written before encryption stay plaintext at rest; they are "
+            "hidden from every view. Reset pre-encryption databases (see privacy/README.md).",
+        )
     logger.info("session_erased", session_id=str(session_id))
 
 
@@ -540,15 +675,35 @@ async def load_session_state(db: AsyncSession, session_id: uuid.UUID) -> Session
 
 
 async def get_recent_turns(db: AsyncSession, session_id: uuid.UUID, n: int) -> list[ChatTurn]:
-    """Return the last ``n`` messages (chronological, decrypted) for coreference."""
+    """Return the last ``n`` messages (chronological, decrypted) for coreference.
+
+    A regenerated answer supersedes the earlier answers to the same user
+    message (the UI shows only the latest), so of consecutive assistant
+    messages only the most recent is returned: the window always holds real
+    question/answer pairs, however often an answer was regenerated.
+    """
     if n <= 0:
         return []
     cipher = await get_session_cipher(db, session_id)
     if cipher is None:
         return []
+    next_role = func.lead(MessageHistory.role).over(
+        order_by=(MessageHistory.created_at.asc(), ROLE_ORDER.asc())
+    )
+    ordered = (
+        select(MessageHistory.message_id, next_role.label("next_role"))
+        .where(MessageHistory.session_id == session_id)
+        .subquery()
+    )
     stmt = (
         select(MessageHistory)
-        .where(MessageHistory.session_id == session_id)
+        .join(ordered, ordered.c.message_id == MessageHistory.message_id)
+        .where(
+            not_(
+                (MessageHistory.role == "assistant")
+                & (func.coalesce(ordered.c.next_role, "") == "assistant")
+            )
+        )
         .order_by(MessageHistory.created_at.desc(), ROLE_ORDER.desc())
         .limit(n)
     )
@@ -610,6 +765,57 @@ async def get_last_user_message(
     return row.message_id, safe_decrypt(cipher, row.content)
 
 
+def _counter_before(trace: Any) -> int | None:
+    value = trace.get(TRACE_COUNTER_BEFORE_KEY) if isinstance(trace, dict) else None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+async def get_soft_ask_count_before(
+    db: AsyncSession, session_id: uuid.UUID, user_message_id: uuid.UUID
+) -> int | None:
+    """Loop-breaker counter as it was *before* the turn that answered ``user_message_id``.
+
+    A regenerate re-runs that turn, so Gate 1 must start from this value — not
+    from the stored counter, which already includes the replaced turn. It is
+    read from the PHI-free trace of the FIRST audit row of that user message
+    (every regenerate carries the same value forward, so repeated regenerates
+    are idempotent). Rows written before the value was recorded fall back to
+    the replaced turn: SOFT-ASK → stored counter − 1, loop-breaker →
+    ``SOFT_ASK_MAX_COUNT``. ``None`` when it cannot be determined.
+    """
+    traces = (await db.execute(
+        select(AuditLog.trace)
+        .where(
+            AuditLog.session_id == session_id,
+            AuditLog.trace.op("->>")(TRACE_USER_MESSAGE_ID_KEY) == str(user_message_id),
+        )
+        .order_by(AuditLog.created_at.asc())
+    )).scalars().all()
+    for trace in traces:
+        if (value := _counter_before(trace)) is not None:
+            return value
+    latest = (await db.execute(
+        select(AuditLog.final_action, AuditLog.trace)
+        .where(AuditLog.session_id == session_id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(1)
+    )).first()
+    if latest is None:
+        return None
+    final_action, trace = latest
+    if (value := _counter_before(trace)) is not None:
+        return value
+    gate2 = trace.get("gate2") if isinstance(trace, dict) else None
+    if isinstance(gate2, dict) and gate2.get("source") == "loop_breaker":
+        return get_settings().SOFT_ASK_MAX_COUNT
+    if final_action == FinalActionEnum.SOFT_ASK:
+        snap = await db.get(ContextSnapshot, session_id)
+        return max(0, (snap.soft_ask_count if snap is not None else 0) - 1)
+    return None
+
+
 async def list_events(
     db: AsyncSession, session_id: uuid.UUID, event_types: list[str] | None = None
 ) -> list[EventRow]:
@@ -637,7 +843,11 @@ async def list_events(
 
 
 async def list_audit_entries(db: AsyncSession, limit: int = 50) -> list[AuditEntry]:
-    """Most recent audit rows across sessions, decrypted where the key still exists."""
+    """Most recent audit rows across sessions, decrypted where the key still exists.
+
+    Rows of an erased session never carry text — including legacy plaintext
+    rows, which are only flagged (``legacy_plaintext``).
+    """
     rows = (await db.execute(
         select(AuditLog).order_by(AuditLog.created_at.desc()).limit(max(1, limit))
     )).scalars().all()
@@ -659,5 +869,6 @@ async def list_audit_entries(db: AsyncSession, limit: int = 50) -> list[AuditEnt
             request_text=safe_decrypt(cipher, row.request_message) if cipher else None,
             response_text=safe_decrypt(cipher, row.response_text) if cipher else None,
             erased=cipher is None,
+            legacy_plaintext=not is_encrypted_text(row.request_message),
         ))
     return entries

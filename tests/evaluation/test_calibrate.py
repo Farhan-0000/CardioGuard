@@ -91,6 +91,28 @@ def test_local_features():
     assert cb.local_features("", [], [])["max_rerank"] == cb.DISABLED
 
 
+class FakeVerifier:
+    """Production-verifier stand-in: entailment 0.9 for 'Claim one' sentences, 0.1 otherwise."""
+
+    model_name = "fake-nli-minilm"
+
+    def __init__(self, available=True):
+        self.available = available
+        self.calls = []
+
+    async def verify(self, response_text, chunks):
+        import re
+        from types import SimpleNamespace
+
+        self.calls.append((response_text, [c["chunk_id"] for c in chunks]))
+        sentences = []
+        for text in re.split(r"(?<=[.!?])\s+", response_text.strip()):
+            claim = len(text.split()) >= 3
+            entail = (0.9 if "one" in text else 0.1) if claim else 0.0
+            sentences.append({"text": text, "is_claim": claim, "entailment": entail})
+        return SimpleNamespace(sentences=sentences, available=self.available)
+
+
 def test_calibrate_end_to_end(tmp_path, capsys):
     paths = write_study(tmp_path, conditions=("C1", "C5"))
     out = tmp_path / "calibration.json"
@@ -103,6 +125,8 @@ def test_calibrate_end_to_end(tmp_path, capsys):
                 str(paths["judgments"]),
                 "--output",
                 str(out),
+                "--part",
+                "nli,v1",
             ]
         )
         == 0
@@ -118,9 +142,115 @@ def test_calibrate_end_to_end(tmp_path, capsys):
     }
     printed = capsys.readouterr().out
     assert "EVIDENCE_MIN_RERANK_ANY=" in printed
+    assert "c5_dev_degraded_excluded" in data["v1"]["inputs"]
     # only the selected part is recomputed; the other is kept
     cb.calibrate(paths["runs"], paths["judgments"], out, part="nli")
     assert json.loads(out.read_text())["v1"] == data["v1"]
+    # V2 with the (fake) production verifier
+    verifier = FakeVerifier()
+    result = cb.calibrate(paths["runs"], paths["judgments"], out, part="v2", verifier=verifier)
+    v2 = result["v2"]
+    assert set(v2["thresholds"]) == {
+        "GROUNDING_ENTAILMENT_THRESHOLD",
+        "GROUNDING_MAX_UNSUPPORTED_FRACTION",
+    }
+    assert 0.1 < v2["thresholds"]["GROUNDING_ENTAILMENT_THRESHOLD"] <= 0.9
+    assert v2["verifier_model"] == "fake-nli-minilm" and v2["n_sentences"] > 0
+    assert v2["dev_result"]["coverage"] >= 0.85 * v2["c5_dev_baseline"]["coverage"] - 1e-9
+    assert verifier.calls and json.loads(out.read_text())["v1"] == data["v1"]
+    assert "GROUNDING_MAX_UNSUPPORTED_FRACTION=" in v2["env_lines"][1]
+
+
+def test_parts_without_data_keep_previous_blocks(tmp_path, capsys):
+    """statistics-judges-7: a part with nothing to calibrate never overwrites with null."""
+    out = tmp_path / "calibration.json"
+    previous = {"nli": {"theta": 0.35, "theta_c": 0.6}, "v1": {"thresholds": {"x": 1}}}
+    out.write_text(json.dumps(previous))
+    empty = tmp_path / "empty"
+    result = cb.calibrate(empty / "runs", empty / "judgments", out, part="all")
+    assert result["nli"] == previous["nli"] and result["v1"] == previous["v1"]
+    assert result["v2"] is None
+    assert "keeping the previous block" in capsys.readouterr().err
+    with pytest.raises(ValueError):
+        cb.calibrate(empty / "runs", empty / "judgments", out, part="v3")
+
+
+def _v2(
+    candidate=True, answerable=True, covered=True, entail=(0.9, 0.2), claims=((0, "SUPPORTED"),)
+):
+    labels = [lab for _, lab in claims]
+    return cb.V2Response(
+        item_id="x",
+        turn_index=0,
+        candidate=candidate,
+        answerable=answerable,
+        covered=covered,
+        hallucinated=any(lab != "SUPPORTED" for lab in labels),
+        entailments=tuple(entail),
+        judge_claims=tuple(claims),
+    )
+
+
+def test_simulate_v2_rule():
+    resp = _v2(entail=(0.9, 0.2, None), claims=((0, "SUPPORTED"), (1, "UNSUPPORTED")))
+    # θ 0.5: sentence 1 unsupported → fraction 1/2
+    assert cb.simulate_v2(resp, 0.5, 0.5) == (False, True)  # kept, bad sentence removed
+    assert cb.simulate_v2(resp, 0.5, 0.4) == (False, False)  # withdrawn → ABSTAIN
+    assert cb.simulate_v2(resp, 0.1, 0.0) == (True, True)  # nothing removed
+    unlinked = _v2(entail=(0.9,), claims=((None, "UNSUPPORTED"),))
+    assert cb.simulate_v2(unlinked, 0.5, 1.0) == (True, True)  # cannot be removed
+    template = _v2(candidate=False, entail=(), claims=())
+    assert cb.simulate_v2(template, 0.5, 0.0) == (False, True)
+
+
+def test_calibrate_v2_objective():
+    good = [_v2(entail=(0.92, 0.88), claims=((0, "SUPPORTED"), (1, "SUPPORTED")))] * 6
+    mixed = [_v2(entail=(0.9, 0.15), claims=((0, "SUPPORTED"), (1, "UNSUPPORTED")))] * 3
+    bad = [_v2(entail=(0.2, 0.1), claims=((0, "UNSUPPORTED"), (1, "CONTRADICTED")))] * 1
+    res = cb.calibrate_v2(good + mixed + bad)
+    theta = res["thresholds"]["GROUNDING_ENTAILMENT_THRESHOLD"]
+    assert 0.2 < theta <= 0.88 and res["kappa_sentence"] == pytest.approx(1.0)
+    # τ removes every hallucination while keeping >= 85 % of coverage (9/10 ≥ 0.85)
+    assert res["dev_result"]["hallucination_rate"] == 0.0
+    assert res["dev_result"]["coverage"] >= 0.85 * res["c5_dev_baseline"]["coverage"]
+    assert res["thresholds"]["GROUNDING_MAX_UNSUPPORTED_FRACTION"] >= 0.5  # keeps the mixed ones
+    assert cb.calibrate_v2([_v2(candidate=False, entail=(), claims=())]) is None
+
+
+def test_verifier_chunks_follow_marker_order():
+    record = {
+        "citations": [{"marker": "[1]", "chunk_id": "c3"}, {"marker": "[2]", "chunk_id": "c1"}],
+        "evidence_texts": [
+            {"chunk_id": "c1", "text": "one"},
+            {"chunk_id": "c2", "text": "two"},
+            {"chunk_id": "c3", "text": "three"},
+        ],
+    }
+    assert [c["chunk_id"] for c in cb.verifier_chunks(record)] == ["c3", "c1", "c2"]
+    assert cb.verifier_chunks(record)[0]["chunk_text"] == "three"
+
+
+async def test_unavailable_verifier_is_an_error(tmp_path):
+    paths = write_study(tmp_path, conditions=("C5",), n_per_category=3)
+    from evaluation.io import judgment_file, load_judgments, load_run_records
+
+    records = [r for r in load_run_records(paths["runs"])["C5"] if r["split"] == "dev"]
+    judgments = load_judgments(judgment_file(paths["judgments"], "llm", "C5"))
+    with pytest.raises(RuntimeError):
+        await cb.score_v2_responses(records, judgments, FakeVerifier(available=False))
+
+
+def test_degraded_c5_turns_are_not_used(tmp_path):
+    paths = write_study(tmp_path, conditions=("C5",), n_per_category=3)
+    from evaluation.io import load_run_records
+
+    runs = load_run_records(paths["runs"])
+    clean, dropped = cb._clean_c5_dev(runs)
+    assert dropped == 0
+    first_dev = next(r for r in runs["C5"] if r["split"] == "dev")
+    first_dev["explanation"]["gate2"]["source"] = "fallback"
+    clean, dropped = cb._clean_c5_dev(runs)
+    assert dropped >= 1 and first_dev not in clean
 
 
 def test_traces_skip_errors_and_use_logged_scores(tmp_path):

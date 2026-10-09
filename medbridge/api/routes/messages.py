@@ -18,6 +18,12 @@ do this in a pre-check so the error is a normal JSON response, not a stream.
 The SSE routes run the orchestrator in its own task with its own database
 session (committed when the turn finishes), so a client that disconnects
 mid-stream does not abort the turn: it still completes and is persisted.
+
+Concurrency: the orchestrator runs the turns of one session one at a time
+(a second message, or a regenerate, sent while a stopped turn is still being
+finished waits for it), except that a message hitting the emergency fast-path
+is answered immediately. The turn store row-locks the snapshot when writing,
+so the BP form and other workers never lose events either.
 Wire format: ``event: <type>\\ndata: <json>\\n\\n``.
 """
 
@@ -265,8 +271,9 @@ async def handle_regenerate(
     """Regenerate the answer to the last user message.
 
     No new user message and no new clinical events are stored; a new assistant
-    message and audit row are written. Returns 409 when there is nothing to
-    regenerate.
+    message and audit row are written, attached to the re-run user message, and
+    the turn restarts from the loop-breaker counter recorded before it. Returns
+    409 when there is nothing to regenerate.
     """
     if stream:
         await _precheck_stream(session_id, regenerate=True)

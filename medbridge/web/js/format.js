@@ -18,6 +18,31 @@ export function titleFromMessage(message) {
 }
 
 /**
+ * Neutral conversation label that carries no message text, e.g. "Conversation · 9 Oct 2026".
+ * @param {unknown} createdAt - epoch ms / ISO string
+ * @returns {string}
+ */
+export function neutralConversationTitle(createdAt) {
+  const date = toDate(createdAt);
+  if (!date || date.getTime() <= 0) return 'Conversation';
+  const day = date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  return `Conversation · ${day}`;
+}
+
+/**
+ * Browser tab title. It never contains message text: browsers keep page titles
+ * in their history (and sync it), where "Clear my data" cannot reach.
+ * @param {{createdAt?: unknown} | null | undefined} conversation
+ * @param {string} appName
+ * @returns {string}
+ */
+export function documentTitle(conversation, appName) {
+  return conversation
+    ? `${neutralConversationTitle(conversation.createdAt)} · ${appName}`
+    : `${appName} — guideline-based heart health assistant`;
+}
+
+/**
  * Group conversations (newest first) into Today / Previous 7 days / Older.
  * @template {{updatedAt: number}} T
  * @param {T[]} conversations

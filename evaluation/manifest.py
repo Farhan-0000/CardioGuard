@@ -151,7 +151,7 @@ def ollama_models(
     out: dict[str, Any] = {}
     for model in models:
         name = str(model.get("name") or model.get("model") or "")
-        if names is not None and name not in names:
+        if names is not None and name not in names and name.removesuffix(":latest") not in names:
             continue
         details = model.get("details") or {}
         out[name] = {
@@ -180,6 +180,21 @@ def redact_secrets(data: dict[str, Any]) -> dict[str, Any]:
             value = mask_url_credentials(value)
         out[key] = value
     return out
+
+
+def apply_settings_env(values: dict[str, str | None]) -> None:
+    """Override ``medbridge.config.Settings`` fields for this process (``None`` = keep).
+
+    Environment variables take precedence over ``.env`` in pydantic-settings;
+    the cached settings are dropped so every object built afterwards sees the
+    overrides. Call this before any pipeline object is created.
+    """
+    for key, value in values.items():
+        if value is not None:
+            os.environ[key] = str(value)
+    from medbridge.config import get_settings
+
+    get_settings.cache_clear()
 
 
 def settings_snapshot() -> dict[str, Any]:

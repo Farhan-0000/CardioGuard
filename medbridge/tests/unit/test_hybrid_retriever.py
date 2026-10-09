@@ -3,7 +3,8 @@ Unit tests for the Qdrant hybrid retriever (medbridge/retrieval/hybrid_retriever
 
 The Qdrant client and the embedding client are mocked: query construction
 (RRF with k = 60), payload mapping (contract §3.5 + legacy keys), search modes,
-the result cache and graceful failure handling.
+the result cache and failure reporting (an outage raises ``RetrievalError`` so
+it is never mistaken for "no results").
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -18,6 +19,7 @@ from medbridge.retrieval.embedder import QueryEmbedding
 from medbridge.retrieval.hybrid_retriever import (
     RRF_K,
     HybridRetriever,
+    RetrievalError,
     RetrievedChunk,
     chunk_from_payload,
     get_hybrid_retriever,
@@ -185,24 +187,42 @@ async def test_empty_results_are_not_cached(retriever, mock_qdrant_client):
     assert mock_qdrant_client.query_points.await_count == 2
 
 
-async def test_graceful_handling_on_qdrant_connection_error(retriever, mock_qdrant_client):
+async def test_qdrant_connection_error_is_reported_not_empty(retriever, mock_qdrant_client):
+    """Regression (ablation-study-validity-2): an outage must not look like 'no results'."""
     mock_qdrant_client.query_points.side_effect = ConnectionError("Qdrant connection refused")
-    assert await retriever.hybrid_search("query during network outage") == []
+    with pytest.raises(RetrievalError) as raised:
+        await retriever.hybrid_search("query during network outage")
+    assert isinstance(raised.value.__cause__, ConnectionError)
+    with pytest.raises(RetrievalError):
+        await retriever.search("query during network outage", mode="dense")
 
 
-async def test_graceful_handling_on_unexpected_response(retriever, mock_qdrant_client):
+async def test_missing_collection_is_reported(retriever, mock_qdrant_client):
     mock_qdrant_client.query_points.side_effect = UnexpectedResponse(
         status_code=404,
         reason_phrase="Not Found",
         content=b'{"status":{"error":"Collection not found"}}',
         headers={},
     )
-    assert await retriever.hybrid_search("query on missing collection") == []
+    with pytest.raises(RetrievalError):
+        await retriever.hybrid_search("query on missing collection")
 
 
-async def test_graceful_handling_on_embedder_failure(retriever, mock_embedder):
+async def test_embedder_failure_is_reported(retriever, mock_embedder):
     mock_embedder.embed_query.side_effect = RuntimeError("Embedding model runtime failure")
-    assert await retriever.hybrid_search("query when model crashes") == []
+    with pytest.raises(RetrievalError):
+        await retriever.hybrid_search("query when model crashes")
+
+
+async def test_failures_are_not_cached_and_recovery_works(retriever, mock_qdrant_client):
+    mock_qdrant_client.query_points.side_effect = TimeoutError("qdrant timeout")
+    with pytest.raises(RetrievalError):
+        await retriever.hybrid_search("flaky query")
+    mock_qdrant_client.query_points.side_effect = None
+    respond(mock_qdrant_client, FULL_PAYLOAD)
+    results = await retriever.hybrid_search("flaky query")
+    assert [c.chunk_id for c in results] == ["aha_2025_s1_c1"]
+    assert mock_qdrant_client.query_points.await_count == 2
 
 
 async def test_collection_points(retriever, mock_qdrant_client):

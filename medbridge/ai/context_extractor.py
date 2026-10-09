@@ -11,7 +11,8 @@ The LLM output is then post-processed deterministically:
    implausible BP values and empty payloads are dropped);
 2. BP readings found by :mod:`medbridge.nlp.bp_parse` are merged in (an LLM
    omission never loses a reading) and LLM "readings" that are really targets
-   ("is 130/80 a good target?") are removed;
+   or hypothetical values ("is 130/80 a good target?", "what if it's 160/100?")
+   are removed; numbers the patient only asks about are never added;
 3. medication names are normalised brand → generic (:mod:`medbridge.nlp.drugs`),
    keeping ``brand_name`` and ``drug_class`` in the payload;
 4. the search query is expanded with clinical synonyms of lay terms and the
@@ -39,7 +40,7 @@ from medbridge.ai.prompt_utils import (
 from medbridge.ai.schemas.extractor import DeltaEvent, ExtractorOutput
 from medbridge.api.schemas.enums import EventTypeEnum
 from medbridge.config import Settings, get_settings
-from medbridge.nlp.bp_parse import is_plausible_bp, parse_bp_mentions
+from medbridge.nlp.bp_parse import NOT_A_READING, is_plausible_bp, parse_bp_mentions
 from medbridge.nlp.drugs import normalize_drug
 from medbridge.nlp.query_expansion import expand_query
 
@@ -66,10 +67,11 @@ Return ONE JSON object with exactly these keys:
 
 1. "delta_events": NEW facts the patient states about THEMSELVES in the new message. Do not \
 repeat facts already in <patient_context> unless the value changed. Do not record drugs or \
-numbers that are only asked about ("should I take aspirin?", "is 130/80 a good target?"), \
-hypothetical, or negated ("no chest pain"). Use [] when there is nothing new. Only these \
-event types and payload keys are allowed:
-   - BP_READING {"systolic": int, "diastolic": int} — "150 over 95", "bp 150/95", "140 by 90".
+numbers that are only asked about ("can I try nebivolol?", "would 125/75 be a good goal?"), \
+hypothetical ("what if it reaches 170/105?"), or negated ("no fever"). Use [] when there is \
+nothing new. Only these event types and payload keys are allowed:
+   - BP_READING {"systolic": int, "diastolic": int} — the patient's own measured reading: \
+"152 over 97", "bp 152/97", "138 by 86".
    - MEDICATION_ADDED {"drug_name": str, "dosage": str, "frequency": str} — a medicine the \
 patient takes or has started; dosage such as "5 mg" or "half a tablet"; "" when unknown.
    - MEDICATION_STOPPED {"drug_name": str, "reason": str}
@@ -78,8 +80,8 @@ patient takes or has started; dosage such as "5 mg" or "half a tablet"; "" when 
 "not pregnant"|"planning pregnancy"|"breastfeeding"|"postpartum", "conditions": [str]} — \
 include only the keys that were stated; "conditions" are long-term diagnoses such as \
 diabetes, chronic kidney disease, heart failure or atrial fibrillation.
-   - LAB_RESULT {"lab_type": str, "value": number, "unit": str} — e.g. eGFR 45 \
-mL/min/1.73m2, LDL 3.2 mmol/L, potassium 5.1 mmol/L, HbA1c 7.2 %, heart_rate 88 bpm.
+   - LAB_RESULT {"lab_type": str, "value": number, "unit": str} — e.g. eGFR 52 \
+mL/min/1.73m2, LDL 2.9 mmol/L, potassium 4.8 mmol/L, HbA1c 6.9 %, heart_rate 76 bpm.
    Write drug names as the patient wrote them (brand or generic). Resolve references to an \
 explicit drug name using the history and <patient_context>.
 
@@ -91,34 +93,37 @@ as age, pregnancy or kidney disease). Resolve references. Never include personal
 
 Example 1
 <patient_context>{}</patient_context>
-Message: I'm 58, bp was 150 over 95 this morning. I take Telma 40 once a day - is that ok?
-Output: {"delta_events": [{"event_type": "DEMOGRAPHIC", "payload": {"age": 58}}, \
-{"event_type": "BP_READING", "payload": {"systolic": 150, "diastolic": 95}}, \
-{"event_type": "MEDICATION_ADDED", "payload": {"drug_name": "Telma", "dosage": "40 mg", \
-"frequency": "once daily"}}], "search_query": "blood pressure 150/95 on telmisartan 40 mg \
-uncontrolled hypertension treatment target adult", "raw_intent": "Asks whether a reading of \
-150/95 on telmisartan 40 mg once daily is acceptable."}
+Message: I'm 59, bp was 152 over 97 at the clinic. I take Nebicard 5 every morning and my \
+hands feel cold
+Output: {"delta_events": [{"event_type": "DEMOGRAPHIC", "payload": {"age": 59}}, \
+{"event_type": "BP_READING", "payload": {"systolic": 152, "diastolic": 97}}, \
+{"event_type": "MEDICATION_ADDED", "payload": {"drug_name": "Nebicard", "dosage": "5 mg", \
+"frequency": "once daily"}}, {"event_type": "SYMPTOM_REPORTED", "payload": {"symptom": \
+"cold hands"}}], "search_query": "nebivolol cold hands cold extremities side effect clinic \
+blood pressure 152/97", "raw_intent": "Reports cold hands on nebivolol 5 mg once daily with a \
+clinic reading of 152/97."}
 
 Example 2
-<patient_context>{"current_medications": [{"drug": "amlodipine", "dosage": "5 mg"}, \
-{"drug": "lisinopril", "dosage": "10 mg"}]}</patient_context>
-History: patient said amlodipine makes their ankles swell; assistant explained that ankle \
-swelling is a known side effect of amlodipine.
-Message: and the other one gives me a dry cough so I stopped it. no chest pain though
+<patient_context>{"current_medications": [{"drug": "bisoprolol", "dosage": "2.5 mg"}, \
+{"drug": "spironolactone", "dosage": "25 mg"}]}</patient_context>
+History: patient said bisoprolol gives them vivid dreams; assistant explained that sleep \
+disturbance can occur with beta-blockers.
+Message: and the other one makes my breasts sore so I stopped it. no fever though
 Output: {"delta_events": [{"event_type": "MEDICATION_STOPPED", "payload": {"drug_name": \
-"lisinopril", "reason": "dry cough"}}, {"event_type": "SYMPTOM_REPORTED", "payload": \
-{"symptom": "dry cough"}}], "search_query": "ACE inhibitor lisinopril dry cough side effect \
-alternative angiotensin receptor blocker", "raw_intent": "Reports stopping lisinopril because \
-of a dry cough and wants to know what to do next."}
+"spironolactone", "reason": "breast soreness"}}, {"event_type": "SYMPTOM_REPORTED", "payload": \
+{"symptom": "breast soreness"}}], "search_query": "spironolactone breast tenderness \
+gynaecomastia side effect alternative mineralocorticoid receptor antagonist eplerenone", \
+"raw_intent": "Reports stopping spironolactone because of breast soreness and wants to know \
+what to do next."}
 
 Example 3
-<patient_context>{"demographics": {"age": 64}}</patient_context>
-Message: Is 130/80 a good target for someone with diabetes like me? My eGFR was 45
+<patient_context>{"demographics": {"age": 71}}</patient_context>
+Message: Would 125/75 be a sensible goal with my heart failure? My potassium was 5.3
 Output: {"delta_events": [{"event_type": "DEMOGRAPHIC", "payload": {"conditions": \
-["diabetes"]}}, {"event_type": "LAB_RESULT", "payload": {"lab_type": "eGFR", "value": 45, \
-"unit": "mL/min/1.73m2"}}], "search_query": "blood pressure target diabetes chronic kidney \
-disease eGFR 45 older adult", "raw_intent": "Asks whether 130/80 is the right blood pressure \
-target given diabetes and reduced kidney function."}
+["heart failure"]}}, {"event_type": "LAB_RESULT", "payload": {"lab_type": "potassium", \
+"value": 5.3, "unit": "mmol/L"}}], "search_query": "blood pressure target heart failure older \
+adult raised potassium", "raw_intent": "Asks whether 125/75 is a suitable blood pressure goal \
+given heart failure and a potassium of 5.3."}
 """
 
 
@@ -268,7 +273,15 @@ def _merge_conditions(payload: dict[str, Any], snapshot: dict[str, Any]) -> None
 def _reconcile_bp(
     events: list[DeltaEvent], message: str, snapshot: dict[str, Any]
 ) -> list[DeltaEvent]:
-    """Merge deterministic BP readings with the LLM's and drop target values posing as readings."""
+    """Merge deterministic BP readings with the LLM's.
+
+    * An LLM BP event whose value the message only mentions as a target or a
+      hypothetical value ("is 130/80 my target?", "what if it's 160/100?") is
+      dropped — it is not a measurement.
+    * A deterministic mention is added only when it is the patient's own
+      measured reading (``kind == "reading"``); questions about a number
+      ("is 140/90 considered high?") are never turned into readings.
+    """
     mentions = parse_bp_mentions(message)
     kinds: dict[tuple[int, int], set[str]] = {}
     for mention in mentions:
@@ -286,8 +299,8 @@ def _reconcile_bp(
             continue
         pair = (event.payload["systolic"], event.payload["diastolic"])
         pair_kinds = kinds.get(pair)
-        if pair_kinds == {"target"}:
-            continue  # "should it be under 130/80?" is not a reading
+        if pair_kinds and pair_kinds <= NOT_A_READING:
+            continue  # "should it be under 130/80?" / "what if it's 160/100?" is not a reading
         if pair_kinds is None and pair in recorded:
             continue  # already-known reading re-extracted from context, not the message
         if pair not in llm_pairs:
@@ -331,7 +344,9 @@ def postprocess_extraction(
     return ExtractorOutput(
         delta_events=events,
         search_query=expand_query(base_query, context=message),
-        raw_intent=output.raw_intent.strip() or message,
+        # No fallback to the message: the intent is LLM-derived context, and the
+        # message itself already reaches Gate 1 inside <untrusted_user_input>.
+        raw_intent=output.raw_intent.strip(),
     )
 
 

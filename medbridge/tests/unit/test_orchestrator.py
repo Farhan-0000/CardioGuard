@@ -94,6 +94,8 @@ class FakeStore:
         self.records: list[TurnRecord] = []
         self.history_limits: list[int] = []
         self.ids = (uuid.uuid4(), uuid.uuid4())
+        self.counter_before: int | None = None
+        self.counter_lookups: list[uuid.UUID] = []
 
     async def load_session_state(self, db: Any, session_id: uuid.UUID) -> SessionState:
         if self.load_error is not None:
@@ -108,6 +110,12 @@ class FakeStore:
         self, db: Any, session_id: uuid.UUID
     ) -> tuple[uuid.UUID, str] | None:
         return self.last_message
+
+    async def get_soft_ask_count_before(
+        self, db: Any, session_id: uuid.UUID, user_message_id: uuid.UUID
+    ) -> int | None:
+        self.counter_lookups.append(user_message_id)
+        return self.counter_before
 
     async def persist_turn(self, db: Any, record: TurnRecord) -> tuple[uuid.UUID, uuid.UUID]:
         if self.persist_error is not None:
@@ -909,7 +917,7 @@ async def test_c0_has_no_emergency_fastpath(components, store):
     assert response.action == ActionEnum.ANSWER
 
 
-@pytest.mark.parametrize("preset,mode", [("C1", "grounded"), ("C2", "prompt_safety")])
+@pytest.mark.parametrize("preset,mode", [("C1", "vanilla"), ("C2", "prompt_safety")])
 async def test_c1_c2_no_gates_always_answer(components, store, preset, mode):
     components.context_gate.evaluate.return_value = ContextGateOutput(
         action="SOFT-ASK", rationale="r", missing_fields=["age"]
@@ -996,7 +1004,7 @@ async def test_v1_calibrated_evidence_gate(components, store, calibration_module
     gate2 = response.explanation.gate2
     assert gate2.source == "calibrated"
     assert gate2.votes == ["ANSWER", "GENERALIZE", "GENERALIZE"]
-    assert gate2.features == {"max_rerank": -2.5, "overridden": True}
+    assert gate2.features == {"max_rerank": -2.5, "overridden": True, "failed_votes": 0.0}
     call = calibration_module.calibrated_evidence_decision.await_args
     assert call.kwargs["votes"] == get_settings().EVIDENCE_GATE_VOTES
     assert call.args[3] == "blood pressure target amlodipine"  # extractor search query
@@ -1539,3 +1547,462 @@ async def test_metrics_grounding_counters_from_orchestrator_traces():
         "unsupported_claims": 1,
         "removed_sentences": 1,
     }
+
+
+# ---------------------------------------------------------------------------
+# 12. Review fixes (stream F2): regenerate counter, per-session serialisation,
+#     V1 all-votes-failed, retrieval outage, effective patient message
+# ---------------------------------------------------------------------------
+
+from medbridge.core.orchestrator import (  # noqa: E402
+    FOLLOW_UP_LABEL,
+    ORIGINAL_QUESTION_LABEL,
+    SessionTurnLocks,
+    compose_effective_message,
+    soft_ask_chain,
+)
+from medbridge.retrieval.hybrid_retriever import RetrievalError  # noqa: E402
+from medbridge.state.turn_store import RegenerateConflictError, split_trace  # noqa: E402
+
+
+class StatefulStore(FakeStore):
+    """Turn-store fake that keeps state across turns the way the real store does.
+
+    The counter is written only when ``record.update_soft_ask_count``; the
+    snapshot is folded from the persisted events; a regenerated answer is
+    attached to the re-run user message; the first ``soft_ask_count_before``
+    recorded for a user message is what ``get_soft_ask_count_before`` returns.
+    """
+
+    def __init__(self, soft_ask_count: int = 0) -> None:
+        super().__init__(state=SessionState(snapshot={}, soft_ask_count=soft_ask_count))
+        self.messages: list[tuple[uuid.UUID, ChatTurn]] = []
+        self.counter_by_user: dict[uuid.UUID, int | None] = {}
+        self.loads = 0
+
+    async def load_session_state(self, db: Any, session_id: uuid.UUID) -> SessionState:
+        self.loads += 1
+        return SessionState(
+            snapshot=dict(self.state.snapshot), soft_ask_count=self.state.soft_ask_count
+        )
+
+    async def get_recent_turns(self, db: Any, session_id: uuid.UUID, n: int) -> list[ChatTurn]:
+        self.history_limits.append(n)
+        return [turn for _, turn in self.messages][-n:]
+
+    async def get_last_user_message(
+        self, db: Any, session_id: uuid.UUID
+    ) -> tuple[uuid.UUID, str] | None:
+        for message_id, turn in reversed(self.messages):
+            if turn.role == "user":
+                return message_id, turn.content
+        return None
+
+    async def get_soft_ask_count_before(
+        self, db: Any, session_id: uuid.UUID, user_message_id: uuid.UUID
+    ) -> int | None:
+        self.counter_lookups.append(user_message_id)
+        return self.counter_by_user.get(user_message_id)
+
+    async def persist_turn(self, db: Any, record: TurnRecord) -> tuple[uuid.UUID, uuid.UUID]:
+        self.records.append(record)
+        if record.delta_events:
+            self.state.snapshot = StateProjector().apply_events(
+                self.state.snapshot, list(record.delta_events)
+            )
+        if record.update_soft_ask_count:
+            self.state.soft_ask_count = record.soft_ask_count
+        if record.regenerated_user_message_id is not None:
+            user_id = record.regenerated_user_message_id
+        else:
+            user_id = uuid.uuid4()
+            self.messages.append((user_id, ChatTurn(role="user", content=record.user_message)))
+        assistant_id = uuid.uuid4()
+        self.messages.append(
+            (
+                assistant_id,
+                ChatTurn(
+                    role="assistant",
+                    content=record.assistant_message,
+                    action=str(record.final_action),
+                ),
+            )
+        )
+        self.counter_by_user.setdefault(user_id, record.trace.get("soft_ask_count_before"))
+        return user_id, assistant_id
+
+
+def always_soft_ask(components: SimpleNamespace) -> None:
+    components.context_gate.evaluate.return_value = ContextGateOutput(
+        action="SOFT-ASK", rationale="need the medicine name", missing_fields=["medication"]
+    )
+
+
+# --- invariants-1 / persistence-db-2 / web-ui-3: regenerate is idempotent -------------
+
+
+async def test_regenerating_a_soft_ask_never_counts_twice(components):
+    always_soft_ask(components)
+    store = StatefulStore()
+    orchestrator = build(components, store)
+
+    first = await run(orchestrator, "Should I double my BP tablet?")
+    assert first.action == ActionEnum.SOFT_ASK and first.soft_ask_count == 1
+    assert first.explanation.soft_ask_count_before == 0
+
+    for _ in range(3):  # any number of regenerates: same start value, same result
+        regenerated = await run(orchestrator, "", regenerate=True)
+        assert regenerated.action == ActionEnum.SOFT_ASK
+        assert regenerated.soft_ask_count == 1
+        assert regenerated.explanation.soft_ask_count_before == 0
+        assert regenerated.explanation.gate2 is None  # no loop-breaker
+        assert store.state.soft_ask_count == 1
+        assert regenerated.user_message_id == first.user_message_id
+
+    # The patient's next real reply is the 2nd consecutive SOFT-ASK, not a loop-breaker.
+    follow_up = await run(orchestrator, "It's the white one, I forget the name")
+    assert follow_up.action == ActionEnum.SOFT_ASK and follow_up.soft_ask_count == 2
+
+
+async def test_regenerating_a_loop_breaker_answer_breaks_the_loop_again(components):
+    always_soft_ask(components)
+    store = StatefulStore(soft_ask_count=2)
+    orchestrator = build(components, store)
+
+    broken = await run(orchestrator, "I really don't know, sorry")
+    assert broken.action == ActionEnum.GENERALIZE
+    assert broken.explanation.gate2.source == "loop_breaker"
+    assert broken.explanation.soft_ask_count_before == 2
+    assert store.state.soft_ask_count == 0
+
+    for _ in range(2):
+        again = await run(orchestrator, "", regenerate=True)
+        assert again.action == ActionEnum.GENERALIZE  # never a 3rd clarifying question
+        assert again.explanation.gate2.source == "loop_breaker"
+        assert again.response_text.startswith(LOOP_BREAKER_PREFIX)
+        assert again.explanation.soft_ask_count_before == 2
+        assert store.state.soft_ask_count == 0
+    assert set(store.counter_lookups) == {broken.user_message_id}
+
+
+async def test_regenerate_without_recorded_counter_keeps_stored_value(components):
+    """A store without the lookup (or no recorded value) falls back to the stored counter."""
+    always_soft_ask(components)
+    store = FakeStore(
+        state=SessionState(snapshot={}, soft_ask_count=1),
+        last_message=(uuid.uuid4(), "Can I take ibuprofen?"),
+    )
+    response = await run(build(components, store), "", regenerate=True)
+    assert store.counter_lookups == [store.last_message[0]]
+    assert response.explanation.soft_ask_count_before == 1
+    assert response.soft_ask_count == 2
+
+
+async def test_regenerate_passes_the_rerun_message_id_and_survives_a_conflict(components, store):
+    stored_id = uuid.uuid4()
+    store.last_message = (stored_id, "What target should I aim for?")
+    store.persist_error = RegenerateConflictError(SESSION_ID)
+    db = MagicMock()
+    db.rollback = AsyncMock()
+    response = await build(components, store).process_message(
+        SESSION_ID, "", db=db, regenerate=True
+    )
+    assert response.action == ActionEnum.ANSWER  # the patient still gets the answer
+    assert response.message_id is None
+    timing = {t.stage: t.status for t in response.explanation.timings}
+    assert timing["persistence"] == "failed"
+    db.rollback.assert_awaited_once()
+
+    store.persist_error = None
+    await build(components, store).process_message(SESSION_ID, "", db=db, regenerate=True)
+    assert store.records[-1].regenerated_user_message_id == stored_id
+
+
+async def test_counter_left_untouched_when_gate1_did_not_run(components, store):
+    await run(build(components, store), message="thanks!")  # small talk
+    components.emergency_classifier = SimpleNamespace(classify=lambda t: ActionEnum.ESCALATE)
+    await run(build(components, store))  # emergency fast-path
+    assert [r.update_soft_ask_count for r in store.records] == [False, False]
+
+    components.emergency_classifier = SimpleNamespace(classify=lambda t: None)
+    await run(build(components, store))
+    await run(build(components, store), ablation=AblationConfig.preset("C1"))
+    assert [r.update_soft_ask_count for r in store.records[2:]] == [True, True]
+
+
+# --- invariants-2 / persistence-db-1 / web-ui-2: per-session serialisation ------------
+
+
+def gated_extractor(
+    components: SimpleNamespace, release: asyncio.Event
+) -> tuple[list[str], asyncio.Event]:
+    """Extractor whose FIRST call signals ``started`` and waits for ``release`` (a slow LLM)."""
+    seen: list[str] = []
+    started = asyncio.Event()
+
+    async def extract(message: str, snapshot: dict[str, Any], history: Any = None) -> Any:
+        seen.append(message)
+        if len(seen) == 1:
+            started.set()
+            await release.wait()
+        return ExtractorOutput(search_query="bp target", raw_intent="target")
+
+    components.context_extractor.extract = AsyncMock(side_effect=extract)
+    return seen, started
+
+
+async def test_concurrent_turns_on_one_session_are_serialised(components):
+    always_soft_ask(components)
+    store = StatefulStore()
+    orchestrator = build(components, store)
+    release = asyncio.Event()
+    seen, started = gated_extractor(components, release)
+
+    first = asyncio.create_task(run(orchestrator, "Should I double my amlodipine?"))
+    await started.wait()
+    second = asyncio.create_task(run(orchestrator, "I'm 62 by the way"))
+    for _ in range(20):
+        await asyncio.sleep(0)
+    assert store.loads == 1 and len(seen) == 1  # the 2nd turn waits; no stale state load
+
+    release.set()
+    a, b = await asyncio.gather(first, second)
+    assert (a.soft_ask_count, b.soft_ask_count) == (1, 2)  # gated on the 1st turn's counter
+    assert b.explanation.soft_ask_count_before == 1
+    assert store.state.soft_ask_count == 2
+    assert orchestrator._turn_locks._locks == {}  # locks are released and dropped
+
+
+async def test_emergency_is_never_queued_behind_a_running_turn(components):
+    store = StatefulStore(soft_ask_count=1)
+    release = asyncio.Event()
+    _, started = gated_extractor(components, release)
+    components.emergency_classifier = SimpleNamespace(
+        classify=lambda t: ActionEnum.ESCALATE if "chest pain" in t else None
+    )
+    orchestrator = build(components, store)
+
+    slow = asyncio.create_task(run(orchestrator, "What target should I aim for?"))
+    await started.wait()
+    urgent = await asyncio.wait_for(
+        run(orchestrator, "crushing chest pain and I can't breathe"), timeout=2
+    )
+    assert urgent.action == ActionEnum.ESCALATE
+    assert not slow.done()  # answered while the other turn was still running
+    release.set()
+    await slow
+    assert store.records[0].update_soft_ask_count is False  # the emergency turn
+    assert store.state.soft_ask_count == 0  # the slow turn (PROCEED) set it
+
+
+async def test_session_turn_locks_are_per_session():
+    locks = SessionTurnLocks()
+    a, b = uuid.uuid4(), uuid.uuid4()
+    async with locks.hold(a):
+        async with locks.hold(b) as waited:  # another session never waits
+            assert waited < 50
+    assert locks._locks == {} and locks._users == {}
+
+
+# --- invariants-3: V1 with every vote failed is the spec fallback --------------------
+
+
+async def test_v1_all_votes_failed_is_a_fallback_not_a_calibrated_decision(
+    components, store, calibration_module
+):
+    calibration_module.calibrated_evidence_decision.return_value = SimpleNamespace(
+        action="GENERALIZE",
+        rationale="Evidence Gate failed on every vote; spec fallback to GENERALIZE.",
+        votes=[],
+        features={"max_rerank": 1.0},
+        overridden=False,
+        failed_votes=3,
+    )
+    calibration_module.evidence_features = lambda query, chunks, snapshot: {"max_rerank": 2.0}
+    response = await run(build(components, store), ablation=AblationConfig.preset("V1"))
+    gate2 = response.explanation.gate2
+    assert response.action == ActionEnum.GENERALIZE
+    assert gate2.source == "fallback" and gate2.votes == []
+    assert gate2.features["failed_votes"] == 3.0
+    assert "max_rerank" in gate2.features  # production evidence features still recorded
+    timing = {t.stage: t.status for t in response.explanation.timings}
+    assert timing["evidence_gate"] == "failed"
+    assert store.records[0].gate_2_action == "GENERALIZE"
+
+
+async def test_v1_partial_vote_loss_is_recorded_and_counted(
+    components, store, calibration_module
+):
+    from medbridge.api.routes.metrics import compute_metrics
+
+    calibration_module.calibrated_evidence_decision.return_value = SimpleNamespace(
+        action="ANSWER",
+        rationale="r",
+        votes=["ANSWER", "ANSWER"],
+        features={"max_rerank": 4.0},
+        overridden=False,
+        failed_votes=1,
+    )
+    partial = await run(build(components, store), ablation=AblationConfig.preset("V1"))
+    assert partial.explanation.gate2.source == "calibrated"
+    assert partial.explanation.gate2.features["failed_votes"] == 1.0
+
+    calibration_module.calibrated_evidence_decision.return_value = SimpleNamespace(
+        action="GENERALIZE", rationale="r", votes=[], features={}, overridden=False,
+        failed_votes=3,
+    )
+    await run(build(components, store), ablation=AblationConfig.preset("V1"))
+    rows = [("ANSWER", "PROCEED", "ANSWER", 10, split_trace(r.trace)[0]) for r in store.records]
+    fallbacks = compute_metrics(rows, [], window=10).fallbacks
+    assert fallbacks["evidence_gate"] == 1 and fallbacks["evidence_gate_partial"] == 1
+
+
+# --- ablation-study-validity-2: a retrieval outage is visible ------------------------
+
+
+async def test_retrieval_outage_is_marked_failed_and_gate2_still_decides(components, store):
+    components.hybrid_retriever.hybrid_search.side_effect = RetrievalError("qdrant down")
+    response = await run(build(components, store))
+    exp = response.explanation
+    assert exp.retrieval_status == "failed"
+    assert {t.stage: t.status for t in exp.timings}["retrieval"] == "failed"
+    components.evidence_gate.evaluate.assert_awaited_once()  # Gate 2 decides (spec)
+    assert components.evidence_gate.evaluate.await_args.kwargs["chunks"] == []
+    public, _ = split_trace(store.records[0].trace)
+    assert public["retrieval_status"] == "failed"  # readable by metrics/evaluation
+
+
+async def test_retrieval_status_distinguishes_empty_skipped_and_discarded(
+    components, store, chunks
+):
+    components.hybrid_retriever.hybrid_search.return_value = []
+    empty = await run(build(components, store))
+    assert empty.explanation.retrieval_status == "empty"
+
+    always_soft_ask(components)
+    skipped = await run(build(components, store))
+    assert skipped.explanation.retrieval_status == "skipped"
+    discarded = await run(build(components, store, SPECULATIVE_RETRIEVAL=True))
+    assert discarded.explanation.retrieval_status == "discarded"
+
+    components.context_gate.evaluate.return_value = ContextGateOutput(
+        action="PROCEED", rationale="ok"
+    )
+    components.hybrid_retriever.hybrid_search.return_value = chunks
+    ok = await run(build(components, store))
+    assert ok.explanation.retrieval_status == "ok"
+
+
+# --- dev error analysis: multi-turn follow-ups keep the original question ------------
+
+STATIN_QUESTION = "Should I take a cholesterol tablet even though my cholesterol is normal?"
+STATIN_SOFT_ASK = "Have you ever had a heart attack or a stroke?"
+STROKE_FOLLOW_UP = "I had a stroke two years ago"
+
+
+async def test_follow_up_after_soft_ask_reaches_gates_with_the_original_question(
+    components, store
+):
+    store.history = [
+        ChatTurn(role="user", content=STATIN_QUESTION),
+        ChatTurn(role="assistant", content=STATIN_SOFT_ASK, action="SOFT-ASK"),
+    ]
+    raw_seen: list[str] = []
+    components.emergency_classifier = SimpleNamespace(classify=lambda t: raw_seen.append(t))
+    response = await run(build(components, store), STROKE_FOLLOW_UP)
+
+    effective = (
+        f"{ORIGINAL_QUESTION_LABEL} {STATIN_QUESTION}\n{FOLLOW_UP_LABEL} {STROKE_FOLLOW_UP}"
+    )
+    assert components.context_gate.evaluate.await_args.args[1] == effective  # Gate 1
+    assert components.evidence_gate.evaluate.await_args.kwargs["message"] == effective  # Gate 2
+    assert generator_calls(components)[0]["message"] == effective
+    # the emergency classifier and the extractor see only the current message
+    assert raw_seen == [STROKE_FOLLOW_UP]
+    assert components.context_extractor.extract.await_args.args[0] == STROKE_FOLLOW_UP
+    record = store.records[0]
+    assert record.user_message == STROKE_FOLLOW_UP  # stored as said
+    assert response.explanation.effective_question == {"used": True, "earlier_messages": 1}
+    public, private = split_trace(record.trace)
+    assert public["effective_question"] == {"used": True, "earlier_messages": 1}
+    assert "cholesterol" not in json.dumps(public) and "stroke" not in json.dumps(public)
+
+
+async def test_three_turn_loop_breaker_sequence_reaches_generator_with_original_question(
+    components,
+):
+    always_soft_ask(components)
+    store = StatefulStore()
+    orchestrator = build(components, store)
+    turns = [
+        "what bp is normal for me?",
+        "I don't have a recent reading",
+        "nope not gonna check it. just answer in general",
+    ]
+    responses = [await run(orchestrator, text) for text in turns]
+
+    assert [r.action for r in responses] == [
+        ActionEnum.SOFT_ASK, ActionEnum.SOFT_ASK, ActionEnum.GENERALIZE
+    ]
+    assert responses[2].explanation.gate2.source == "loop_breaker"
+    final_call = generator_calls(components)[-1]
+    assert final_call["action"] == ActionEnum.GENERALIZE
+    assert final_call["message"] == (
+        f"{ORIGINAL_QUESTION_LABEL} {turns[0]}\n"
+        f"{FOLLOW_UP_LABEL} {turns[1]}\n"
+        f"{FOLLOW_UP_LABEL} {turns[2]}"
+    )
+    assert components.context_gate.evaluate.await_args.args[1] == final_call["message"]
+    assert generator_calls(components)[0]["message"] == turns[0]  # 1st turn: nothing to carry
+    assert responses[2].explanation.effective_question["earlier_messages"] == 2
+
+
+async def test_no_effective_message_after_an_answer(components, store):
+    store.history = [
+        ChatTurn(role="user", content=STATIN_QUESTION),
+        ChatTurn(role="assistant", content="Statins are ...", action="ANSWER"),
+    ]
+    response = await run(build(components, store))
+    assert components.context_gate.evaluate.await_args.args[1] == REDACTED
+    assert response.explanation.effective_question is None
+
+
+async def test_effective_message_redacts_earlier_text_and_falls_back_on_extractor_failure(
+    components, store
+):
+    store.history = [
+        ChatTurn(role="user", content="I'm John Smith, can I take aspirin daily?"),
+        ChatTurn(role="assistant", content="Do you take blood thinners?", action="SOFT-ASK"),
+    ]
+    components.context_extractor.extract.return_value = None
+    await run(build(components, store), "no, only amlodipine")
+    message = components.evidence_gate.evaluate.await_args.kwargs["message"]
+    assert "John Smith" not in message and "[NAME]" in message
+    query = components.hybrid_retriever.hybrid_search.await_args.args[0]
+    assert query == expand_query("I'm [NAME], can I take aspirin daily? no, only amlodipine")
+
+
+def test_soft_ask_chain_pairs_latest_reply_and_respects_the_limit():
+    def turn(role: str, content: str, action: str | None = None) -> ChatTurn:
+        return ChatTurn(role=role, content=content, action=action)
+
+    regenerated_soft_ask = [
+        turn("user", "q1"), turn("assistant", "a", "ANSWER"), turn("assistant", "b", "SOFT-ASK")
+    ]
+    assert soft_ask_chain(regenerated_soft_ask, 2) == ["q1"]  # the latest reply counts
+    regenerated_answer = [
+        turn("user", "q1"), turn("assistant", "a", "SOFT-ASK"), turn("assistant", "b", "ANSWER")
+    ]
+    assert soft_ask_chain(regenerated_answer, 2) == []
+    long_chain = [
+        turn("user", "q0"), turn("assistant", "x", "ANSWER"),
+        turn("user", "q1"), turn("assistant", "x", "SOFT-ASK"),
+        turn("user", "q2"), turn("assistant", "x", "SOFT_ASK"),
+        turn("user", "q3"), turn("assistant", "x", ActionEnum.SOFT_ASK),
+    ]
+    assert soft_ask_chain(long_chain, 2) == ["q2", "q3"]
+    assert soft_ask_chain(long_chain, 5) == ["q1", "q2", "q3"]
+    assert soft_ask_chain([turn("assistant", "orphan", "SOFT-ASK")], 2) == []
+    assert compose_effective_message(["q"], "f") == (
+        f"{ORIGINAL_QUESTION_LABEL} q\n{FOLLOW_UP_LABEL} f"
+    )

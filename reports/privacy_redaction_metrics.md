@@ -1,6 +1,6 @@
 # PII/PHI redaction — evaluation
 
-Generated 2026-10-09T16:04:57+00:00 by `scripts/pii_eval.py`; reference date 2026-10-09 (DOB → age); detector `medbridge/privacy/redaction.py` SHA-256 `e75b67bc708d0522…` at commit `4817e42` (plus working-tree changes when the hash differs from the committed file).
+Generated 2026-10-09T17:54:58+00:00 by `scripts/pii_eval.py`; reference date 2026-10-09 (DOB → age); detector `medbridge/privacy/redaction.py` SHA-256 `9205b82ea7cf2b97…` at commit `02cf985` (plus working-tree changes when the hash differs from the committed file).
 
 ## Protocol
 
@@ -8,10 +8,11 @@ Generated 2026-10-09T16:04:57+00:00 by `scripts/pii_eval.py`; reference date 202
 2. The v1 held-out misses (names after 'its me X', 'my husband's name is X', 'Sign: X'; a +91 landline written with spaces; a PIN after a comma-separated locality) were fixed by general rules, not string-specific ones, and clinical values were re-checked.
 3. The detector was then frozen; its SHA-256 is recorded below.
 4. The blind held-out set `tests/privacy/pii_testset_blind_v2.json` was written by another author who did not read the detector, this script or its metrics. Only its header metadata (format, conventions, category counts) was read before the run, to make the loader accept its start/end offsets; no detector rule was added for anything mentioned only there.
-5. The blind set was evaluated once with the frozen detector. The detector was not changed after seeing the results; problems found are listed as open issues instead. The report was regenerated afterwards with the same detector hash only to add the category-agnostic masking metrics and the post-hoc error analysis; every span metric is identical to the first run.
-6. Development-set numbers are in-sample and optimistic; the blind numbers are the estimate of generalisation.
+5. The blind set was evaluated once with the frozen detector; problems found were listed as open issues. The report was regenerated afterwards with the same detector hash only to add the category-agnostic masking metrics and the post-hoc error analysis; every span metric is identical to the first run. The blind section always shows this frozen detector's numbers.
+6. Development-set numbers are in-sample and optimistic; the blind numbers of the frozen detector are the estimate of generalisation.
+7. After the blind run, a code review found an ADDRESS boundary bug (the locality extension could stop inside a token such as '15A', 'C3' or 'LE3', leaving the rest of the address and the PIN visible) and the blind run showed the 'Dr. <non-name>' false positive. These bug classes were fixed post-hoc with general rules (listed in the post-hoc section) and re-checked on the development set. The blind section keeps the frozen detector's numbers (re-computed from the frozen source at its recorded commit and hash); the post-hoc numbers on the blind set are optimistic and are not an independent estimate.
 
-Span-level metrics. *Strict*: exact character offsets and category; *overlap*: any overlap with a gold span of the same category. Precision is 1.0 by convention when nothing is predicted.
+Span-level metrics. *Strict*: exact character offsets and category; *overlap*: any overlap with a gold span of the same category. Precision is 1.0 by convention when nothing is predicted. Rows marked *post-hoc* score the blind set with the detector fixed after the blind run: optimistic, not an independent estimate.
 
 ## Summary
 
@@ -21,6 +22,7 @@ Span-level metrics. *Strict*: exact character offsets and category; *overlap*: a
 | development / dev | development | 185 | 65 | 147 | 1.000 | 0.986 | 0.993 | 1.000 | 0.986 | 0.993 | 0 | 0 |
 | development / heldout | development | 55 | 25 | 36 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0 | 0 |
 | blind_v2 | blind_heldout | 237 | 89 | 203 | 0.944 | 0.744 | 0.832 | 0.988 | 0.778 | 0.871 | 1 | 0 |
+| blind_v2 — post-hoc | post-hoc (optimistic) | 237 | 89 | 203 | 0.975 | 0.768 | 0.860 | 0.994 | 0.783 | 0.876 | 0 | 0 |
 
 ### Privacy masking (category-agnostic)
 
@@ -32,10 +34,13 @@ Whatever the predicted label: *touched* = some redaction overlaps the identifier
 | development / dev | 147 | 145 | 0.986 | 145 | 0.986 |
 | development / heldout | 36 | 36 | 1.000 | 36 | 1.000 |
 | blind_v2 | 203 | 159 | 0.783 | 152 | 0.749 |
+| blind_v2 — post-hoc | 203 | 160 | 0.788 | 157 | 0.773 |
 
 ## Development set (in-sample): `development`
 
-`tests/privacy/pii_testset.json` — MedBridge synthetic PII/PHI redaction test set v1.1, SHA-256 `f6199442757ce83d…`, 240 examples (150 positive, 90 negative), 183 gold spans. Mean detection latency 0.063 ms per message.
+`tests/privacy/pii_testset.json` — MedBridge synthetic PII/PHI redaction test set v1.1, SHA-256 `f6199442757ce83d…`, 240 examples (150 positive, 90 negative), 183 gold spans. Mean detection latency 0.062 ms per message.
+
+Detector scored: SHA-256 `9205b82ea7cf2b97…` (working tree).
 
 ### Clinical-value protection
 
@@ -108,6 +113,9 @@ Whatever the predicted label: *touched* = some redaction overlaps the identifier
 
 `tests/privacy/pii_testset_blind_v2.json` — MedBridge synthetic PII/PHI redaction test set - blind held-out v2 v2.0, SHA-256 `eefa4b15d601daa8…`, 237 examples (148 positive, 89 negative), 203 gold spans. Mean detection latency 0.043 ms per message.
 
+Detector scored: SHA-256 `e75b67bc708d0522…` (git commit 9717a2a, frozen for the blind run).
+The frozen detector's source was read back from git and its SHA-256 verified; the re-computation reproduces the recorded blind run: **yes**.
+
 ### Clinical-value protection
 
 - Negative (PII-free, clinically dense) messages altered: **1** of 89 (B2N072: FP NAME `Google`)
@@ -134,7 +142,7 @@ Whatever the predicted label: *touched* = some redaction overlaps the identifier
 
 ### Post-hoc error analysis
 
-Written after the single blind run of 2026-10-09T16:02:05+00:00 (detector SHA-256 `e75b67bc708d0522…`). The detector was **not** changed in response; the groups below are the open issues. Counts are recomputed from this run's errors.
+Written after the single blind run of 2026-10-09T16:02:05+00:00 (detector SHA-256 `e75b67bc708d0522…`). Counts are recomputed from this run's errors. Bug classes fixed after this analysis are listed in the post-hoc section below; the rest are open issues.
 
 | # | Error group | Examples | FN spans | FP spans |
 |---:|---|---:|---:|---:|
@@ -199,5 +207,109 @@ Unclassified errors: 0.
 - **B2P147** — FN NAME `Abhay Joglekar`
 - **B2P148** — FN NAME `Linda Castellano`
 - **B2N072** — FP NAME `Google` — _title followed by a non-person word_
+
+## Post-hoc fixes (after blind evaluation; optimistic, not an independent estimate): `blind_v2`
+
+Detector SHA-256 `9205b82ea7cf2b97…` (working tree). These changes were made **after** the single blind run, partly in response to errors seen in it, so the blind set is no longer unseen for this detector: the numbers below are optimistic and are **not** an independent estimate of generalisation. The frozen numbers above remain the primary blind result. The development set was re-checked with this detector (development section).
+
+### Fixes
+
+1. ADDRESS continuation tokens end on a word boundary and may mix letters and digits ('Sector 15A', 'Phase 2B', 'Tower C3', 'Road No. 12A', 'Tower 4567', UK postcodes 'LE3 9QT', 'M20 2RS'); bare numbers keep at most 4 digits so 5- and 6-digit PIN/ZIP codes still go to the PINCODE pass. The span fails closed (it never ends inside a word) and starts at the beginning of its token ('B-12', '12/4'). Code-review finding privacy-security-1; blind error groups 6 and 7 (in part).
+2. A street core continues over the rest of its own locality before the next comma ('Lajpat Nagar II, New Delhi'), so the remainder and the PIN are no longer visible.
+3. Over-redaction guard on the same extension: it stops at function words, lab and measurement words, drug names from the lexicon, a number followed by a unit ('40 mg', '25%'), decimals and times, and a sentence-ending full stop ('Mumbai, Atorvastatin 40mg daily' and 'Bangalore. Sugar 7.2' keep their clinical text; abbreviations such as 'St.', 'No.' and 'J.P.' do not end the address).
+4. NAME: a title or name cue skips information sources and services ('Dr. Google', 'Doctor YouTube', 'Dr. Internet'); blind error group 9.
+
+### Blind set: frozen vs post-hoc detector
+
+| Detector | P (strict) | R (strict) | F1 (strict) | P (overlap) | R (overlap) | F1 (overlap) | Fully masked | Negatives altered | Protected values corrupted |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| frozen (blind estimate) | 0.944 | 0.744 | 0.832 | 0.988 | 0.778 | 0.871 | 152/203 | 1 | 0 |
+| post-hoc (optimistic) | 0.975 | 0.768 | 0.860 | 0.994 | 0.783 | 0.876 | 157/203 | 0 | 0 |
+
+### Clinical-value protection (post-hoc detector)
+
+- Negative (PII-free, clinically dense) messages altered: **0** of 89
+- Protected clinical values (BP, labs, doses, drug names, ages, reading dates) corrupted across all 237 examples: **0**
+
+### Per category (post-hoc detector)
+
+| Category | Support | TP | FP | FN | P (strict) | R (strict) | F1 (strict) | P (overlap) | R (overlap) | F1 (overlap) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| AADHAAR | 8 | 8 | 0 | 0 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 |
+| ADDRESS | 18 | 14 | 3 | 4 | 0.824 | 0.778 | 0.800 | 1.000 | 0.944 | 0.971 |
+| AGE | 15 | 14 | 0 | 1 | 1.000 | 0.933 | 0.966 | 1.000 | 0.933 | 0.966 |
+| EMAIL | 9 | 9 | 0 | 0 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 |
+| INSURANCE_ID | 12 | 11 | 0 | 1 | 1.000 | 0.917 | 0.957 | 1.000 | 0.917 | 0.957 |
+| IP | 7 | 7 | 0 | 0 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 |
+| MRN | 11 | 8 | 1 | 3 | 0.889 | 0.727 | 0.800 | 0.889 | 0.727 | 0.800 |
+| NAME | 63 | 27 | 0 | 36 | 1.000 | 0.429 | 0.600 | 1.000 | 0.429 | 0.600 |
+| PAN | 7 | 7 | 0 | 0 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 |
+| PHONE | 21 | 20 | 0 | 1 | 1.000 | 0.952 | 0.976 | 1.000 | 0.952 | 0.976 |
+| PINCODE | 18 | 18 | 0 | 0 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 |
+| SSN | 6 | 6 | 0 | 0 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 |
+| URL | 8 | 7 | 0 | 1 | 1.000 | 0.875 | 0.933 | 1.000 | 0.875 | 0.933 |
+| **overall** | 203 | 156 | 4 | 47 | 0.975 | 0.768 | 0.860 | 0.994 | 0.783 | 0.876 |
+
+### Remaining errors by blind error group
+
+| # | Frozen FN | Frozen FP | Post-hoc FN | Post-hoc FP | Examples still affected |
+|---:|---:|---:|---:|---:|---|
+| 1 | 17 | 0 | 17 | 0 | B2P021, B2P024, B2P031, B2P032, B2P039, B2P040, B2P041, B2P065, B2P070, B2P098, B2P099, B2P126, B2P138, B2P142, B2P144 |
+| 2 | 12 | 0 | 12 | 0 | B2P002, B2P008, B2P009, B2P017, B2P023, B2P025, B2P033, B2P061, B2P066, B2P084, B2P147, B2P148 |
+| 3 | 4 | 0 | 4 | 0 | B2P007, B2P028, B2P029 |
+| 4 | 3 | 0 | 3 | 0 | B2P011, B2P012, B2P015 |
+| 5 | 4 | 0 | 4 | 0 | B2P052, B2P083, B2P088, B2P126 |
+| 6 | 2 | 2 | 0 | 0 | none |
+| 7 | 7 | 5 | 4 | 3 | B2P135, B2P137, B2P139, B2P140 |
+| 8 | 3 | 1 | 3 | 1 | B2P093, B2P106, B2P120 |
+| 9 | 0 | 1 | 0 | 0 | none |
+
+Errors outside the original groups: 0.
+
+### Errors (strict, post-hoc detector)
+
+- **B2P002** — FN NAME `Lalitha`
+- **B2P007** — FN NAME `rohit` — _all-lowercase name with typo'd cue_
+- **B2P008** — FN NAME `Kishore Nambiar` — _Indian-English cue 'X this side'_
+- **B2P009** — FN NAME `Ramesh Kumar Yadav`
+- **B2P011** — FN NAME `Awadhesh Pandey` — _Hinglish cue 'naam'_
+- **B2P012** — FN NAME `Imran` — _Hinglish_
+- **B2P015** — FN NAME `Arjun`
+- **B2P017** — FN NAME `Margaret Holloway`
+- **B2P021** — FN NAME `Tanvir`; FN NAME `Fatima`
+- **B2P023** — FN NAME `Rohan Batra`
+- **B2P024** — FN NAME `Anjali Bhosale` — _name at message start, no verbal cue_
+- **B2P025** — FN NAME `Hemant Ghosh`
+- **B2P028** — FN NAME `meena` — _lowercase name, typos_
+- **B2P029** — FN NAME `sneha`; FN NAME `ashok` — _lowercase names, SMS style_
+- **B2P031** — FN NAME `Mridula Sen`
+- **B2P032** — FN NAME `Sarita Bose` — _name directly followed by a BP value_
+- **B2P033** — FN NAME `Bhavna` — _sign-off name_
+- **B2P039** — FN NAME `Carol Dempsey`
+- **B2P040** — FN NAME `Prakash` — _name with no introduction cue_
+- **B2P041** — FN NAME `Savita`; FN NAME `Mohan` — _names with no introduction cue_
+- **B2P052** — FN PHONE `+44 7700 900872`
+- **B2P061** — FN NAME `Tejas Wagh`
+- **B2P065** — FN NAME `Lakshmi Narayanan`
+- **B2P066** — FN NAME `Gurpreet Kaur Sandhu`
+- **B2P070** — FN NAME `Suresh Kulkarni`
+- **B2P083** — FN MRN `999 802 9252` — _NHS number labelled MRN (999 test range)_
+- **B2P084** — FN NAME `Deepa Menon`
+- **B2P088** — FN MRN `999 979 7385` — _NHS number labelled MRN (999 test range)_
+- **B2P093** — FN INSURANCE_ID `3115678942`; FP MRN `3115678942` — _10-digit insurance number that looks like a phone_
+- **B2P098** — FN NAME `Chitra Venkataraman`
+- **B2P099** — FN NAME `Daniel Okafor`
+- **B2P106** — FN URL `bpbuddy.app/share/k7Fq92` — _scheme-less URL_
+- **B2P120** — FN AGE `9/23/1962` — _US month-first date_
+- **B2P126** — FN NAME `Gwen Pritchard`; FN MRN `999 984 8109`
+- **B2P135** — FN ADDRESS `Quarter No. C-45, Railway Colony, Sector 4, Bokaro Steel City, Jharkhand`; FP ADDRESS `C-45, Railway Colony, Sector 4, Bokaro Steel City, Jharkhand`
+- **B2P137** — FN ADDRESS `Gali No. 3, Krishna Nagar, Shahdara, Delhi`; FP ADDRESS `No. 3, Krishna Nagar, Shahdara, Delhi` — _Hinglish label_
+- **B2P138** — FN NAME `Rekha Pillai`
+- **B2P139** — FN ADDRESS `1427 Maple Ridge Dr, Apt 3B, Columbus, OH`; FP ADDRESS `Apt 3B, Columbus, OH`
+- **B2P140** — FN ADDRESS `2205 W Belmont Ave, Chicago, IL`
+- **B2P142** — FN NAME `Raymond Ortiz`
+- **B2P144** — FN NAME `Siobhan Gallagher` — _UK postcode is not a PIN/ZIP, so it stays inside ADDRESS_
+- **B2P147** — FN NAME `Abhay Joglekar`
+- **B2P148** — FN NAME `Linda Castellano`
 
 Environment: Python 3.11.15, arm64.

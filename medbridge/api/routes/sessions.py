@@ -9,6 +9,9 @@ Endpoints:
 
 Every route below ``/{session_id}`` requires the session token when
 ``AUTH_REQUIRED`` (``Authorization: Bearer <token>`` or ``X-Session-Token``).
+Erasure also accepts that token after it expired (bounded grace, see
+``medbridge.privacy.deps.require_session_erasure_access``): the data outlives
+the token until the retention purge, and the patient must be able to erase it.
 
 Technical Specification Part II §4.2, §4.3.
 """
@@ -29,7 +32,7 @@ from medbridge.api.schemas.responses import (
     SessionResponse,
 )
 from medbridge.db.connection import get_session
-from medbridge.privacy.deps import require_session_access
+from medbridge.privacy.deps import require_session_access, require_session_erasure_access
 from medbridge.privacy.tokens import issue_session_token
 from medbridge.state import turn_store
 from medbridge.state.session_manager import (
@@ -140,7 +143,7 @@ async def handle_get_session_history(
     "/{session_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Erase a session (crypto-shredding, right to erasure)",
-    dependencies=[Depends(require_session_access)],
+    dependencies=[Depends(require_session_erasure_access)],
 )
 async def handle_delete_session(
     session_id: uuid.UUID,

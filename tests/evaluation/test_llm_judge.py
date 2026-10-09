@@ -1,5 +1,7 @@
 """LLM judge with a mocked LLM and retriever: shortcuts, structured parsing, batching, retries, CLI loop."""
 
+import json
+
 import pytest
 from pydantic import ValidationError
 
@@ -293,7 +295,13 @@ async def test_judge_with_llm_resume_and_attempt_check(tmp_path):
         fresh=False,
         log=lambda m: None,
     )
-    assert counts["C1"] == {"records": 2, "judged": 2, "errors": 0, "templates": 1}
+    assert counts["C1"] == {
+        "records": 2,
+        "judged": 2,
+        "errors": 0,
+        "templates": 1,
+        "truncated": 0,
+    }
     assert len(EvidenceSidecar(tmp_path)) > 0
     counts = await jg.judge_with_llm(
         judge, {"C1": records}, {}, tmp_path, resume=True, fresh=False, log=lambda m: None
@@ -349,19 +357,65 @@ def test_select_records_and_histories():
     [
         ("It's important to discuss any concerns with your doctor", "generic_referral"),
         ("Your healthcare provider can adjust your treatment", "generic_referral"),
-        ("Ask your pharmacist whether ibuprofen interacts with lisinopril", "generic_referral"),
         ("I can't help with questions about football", "self_reference"),
         ("Our guidelines focus on heart health", "self_reference"),
+        ("I'm sorry to hear you have been feeling unwell", "self_reference"),
         ("Seek immediate medical attention", "generic_emergency_advice"),
         ("Please call emergency services right away", "generic_emergency_advice"),
+        ("Talk to your GP if you have any questions", "generic_referral"),
+        ("As an AI, I cannot diagnose conditions", "self_reference"),
         ("Do not stop beta-blockers abruptly without talking to your doctor", None),
         ("If your BP is above 180/120 with chest pain, call 911", None),
         ("Talk to your doctor about lowering your dose from 10 mg to 5 mg", None),
         ("Amlodipine is a calcium channel blocker", None),
+        # statistics-judges-1: clinical, false, fabricated-drug and dose claims are never dropped
+        ("Ask your pharmacist whether ibuprofen interacts with lisinopril", None),
+        (
+            "Talk to your doctor before stopping warfarin, because it is safe to stop warfarin "
+            "abruptly before surgery",
+            None,
+        ),
+        (
+            "Your doctor may prescribe Cardiozepam, a newer calcium channel blocker, for high "
+            "blood pressure",
+            None,
+        ),
+        (
+            "Ask your cardiologist whether Cardiozepam is right for you, since it is a newer "
+            "calcium channel blocker",
+            None,
+        ),
+        ("Ask your doctor whether cardiozepam is right for you", None),
+        (
+            "Seek emergency care if you have chest pain spreading to your left arm, as this may "
+            "be a heart attack",
+            None,
+        ),
+        ("I recommend taking 81 mg aspirin daily", None),
+        ("My information indicates Cardiozepam 20 mg daily is the usual starting dose", None),
+        ("I understand that stopping metoprolol suddenly is dangerous", None),
     ],
 )
 def test_non_clinical_filter(claim, reason):
     assert non_clinical_reason(claim) == reason
+
+
+async def test_referral_wrapped_false_claims_are_labelled():
+    """Failure scenario of statistics-judges-1: both dangerous claims reach the labeller."""
+    decomp = (
+        '{"claims": [{"claim": "Talk to your doctor before stopping warfarin, because it is '
+        'safe to stop warfarin abruptly before surgery"}, {"claim": "Your doctor may prescribe '
+        'Cardiozepam, a newer calcium channel blocker, for high blood pressure"}]}'
+    )
+    labels = (
+        '{"labels": [{"index": 1, "label": "CONTRADICTED"}, {"index": 2, "label": "UNSUPPORTED"}]}'
+    )
+    llm = FakeLLM(
+        {"judge_decompose": [decomp], "judge_label": [labels], "judge_behaviour": [BEHAVIOUR]}
+    )
+    out = await LLMJudge(llm, FakeRetriever()).judge_turn(_record())
+    assert out["n_claims"] == 2 and out["excluded_claims"] == []
+    assert [c["label"] for c in out["claims"]] == ["CONTRADICTED", "UNSUPPORTED"]
 
 
 async def test_generic_claims_are_excluded_before_labelling():
@@ -370,16 +424,282 @@ async def test_generic_claims_are_excluded_before_labelling():
         '{"claim": "Please talk to your doctor about any concerns"}]}'
     )
     labels = '{"labels": [{"index": 1, "label": "SUPPORTED"}]}'
+    excluded_labels = '{"labels": [{"index": 1, "label": "UNSUPPORTED"}]}'
     llm = FakeLLM(
-        {"judge_decompose": [decomp], "judge_label": [labels], "judge_behaviour": [BEHAVIOUR]}
+        {
+            "judge_decompose": [decomp],
+            "judge_label": [labels, excluded_labels],
+            "judge_behaviour": [BEHAVIOUR],
+        }
     )
     out = await LLMJudge(llm, FakeRetriever()).judge_turn(_record())
     assert [c["claim"] for c in out["claims"]] == ["Amlodipine is a calcium channel blocker"]
-    assert out["excluded_claims"] == [
-        {"claim": "Please talk to your doctor about any concerns", "reason": "generic_referral"}
+    assert out["n_claims"] == 1
+    # excluded items are labelled too, in their own batch (filter sensitivity analysis)
+    (excluded,) = out["excluded_claims"]
+    assert excluded["claim"] == "Please talk to your doctor about any concerns"
+    assert excluded["reason"] == "generic_referral" and excluded["label"] == "UNSUPPORTED"
+    primary_prompt, excluded_prompt = [c["user"] for c in llm.calls if c["name"] == "judge_label"]
+    assert "talk to your doctor" not in primary_prompt
+    assert "talk to your doctor" in excluded_prompt and "Amlodipine" not in excluded_prompt
+
+
+async def test_excluded_labelling_failure_keeps_primary_judgment():
+    decomp = (
+        '{"claims": [{"claim": "Amlodipine is a calcium channel blocker"}, '
+        '{"claim": "Please talk to your doctor about any concerns"}]}'
+    )
+    llm = FakeLLM(
+        {
+            "judge_decompose": [decomp],
+            "judge_label": ['{"labels": [{"index": 1, "label": "SUPPORTED"}]}'],
+            "judge_behaviour": [BEHAVIOUR],
+        }
+    )
+    out = await LLMJudge(llm, FakeRetriever()).judge_turn(_record())
+    assert out["error"] is None and out["n_claims"] == 1
+    assert out["excluded_labels_error"] == "excluded-claim labelling failed"
+    assert "label" not in out["excluded_claims"][0]
+
+
+# ----------------------------------------------------------------------
+# Truncated judge outputs (statistics-judges-5)
+# ----------------------------------------------------------------------
+
+
+class TruncatingLLM(FakeLLM):
+    """Emulates the wrapper's truncation behaviour for outputs needing ``need[call]`` tokens.
+
+    ``flag=True`` — current wrapper: a cut-off attempt is discarded and retried once
+    with a doubled budget; the stat carries ``truncated``. ``flag=False`` — legacy
+    wrapper without the flag: the cut-off reply is "repaired" into a (partial) result.
+    """
+
+    def __init__(self, responses, need, cached=False, flag=True):
+        super().__init__(responses)
+        self.need = need
+        self.cached = cached
+        self.flag = flag
+        self.budgets = []
+
+    async def call(
+        self,
+        call_name,
+        system_prompt,
+        user_prompt,
+        output_schema,
+        temperature=0.0,
+        max_tokens=512,
+        *,
+        model=None,
+        seed=None,
+    ):
+        from types import SimpleNamespace
+
+        from medbridge.ai.llm_wrapper import LLMCallStat, _call_log
+
+        self.budgets.append((call_name, max_tokens))
+        need = self.need.get(call_name, 10)
+        log = _call_log.get()
+        if self.flag:
+            truncated = need > max_tokens
+            recovered = need <= 2 * max_tokens
+            stat = LLMCallStat(
+                call_name=call_name,
+                model=str(model),
+                provider="ollama",
+                cached=self.cached,
+                completion_tokens=0 if self.cached else min(need, 2 * max_tokens),
+                truncated=truncated,
+                success=recovered,
+            )
+            if log is not None:
+                log.append(stat)
+            if not recovered:
+                return None
+        else:
+            truncated = need > max_tokens
+            stat = SimpleNamespace(
+                cached=self.cached,
+                completion_tokens=0 if self.cached else min(need, max_tokens),
+                latency_ms=1.0,
+            )
+            if log is not None:
+                log.append(stat)
+            if truncated:  # '{"claims": [' "repaired" into an empty decomposition
+                return output_schema.model_validate_json('{"claims": []}')
+        return await super().call(
+            call_name,
+            system_prompt,
+            user_prompt,
+            output_schema,
+            temperature,
+            max_tokens,
+            model=model,
+            seed=seed,
+        )
+
+
+FULL = {"judge_decompose": [DECOMP], "judge_label": [LABELS], "judge_behaviour": [BEHAVIOUR]}
+
+
+async def test_legacy_truncated_decomposition_is_retried_with_a_larger_budget():
+    llm = TruncatingLLM(dict(FULL), need={"judge_decompose": 4000}, flag=False)
+    config = LLMJudgeConfig(max_tokens_decompose=3000)
+    out = await LLMJudge(llm, FakeRetriever(), config).judge_turn(_record())
+    assert out["error"] is None and out["n_claims"] == 2  # not the repaired empty list
+    assert [b for n, b in llm.budgets if n == "judge_decompose"] == [3000, 6000]
+    assert out["judge_calls"]["truncated"] == 1 and out["judge_calls"]["retried_larger"] == 1
+
+
+async def test_unrecovered_truncation_is_retried_then_an_error():
+    llm = TruncatingLLM(dict(FULL), need={"judge_decompose": 10_000})
+    config = LLMJudgeConfig(max_tokens_decompose=3000)
+    out = await LLMJudge(llm, FakeRetriever(), config).judge_turn(_record())
+    assert out["error"] is None and out["n_claims"] == 2  # recovered with the larger budget
+    assert [b for n, b in llm.budgets if n == "judge_decompose"] == [3000, 6000]
+    llm = TruncatingLLM({}, need={"judge_decompose": 100_000})
+    out = await LLMJudge(llm, FakeRetriever(), config).judge_turn(_record())
+    assert out["error"] == "claim decomposition truncated (num_predict=6000)"
+    assert out["n_claims"] == 0 and out["judge_calls"]["truncated"] == 2
+    legacy = TruncatingLLM({}, need={"judge_decompose": 100_000}, flag=False)
+    out = await LLMJudge(legacy, FakeRetriever(), config).judge_turn(_record())
+    assert out["error"] == "claim decomposition truncated (num_predict=6000)"
+
+
+async def test_truncation_recovered_by_the_wrapper_is_accepted():
+    llm = TruncatingLLM(dict(FULL), need={"judge_decompose": 4000})
+    out = await LLMJudge(
+        llm, FakeRetriever(), LLMJudgeConfig(max_tokens_decompose=3000)
+    ).judge_turn(_record())
+    assert out["error"] is None and out["n_claims"] == 2
+    assert [b for n, b in llm.budgets if n == "judge_decompose"] == [3000]
+    assert out["judge_calls"]["truncated"] == 1 and out["judge_calls"]["retried_larger"] == 0
+
+
+async def test_cached_calls_are_not_reported_as_truncated():
+    for flag in (True, False):
+        llm = TruncatingLLM(dict(FULL), need={}, cached=True, flag=flag)
+        out = await LLMJudge(llm, FakeRetriever()).judge_turn(_record())
+        assert out["error"] is None and out["judge_calls"]["truncated"] == 0
+        assert out["judge_calls"]["cached"] == out["judge_calls"]["n"] == 3
+
+
+def test_stat_truncation_rule():
+    from types import SimpleNamespace
+
+    from evaluation.judges.llm_judge import output_unusable, stat_truncated
+
+    assert stat_truncated(SimpleNamespace(completion_tokens=1500, cached=False), 1500)
+    assert not stat_truncated(SimpleNamespace(completion_tokens=1499, cached=False), 1500)
+    assert not stat_truncated(SimpleNamespace(completion_tokens=0, cached=True), 1500)
+    assert stat_truncated(SimpleNamespace(done_reason="length", completion_tokens=3), 1500)
+    # an explicit flag from the wrapper wins over the token heuristic
+    assert not stat_truncated(SimpleNamespace(truncated=False, completion_tokens=9999), 1500)
+    assert stat_truncated(SimpleNamespace(truncated=True, completion_tokens=1), 1500)
+    assert not stat_truncated(None, 1500)
+    flagged = SimpleNamespace(truncated=True, completion_tokens=3000)
+    assert not output_unusable(flagged, 1500, object())  # the wrapper recovered
+    assert output_unusable(flagged, 1500, None)
+    legacy = SimpleNamespace(completion_tokens=1500, cached=False)
+    assert output_unusable(legacy, 1500, object())  # a repaired cut-off reply
+
+
+# ----------------------------------------------------------------------
+# --workers: concurrent judging, deterministic output order
+# ----------------------------------------------------------------------
+
+
+class ContentLLM:
+    """Answers from the prompt content with random latency (order-independent)."""
+
+    def __init__(self, seed):
+        import random
+
+        self.rng = random.Random(seed)
+
+    async def call(
+        self,
+        call_name,
+        system_prompt,
+        user_prompt,
+        output_schema,
+        temperature=0.0,
+        max_tokens=512,
+        *,
+        model=None,
+        seed=None,
+    ):
+        import asyncio
+        import json as _json
+        import re
+
+        await asyncio.sleep(self.rng.random() / 200)
+        if call_name == "judge_decompose":
+            reply = re.search(r"<assistant_reply>\n(.*)\n</assistant_reply>", user_prompt, re.S)
+            text = reply.group(1).split(" [")[0] if reply else "x"
+            return output_schema.model_validate_json(
+                _json.dumps({"claims": [{"claim": f"Lisinopril claim {text}"}]})
+            )
+        if call_name == "judge_label":
+            n = len(re.findall(r"^\d+\. ", user_prompt.split("<claims>")[1], re.M))
+            label = "SUPPORTED" if "even" in user_prompt else "UNSUPPORTED"
+            return output_schema.model_validate_json(
+                _json.dumps({"labels": [{"index": i, "label": label} for i in range(1, n + 1)]})
+            )
+        return output_schema.model_validate_json('{"behaviour": "GENERAL_INFO"}')
+
+
+async def test_workers_keep_output_order_and_content(tmp_path):
+    records = [
+        _record(
+            item_id=f"I{i:02d}",
+            attempt_id=f"a{i}",
+            response_text=f"Answer {'even' if i % 2 == 0 else 'odd'} {i} [1].",
+        )
+        for i in range(12)
     ]
-    label_prompt = next(c["user"] for c in llm.calls if c["name"] == "judge_label")
-    assert "talk to your doctor" not in label_prompt
+
+    async def judged(workers, seed, out):
+        await jg.judge_with_llm(
+            LLMJudge(ContentLLM(seed), FakeRetriever()),
+            {"C1": records},
+            {},
+            out,
+            resume=False,
+            fresh=False,
+            workers=workers,
+            log=lambda m: None,
+        )
+        rows = [json.loads(line) for line in (out / "llm" / "C1.jsonl").read_text().splitlines()]
+        for row in rows:
+            row.pop("timestamp")
+        return rows
+
+    sequential = await judged(1, 0, tmp_path / "seq")
+    concurrent = await judged(4, 1, tmp_path / "par")
+    assert [r["item_id"] for r in concurrent] == [r["item_id"] for r in records]
+    assert concurrent == sequential
+
+
+async def test_map_ordered_limits_concurrency_and_orders_sink():
+    import asyncio
+    import random
+
+    rng = random.Random(3)
+    running = peak = 0
+    seen = []
+
+    async def work(x):
+        nonlocal running, peak
+        running += 1
+        peak = max(peak, running)
+        await asyncio.sleep(rng.random() / 500)
+        running -= 1
+        return x * 10
+
+    await jg.map_ordered(list(range(20)), work, 3, lambda pos, res: seen.append((pos, res)))
+    assert seen == [(i, i * 10) for i in range(20)] and peak <= 3
 
 
 def test_model_family_clash_detection():

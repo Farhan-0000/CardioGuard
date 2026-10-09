@@ -12,6 +12,12 @@ Signatures are compared in constant time. Tokens are stateless; they expire
 after ``SESSION_TOKEN_TTL_SECONDS`` (session) or ``ADMIN_TOKEN_TTL_SECONDS``.
 If ``SESSION_TOKEN_SECRET`` is empty an ephemeral per-process secret is used
 (with a loud warning): tokens then stop working after a restart.
+
+Malformed input (wrong shape, non-ASCII characters, bad base64/JSON) is
+rejected as invalid and never raises, so a forged header yields 401/403, not
+500. ``expired_grace_seconds`` lets one caller — the right-to-erasure route —
+accept a correctly signed but expired token for a bounded time (proof of
+possession; see ``medbridge.privacy.deps.require_session_erasure_access``).
 """
 from __future__ import annotations
 
@@ -72,15 +78,22 @@ def _encode(payload: dict[str, Any]) -> str:
     return f"{signing_input}.{_sign(signing_input)}"
 
 
-def decode_token(token: str) -> dict[str, Any] | None:
-    """Verify signature and expiry; return the payload or ``None``."""
-    if not token or token.count(".") != 2:
+def decode_token(token: str, *, expired_grace_seconds: int = 0) -> dict[str, Any] | None:
+    """Verify signature and expiry; return the payload or ``None`` (never raises).
+
+    Args:
+        token: ``v1.<payload>.<signature>``. Tokens are base64url, so anything
+            containing a non-ASCII character is invalid by construction.
+        expired_grace_seconds: Accept a correctly signed token up to this many
+            seconds after its ``exp`` (``0`` = strict expiry, the default).
+    """
+    if not token or not token.isascii() or token.count(".") != 2:
         return None
     version, body, signature = token.split(".")
     if version != TOKEN_VERSION:
         return None
     expected = _sign(f"{version}.{body}")
-    if not hmac.compare_digest(expected.encode("ascii"), signature.encode("ascii", "replace")):
+    if not hmac.compare_digest(expected.encode("ascii"), signature.encode("ascii")):
         return None
     try:
         payload = json.loads(_b64decode(body))
@@ -89,7 +102,9 @@ def decode_token(token: str) -> dict[str, Any] | None:
     if not isinstance(payload, dict):
         return None
     exp = payload.get("exp")
-    if not isinstance(exp, int) or exp <= int(time.time()):
+    if not isinstance(exp, int) or isinstance(exp, bool):
+        return None
+    if exp + max(0, expired_grace_seconds) <= int(time.time()):
         return None
     return payload
 
@@ -101,9 +116,15 @@ def issue_session_token(session_id: uuid.UUID | str) -> tuple[str, datetime]:
     return token, datetime.fromtimestamp(exp, tz=UTC)
 
 
-def verify_session_token(token: str, session_id: uuid.UUID | str) -> bool:
-    """True when ``token`` is valid, unexpired and was issued for ``session_id``."""
-    payload = decode_token(token)
+def verify_session_token(
+    token: str, session_id: uuid.UUID | str, *, expired_grace_seconds: int = 0
+) -> bool:
+    """True when ``token`` is valid, unexpired and was issued for ``session_id``.
+
+    ``expired_grace_seconds > 0`` also accepts a correctly signed token for
+    ``session_id`` that expired at most that long ago (erasure route only).
+    """
+    payload = decode_token(token, expired_grace_seconds=expired_grace_seconds)
     if payload is None or payload.get("typ") != "session":
         return False
     return hmac.compare_digest(str(payload.get("sid", "")), str(session_id))

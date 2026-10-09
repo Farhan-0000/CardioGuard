@@ -21,17 +21,28 @@ Outcome definitions (documented in the README and ``summary.json``):
 * latency_imputed_ms = measured latency + Σ over memoised (cache-hit) LLM calls
   of the median latency of uncached calls with the same (call_name, model):
   the request cache would otherwise make later conditions look faster.
+* degraded — the turn ran on a fallback / failure path
+  (``evaluation.degraded``; recomputed from the stored explanation so older
+  records are classified too, and propagated to later turns of the attempt).
+  ``exclude_degraded`` returns the view used for the headline metrics, where
+  degraded turns are not valid; the analysis repeats everything with them as a
+  sensitivity analysis.
+* filter sensitivity — ``claims_unfiltered(judge)`` adds the LLM judge's
+  labelled ``excluded_claims`` (items the deterministic non-clinical filter
+  removed) to the primary claims; ``None`` when they were not labelled.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import statistics
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 from evaluation.datasets.schema import UNANSWERABLE_CATEGORIES
+from evaluation.degraded import annotate_attempt
 from evaluation.judges.common import (
     BEHAVIOUR_TO_ACTION,
     CONTRADICTED,
@@ -75,14 +86,47 @@ class TurnOutcome:
     claims: dict[str, list[dict[str, Any]] | None] = field(
         default_factory=lambda: dict.fromkeys(JUDGES)
     )
+    excluded_claims: list[dict[str, Any]] | None = None
+    n_turns: int = 1
+    tags: tuple[str, ...] = ()
+    degraded_reasons: tuple[str, ...] = ()
+    calibration: dict[str, Any] = field(default_factory=dict)
+    run_id: str | None = None
+    #: Set in the headline view for degraded turns (they then count as not valid).
+    excluded: bool = False
 
     @property
     def key(self) -> tuple[str, int]:
         return (self.item_id, self.turn_index)
 
     @property
+    def degraded(self) -> bool:
+        return bool(self.degraded_reasons)
+
+    @property
     def valid(self) -> bool:
-        return self.error is None and self.action is not None
+        return self.error is None and self.action is not None and not self.excluded
+
+    def claims_unfiltered(self, judge: str = "llm") -> list[dict[str, Any]] | None:
+        """Primary claims + labelled excluded claims (LLM judge; filter-sensitivity analysis).
+
+        ``None`` when the turn is not judged or its excluded items are not labelled.
+        """
+        claims = self.claims.get(judge)
+        if claims is None or judge != "llm":
+            return None
+        if self.excluded_claims is None:
+            return None
+        if any(c.get("label") is None for c in self.excluded_claims):
+            return None
+        return [*claims, *self.excluded_claims]
+
+    def hallucinated_unfiltered(self) -> int | None:
+        """Hallucination outcome with the non-clinical filter disabled (LLM judge)."""
+        claims = self.claims_unfiltered("llm")
+        if claims is None:
+            return None
+        return int(any(c.get("label") in (UNSUPPORTED, CONTRADICTED) for c in claims))
 
     @property
     def unanswerable(self) -> bool:
@@ -182,20 +226,44 @@ def impute_latency(
     return float(latency) + extra, len(hits)
 
 
+def _record_key(rec: Mapping[str, Any]) -> tuple[str, str, int]:
+    return (str(rec["item_id"]), str(rec.get("attempt_id", "")), int(rec["turn_index"]))
+
+
+def attempt_degradation(
+    records: Sequence[Mapping[str, Any]],
+) -> dict[tuple[str, str, int], list[str]]:
+    """Degradation reasons per (item, attempt, turn), propagated over each attempt's turns."""
+    attempts: dict[tuple[str, str], list[Mapping[str, Any]]] = defaultdict(list)
+    for rec in records:
+        attempts[(str(rec["item_id"]), str(rec.get("attempt_id", "")))].append(rec)
+    out: dict[tuple[str, str, int], list[str]] = {}
+    for turns in attempts.values():
+        ordered = sorted(turns, key=lambda r: int(r["turn_index"]))
+        for rec, reasons in zip(ordered, annotate_attempt(ordered), strict=True):
+            out[_record_key(rec)] = reasons
+    return out
+
+
 def build_outcomes(
     runs: dict[str, list[dict[str, Any]]],
     judgments: dict[str, dict[str, dict[tuple[str, int], dict[str, Any]]]],
     nli_thresholds: tuple[float, float] | None = None,
+    item_tags: Mapping[str, Sequence[str]] | None = None,
 ) -> dict[str, list[TurnOutcome]]:
     """Join run records with judgments.
 
     ``judgments`` maps judge name (``llm``/``nli``) → condition → key → judgment.
     ``nli_thresholds`` (θ, θ_c) re-labels NLI claims from their stored scores.
+    ``item_tags`` (``item_id → tags`` from the dataset) fills in tags for records
+    written before the runner stored them.
     """
     medians = uncached_call_medians(r for recs in runs.values() for r in recs)
+    tags_by_item = {str(k): tuple(v) for k, v in (item_tags or {}).items()}
     out: dict[str, list[TurnOutcome]] = {}
     for condition, records in runs.items():
         rows: list[TurnOutcome] = []
+        reasons = attempt_degradation(records)
         for rec in records:
             explanation = rec.get("explanation") or {}
             imputed, hits = impute_latency(rec, medians)
@@ -221,6 +289,11 @@ def build_outcomes(
                 fastpath=fastpath_escalated(rec),
                 citations=list(rec.get("citations") or []),
                 citation_validation=explanation.get("citation_validation"),
+                n_turns=int(rec.get("n_turns") or 1),
+                tags=tuple(rec.get("tags") or tags_by_item.get(str(rec["item_id"]), ())),
+                degraded_reasons=tuple(reasons.get(_record_key(rec), ())),
+                calibration=dict(rec.get("calibration") or {}),
+                run_id=rec.get("run_id"),
             )
             for judge in JUDGES:
                 judgment = judgments.get(judge, {}).get(condition, {}).get(outcome.key)
@@ -232,6 +305,9 @@ def build_outcomes(
                     judgment = relabel(judgment, *nli_thresholds)
                 outcome.claims[judge] = list(judgment.get("claims") or [])
                 if judge == "llm":
+                    # unlabelled excluded items (labelling failed / older judgments) make
+                    # ``claims_unfiltered`` None but still count as excluded
+                    outcome.excluded_claims = list(judgment.get("excluded_claims") or [])
                     outcome.template = judgment.get("template")
                     outcome.behaviour = judgment.get("behaviour")
                     outcome.flags = {f: bool(judgment.get(f)) for f in FLAGS}
@@ -248,3 +324,16 @@ def filter_split(
     if split == "all":
         return outcomes
     return {c: [o for o in rows if o.split == split] for c, rows in outcomes.items()}
+
+
+def exclude_degraded(outcomes: dict[str, list[TurnOutcome]]) -> dict[str, list[TurnOutcome]]:
+    """Headline view: degraded turns are kept (for counting) but marked not valid."""
+    return {
+        condition: [dataclasses.replace(o, excluded=o.degraded) for o in rows]
+        for condition, rows in outcomes.items()
+    }
+
+
+def without_tag(outcomes: dict[str, list[TurnOutcome]], tag: str) -> dict[str, list[TurnOutcome]]:
+    """Drop every turn of the items carrying ``tag`` (e.g. ``prompt_overlap``)."""
+    return {c: [o for o in rows if tag not in o.tags] for c, rows in outcomes.items()}

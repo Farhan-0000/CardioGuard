@@ -20,7 +20,9 @@ Placeholder          Detected from
                      grouping), US numbers, numbers after a label
                      ("phone:", "WhatsApp") or a contact verb ("call me on")
 ``[EMAIL]``          e-mail addresses
-``[ADDRESS]``        house/flat/plot/door numbers + street words + locality
+``[ADDRESS]``        house/flat/plot/door numbers + street words + locality,
+                     city and alphanumeric postcode ("Sector 15A", "LE3 9QT");
+                     a span never starts or ends inside a word (fail closed)
 ``[PINCODE]``        PIN/ZIP codes after an address, a "pincode" label, a
                      place chain ("in Koramangala, Bangalore 560034") or a
                      US state code ("Austin, TX 78701")
@@ -218,15 +220,51 @@ _ADDRESS_STREET_RE = re.compile(
     rf"\b\d{{1,5}}[A-Za-z]?,?\s+(?:(?:[A-Z][a-z]+|\d{{1,3}}(?:st|nd|rd|th))\s+){{0,3}}"
     rf"{_STREET_WORDS}\.?(?![\w])"
 )
-# One comma-separated address continuation (locality, city, state).
-_ADDRESS_SEGMENT_RE = re.compile(
-    r",\s*(?P<seg>(?:#?\d{1,5}[A-Za-z]?(?:st|nd|rd|th)?\s+)?[A-Z][A-Za-z.'&-]*"
-    r"(?:\s+(?:[A-Z][A-Za-z.'&-]*|No\.?\s?\d{1,4}[A-Za-z]?|\d{1,3}(?:st|nd|rd|th)?(?![\d/.])))*)"
+# Address continuation (locality, city, state, postcode) after a house number / street.
+# Every token ends on a word boundary, so a continuation can never stop inside "15A",
+# "C3", "LE3" or "4567" and leave the rest of the token (and everything after it)
+# visible. Bare numbers have at most 4 digits: 5- and 6-digit PIN/ZIP codes are left
+# to the PINCODE pass (see _pins_after_addresses).
+_TOK_END = r"(?![\w/])"
+# A number token is not a decimal, time or thousands group ("7.2", "10:30", "1,200").
+_NUM_END = r"(?![\w/]|[.,:]\d)"
+# A number followed by a unit is a dose or a measurement, never part of an address.
+_UNIT_AHEAD = (
+    r"(?!\s*(?i:mg|mcg|µg|ug|gms?|ml|iu|units?|mmhg|mm|cm|bpm|kgs?|lbs?|mmol|meq|tabs?|"
+    r"tablets?|pills?|puffs?|drops?|times|hrs?|hours?|mins?|minutes?|days?|weeks?|months?|"
+    r"years?|yrs?)(?![A-Za-z])|\s*%)"
 )
+_SEG_NUM = rf"#?\d{{1,4}}{_UNIT_AHEAD}[A-Za-z]{{0,3}}{_NUM_END}"
+_SEG_WORD = rf"[A-Z][A-Za-z0-9.'&-]*{_TOK_END}"
+_SEG_HOUSE_NO = rf"No\.?\s?\d{{1,4}}[A-Za-z]{{0,2}}{_NUM_END}"
+_SEG_PAREN = r"\([A-Z][A-Za-z0-9 .'&-]{0,30}\)"
+# ", <optional number> <Word>" opens a segment ("12th Main", "Sector", "Leicester").
+_SEGMENT_OPEN_RE = re.compile(rf",\s*(?:{_SEG_NUM}\s+)?(?P<tok>{_SEG_WORD})")
+# Further tokens of the same segment ("Sector 15A", "Tower C3", "Road No. 12A",
+# "Leicester LE3 9QT", "Andheri (East)").
+_SEGMENT_NEXT_RE = re.compile(
+    rf"\s+(?P<tok>{_SEG_HOUSE_NO}|{_SEG_WORD}|{_SEG_PAREN}|{_SEG_NUM})"
+)
+# Abbreviations whose dot does not end the sentence ("St. Mary's Road", "J.P. Nagar").
+_ADDRESS_ABBREVIATIONS = frozenset({
+    "st", "rd", "no", "opp", "nr", "mt", "ft", "ave", "dr", "jn", "extn", "ext", "sec", "ph",
+    "blk", "bldg", "apt", "flr", "sr", "jr", "new", "old",
+})
+_INITIALS_RE = re.compile(r"(?:[A-Za-z]\.)+")
 _ADDRESS_STOP_WORDS = frozenset({
     "bp", "blood", "pulse", "hr", "heart", "age", "aged", "dob", "my", "i", "and", "but",
     "is", "was", "the", "call", "email", "phone", "mobile", "ph", "contact", "pin", "pincode",
     "mrn", "patient", "please", "thanks", "regards", "on", "with", "since", "taking",
+    # function words that start the next clause ("..., Pune In the morning ...")
+    "in", "at", "from", "to", "for", "of", "it", "he", "she", "we", "they", "you", "so", "or",
+    "also", "am", "are", "have", "has", "had", "do", "does", "did", "can", "will", "should",
+    "what", "how", "why", "when", "today", "yesterday", "tomorrow", "every", "daily",
+    "yes", "hi", "hello", "dear", "sir", "madam", "doctor",
+    # measurement / lab words: "..., Mumbai. Sugar 7.2" / "..., Pune, Weight 82 kg"
+    "sugar", "glucose", "cholesterol", "ldl", "hdl", "triglycerides", "sodium", "potassium",
+    "creatinine", "urea", "hemoglobin", "haemoglobin", "hba1c", "platelet", "platelets",
+    "weight", "dose", "dosage", "tablet", "tablets", "spo2", "temp", "temperature",
+    "inr", "tsh", "egfr", "ef", "ecg", "fasting", "fbs", "ppbs", "rbs",
 })
 
 # A PIN/ZIP must not continue as a decimal, date or longer number ("560001." is fine).
@@ -362,6 +400,13 @@ twice urgent regarding related normal high low same different wrong correct miss
 written spelled listed printed registered consent form
 """.split())
 
+# Information sources / services people jokingly give a title ("Dr. Google says ...",
+# "Doctor YouTube", "asked Dr. Internet"): never a person, so a title cue skips them.
+_NON_PERSON_WORDS = frozenset("""
+google internet web website online net youtube wikipedia wiki chatgpt gpt ai bot chatbot
+app apps facebook instagram whatsapp quora reddit twitter tiktok forum forums search
+""".split())
+
 # Brand names seen in patient messages that are not in the cardiovascular lexicon.
 _EXTRA_DRUG_WORDS = frozenset({
     "telma", "telmikind", "telsartan", "arbitel", "amlong", "amlokind", "amlopres", "stamlo",
@@ -482,28 +527,83 @@ def _detect_phones(text: str, today: date) -> Iterator[Span]:
             yield m.start(), m.end(), "PHONE", "[PHONE]"
 
 
-def _extend_address(text: str, end: int) -> int:
-    """Extend an address core over comma-separated locality/city/state segments."""
+def _is_segment_stop(token: str) -> bool:
+    """A word that ends an address: a function/clinical word or a known drug name."""
+    word = re.sub(r"[^a-z0-9]", "", token.lower())
+    return word in _ADDRESS_STOP_WORDS or word in _drug_words()
+
+
+def _ends_sentence(token: str) -> bool:
+    """``Bangalore.`` ends the sentence; ``St.``, ``No.`` and ``J.P.`` do not."""
+    if not token.endswith("."):
+        return False
+    if _INITIALS_RE.fullmatch(token):
+        return False
+    return token.rstrip(".").lower() not in _ADDRESS_ABBREVIATIONS
+
+
+def _continue_tokens(text: str, end: int, token: str) -> int:
+    """Consume further tokens of the same locality ("Sector 15A", "Leicester LE3 9QT")."""
+    while not _ends_sentence(token):
+        if _PIN_AFTER_ADDRESS_RE.match(text, end):  # a PIN/ZIP closes the address
+            break
+        nxt = _SEGMENT_NEXT_RE.match(text, end)
+        if not nxt or _is_segment_stop(nxt.group("tok")):
+            break
+        end = nxt.end()
+        token = nxt.group("tok")
+    return end
+
+
+def _segment_end(text: str, pos: int) -> int | None:
+    """End of one ``, <locality> [<number>|<Word>]*`` segment at ``pos``, or None."""
+    m = _SEGMENT_OPEN_RE.match(text, pos)
+    if not m or _is_segment_stop(m.group("tok")):
+        return None
+    return _continue_tokens(text, m.end(), m.group("tok"))
+
+
+def _extend_address(text: str, end: int, *, core_token: str | None = None) -> int:
+    """Extend an address core over comma-separated locality/city/state/postcode segments.
+
+    With ``core_token`` (the last word of a street core such as "Lajpat Nagar") the
+    core's own locality continues first ("Lajpat Nagar II, New Delhi").
+
+    Fails closed: the result never ends inside a word, so no part of a locality, city
+    or postcode token is left in clear text after ``[ADDRESS]``.
+    """
+    if core_token is not None:
+        end = _continue_tokens(text, end, core_token)
     for _ in range(6):
-        m = _ADDRESS_SEGMENT_RE.match(text, end)
-        if not m:
+        seg_end = _segment_end(text, end)
+        if seg_end is None:
             break
-        first_word = re.split(r"[\s.]", m.group("seg"), maxsplit=1)[0].lower()
-        if first_word in _ADDRESS_STOP_WORDS:
-            break
-        end = m.end("seg")
+        end = seg_end
+    while end < len(text) and text[end].isalnum():
+        end += 1
     while end > 0 and text[end - 1] in ".,":
         end -= 1
     return end
+
+
+def _expand_start(text: str, start: int) -> int:
+    """Move an address start back to the beginning of its token ("B-12", "12/4")."""
+    s = start
+    while s > 0 and (text[s - 1].isalnum() or text[s - 1] in "-/"):
+        s -= 1
+    while s < start and not text[s].isalnum():
+        s += 1
+    return s
 
 
 def _detect_addresses(text: str, _today: date) -> Iterator[Span]:
     for m in _ADDRESS_CUE_RE.finditer(text):
         end = _extend_address(text, m.end())
         if end > m.end():  # a house-number cue needs at least one locality segment
-            yield m.start(), end, "ADDRESS", "[ADDRESS]"
+            yield _expand_start(text, m.start()), end, "ADDRESS", "[ADDRESS]"
     for m in _ADDRESS_STREET_RE.finditer(text):
-        yield m.start(), _extend_address(text, m.end()), "ADDRESS", "[ADDRESS]"
+        end = _extend_address(text, m.end(), core_token=m.group(0).split()[-1])
+        yield _expand_start(text, m.start()), end, "ADDRESS", "[ADDRESS]"
 
 
 def _is_place(place: str) -> bool:
@@ -533,7 +633,10 @@ def _consume_name(text: str, pos: int, any_case: bool) -> tuple[int, int] | None
             break
         token = m.group(0)
         lowered = token.lower()
-        if not _is_initial(token) and (lowered in _NAME_STOPWORDS or lowered in _drug_words()):
+        if not _is_initial(token) and (
+            lowered in _NAME_STOPWORDS or lowered in _NON_PERSON_WORDS
+            or lowered in _drug_words()
+        ):
             break
         # A capitalised name does not continue into a lower-case word ("Prakash takes").
         if tokens and tokens[0][0][0].isupper() and not token[0].isupper():

@@ -8,7 +8,8 @@ actions, latency and the PHI-free ``trace``) and the ``feedback`` table:
 * end-to-end latency p50/p95 overall and per action, per-stage p50/p95 from
   ``trace.timings`` (only stages that ran: ``skipped`` and ``discarded``
   timings are excluded);
-* spec-fallback counts, loop-breaker / fast-path / small-talk counts,
+* spec-fallback counts (``evidence_gate_partial``: V1 turns that lost some,
+  but not all, of their votes), loop-breaker / fast-path / small-talk counts,
   citation downgrades, speculative-retrieval discard rate and the latency it
   saved;
 * Gate 3 (grounding verifier) counters: verified turns, failures, turns where
@@ -130,6 +131,13 @@ def _source(trace: dict[str, Any], gate: str) -> str | None:
     return str(decision.get("source")) if isinstance(decision, dict) else None
 
 
+def _failed_votes(trace: dict[str, Any]) -> int:
+    """V1 evidence-gate votes that failed (``gate2.features.failed_votes``)."""
+    gate2 = trace.get("gate2")
+    features = gate2.get("features") if isinstance(gate2, dict) else None
+    return _int(features.get("failed_votes")) if isinstance(features, dict) else 0
+
+
 def _int(value: Any) -> int:
     if isinstance(value, bool) or not isinstance(value, int | float):
         return 0
@@ -199,6 +207,8 @@ def compute_metrics(
             fallbacks["context_gate"] += 1
         if _source(trace, "gate2") == "fallback":
             fallbacks["evidence_gate"] += 1
+        elif _source(trace, "gate2") == "calibrated" and _failed_votes(trace) > 0:
+            fallbacks["evidence_gate_partial"] += 1
         routing["loop_breaker"] += _source(trace, "gate2") == "loop_breaker"
         routing["emergency_fastpath"] += _source(trace, "gate2") == "fastpath"
         routing["small_talk"] += _source(trace, "gate2") == "rule"

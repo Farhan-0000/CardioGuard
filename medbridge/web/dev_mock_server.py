@@ -13,7 +13,12 @@ in the report. Responses are keyword-triggered:
 * "french revolution"  -> ABSTAIN  (out of scope, template)
 * "dose"               -> SOFT-ASK (Gate 1 asks for missing context)
 * "diet"               -> GENERALIZE
+* "rate limit"         -> HTTP 429 with ``Retry-After: 8`` (exercises the countdown)
 * anything else        -> ANSWER with two citations and a full explanation
+
+Like the real server, a streamed turn keeps running and is saved when the
+client stops reading (Stop button, closed tab), so the UI's "finishing the
+previous answer" lock can be exercised.
 
 Admin login: username ``admin`` / password ``admin`` (mock only). The same
 strict Content-Security-Policy as production is applied to every response so
@@ -425,7 +430,41 @@ def _sse(event: str, data: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
+# Strong references to turns still running after their client disconnected.
+_RUNNING_TURNS: set[asyncio.Task[None]] = set()
+RATE_LIMIT_TRIGGER = "rate limit"
+RATE_LIMIT_RETRY_AFTER = 8
+
+
+def _rate_limit_check(message: str) -> None:
+    """429 + Retry-After for messages containing the mock trigger phrase."""
+    if RATE_LIMIT_TRIGGER in message.lower():
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many requests. Please wait {RATE_LIMIT_RETRY_AFTER} s and try again.",
+            headers={"Retry-After": str(RATE_LIMIT_RETRY_AFTER)},
+        )
+
+
 async def stream_turn(session_id: str, session: MockSession, message: str, *, regenerate: bool, delay: float) -> AsyncIterator[str]:
+    """Stream a turn that, like the real server, finishes and is saved even if the client leaves."""
+    queue: asyncio.Queue[str | None] = asyncio.Queue()
+
+    async def produce() -> None:
+        try:
+            async for event in _turn_events(session_id, session, message, regenerate=regenerate, delay=delay):
+                queue.put_nowait(event)
+        finally:
+            queue.put_nowait(None)
+
+    task = asyncio.create_task(produce())
+    _RUNNING_TURNS.add(task)
+    task.add_done_callback(_RUNNING_TURNS.discard)
+    while (event := await queue.get()) is not None:
+        yield event
+
+
+async def _turn_events(session_id: str, session: MockSession, message: str, *, regenerate: bool, delay: float) -> AsyncIterator[str]:
     """Emit stage events, the answer as token chunks, then ``done``."""
     turn, plan = build_turn(message, session)
     for stage, status in plan.items():
@@ -543,12 +582,14 @@ def create_mock_app(*, stream_delay: float = 0.12) -> FastAPI:
     @app.post("/api/sessions/{session_id}/messages")
     async def send(session_id: str, body: MessageIn, authorization: str | None = Header(default=None)) -> dict[str, Any]:
         session = _session(session_id, authorization)
+        _rate_limit_check(body.message)
         turn, _plan = build_turn(body.message, session)
         return _record(session_id, session, body.message, turn, regenerate=False)
 
     @app.post("/api/sessions/{session_id}/messages/stream")
     async def send_stream(session_id: str, body: MessageIn, authorization: str | None = Header(default=None)) -> StreamingResponse:
         session = _session(session_id, authorization)
+        _rate_limit_check(body.message)
         return StreamingResponse(
             stream_turn(session_id, session, body.message, regenerate=False, delay=stream_delay),
             media_type="text/event-stream",
@@ -670,8 +711,9 @@ def create_mock_app(*, stream_delay: float = 0.12) -> FastAPI:
 
     @app.exception_handler(HTTPException)
     async def http_error(_request: Request, exc: HTTPException) -> JSONResponse:
-        return JSONResponse(status_code=exc.status_code, content={
-            "error_code": f"HTTP_{exc.status_code}", "message": str(exc.detail),
+        return JSONResponse(status_code=exc.status_code, headers=exc.headers, content={
+            "error_code": "RATE_LIMITED" if exc.status_code == 429 else f"HTTP_{exc.status_code}",
+            "message": str(exc.detail),
             "safe_fallback": "This request could not be completed. Please start a new conversation or try again.",
         })
 

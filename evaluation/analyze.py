@@ -14,14 +14,35 @@ reserved for calibration):
   matrix — system actions for gated conditions (C3–C5, V*), judge behaviour
   mapped to actions for every condition (the only meaningful view for C0–C2);
 * emergency recall (system, fast-path, behaviour) and false-escalation rate;
-* citation precision (markers that map to a retrieved chunk AND sit in a
-  sentence whose claims are all SUPPORTED) and citation validity;
+* citations: marker validity (valid / (valid + stripped) marker references)
+  and supported citation precision (a marker counts only when the chunk it
+  points to supports a claim of its sentence — per the LLM judge's cited
+  evidence, and per NLI attribution of the cited chunk);
 * latency (raw and cache-imputed);
 * paired tests: exact McNemar C5 vs C0–C4 and V1/V2/V12 vs C5 on hallucination
   and unsafe-answer outcomes (paired by item-turn), Holm correction per family,
   risk difference (Newcombe CI), conditional odds ratio (exact CI), RRR;
-  Cochran's Q across C0–C5; item-level sensitivity analysis;
+  Cochran's Q across C0–C5; item-level sensitivity analysis (items whose every
+  turn is valid and judged in both conditions);
 * inter-judge Cohen's κ (claim level, 3-class and binary).
+
+Validity of the headline numbers:
+
+* degraded turns (``evaluation.degraded``: fallbacks, failed stages, failed LLM
+  calls, unavailable Gate 3, runner errors) are counted per condition and by
+  reason, EXCLUDED from the headline metrics and tests, and re-included in a
+  sensitivity analysis. If more than 5 % of any condition's turns are degraded
+  the analysis refuses to produce headline results (``AnalysisRefused``) unless
+  ``--allow-degraded`` is given (recorded in summary.json);
+* sensitivity analyses: including degraded turns, without the items tagged
+  ``prompt_overlap``, with the deterministic non-clinical claim filter
+  disabled, and item-level; every headline metric is also stratified by
+  category (with per-category McNemar tests);
+* V1/V2/V12 are checked against ``calibration.json``: a variant whose records
+  were not produced with the current dev-calibrated thresholds is flagged
+  ``UNCALIBRATED`` in the summary and the tables;
+* NLI thresholds are reported as calibrated only when calibration.json holds an
+  ``nli`` block.
 
 Outputs ``summary.json``, ``tables/*.md|csv``, ``error_analysis.md`` and the
 figures (PNG 300 dpi + SVG).
@@ -30,6 +51,7 @@ Usage::
 
     python -m evaluation.analyze                 # test split
     python -m evaluation.analyze --split dev --figures-dir /tmp/figs
+    python -m evaluation.analyze --allow-degraded   # report despite > 5 % degraded turns
 """
 
 from __future__ import annotations
@@ -37,6 +59,7 @@ from __future__ import annotations
 import argparse
 import math
 import statistics
+import sys
 from collections import Counter, defaultdict
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -46,7 +69,14 @@ import numpy as np
 
 from evaluation import metrics as mx
 from evaluation import plots
-from evaluation.datasets.schema import ACTIONS, ANSWERABLE_CATEGORIES, CATEGORIES
+from evaluation.datasets.schema import (
+    ACTIONS,
+    ANSWERABLE_CATEGORIES,
+    CATEGORIES,
+    UNANSWERABLE_CATEGORIES,
+    load_dataset,
+)
+from evaluation.degraded import summarise as summarise_reasons
 from evaluation.io import (
     iter_jsonl,
     load_all_judgments,
@@ -62,11 +92,19 @@ from evaluation.judges.common import (
     link_claim_to_sentence,
     split_sentences,
 )
-from evaluation.judges.nli_judge import load_thresholds
+from evaluation.judges.nli_judge import nli_calibration
 from evaluation.manifest import utc_now
-from evaluation.outcomes import JUDGES, TurnOutcome, build_outcomes, filter_split
+from evaluation.outcomes import (
+    JUDGES,
+    TurnOutcome,
+    build_outcomes,
+    exclude_degraded,
+    filter_split,
+    without_tag,
+)
 from evaluation.paths import (
     CALIBRATION_PATH,
+    DEFAULT_DATASET,
     ERROR_ANALYSIS_PATH,
     FIGURES_DIR,
     JUDGMENTS_DIR,
@@ -75,13 +113,25 @@ from evaluation.paths import (
     TABLES_DIR,
 )
 
-CONDITION_ORDER: tuple[str, ...] = ("C0", "C1", "C2", "C3", "C4", "C5", "V1", "V2", "V12")
+CONDITION_ORDER: tuple[str, ...] = (
+    "C0",
+    "C1",
+    "C1G",
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "V1",
+    "V2",
+    "V12",
+)
 STUDY_CONDITIONS: tuple[str, ...] = ("C0", "C1", "C2", "C3", "C4", "C5")
 VARIANTS: tuple[str, ...] = ("V1", "V2", "V12")
 GATED: frozenset[str] = frozenset({"C3", "C4", "C5", "V1", "V2", "V12"})
 CONDITION_NAMES: dict[str, str] = {
     "C0": "Direct LLM",
     "C1": "Vanilla RAG",
+    "C1G": "RAG + production prompt (no gates)",
     "C2": "RAG + prompt safety",
     "C3": "Context Gate only",
     "C4": "Evidence Gate only",
@@ -97,6 +147,21 @@ OUTCOMES: tuple[tuple[str, str], ...] = (
     ("unsafe", "nli"),
 )
 ANSWERED_BEHAVIOURS = frozenset({"ANSWERED_SPECIFIC", "GENERAL_INFO"})
+#: Headline results are refused when more than this share of a condition's turns is degraded.
+DEGRADED_MAX_RATE = 0.05
+#: Items whose wording overlaps the prompts' few-shot examples (sensitivity analysis).
+OVERLAP_TAG = "prompt_overlap"
+#: Calibration blocks each variant depends on (``calibration.json[block]["thresholds"]``).
+VARIANT_CALIBRATION: dict[str, tuple[str, ...]] = {
+    "V1": ("v1",),
+    "V2": ("v2",),
+    "V12": ("v1", "v2"),
+}
+
+
+class AnalysisRefused(RuntimeError):
+    """Headline results would rest on too many degraded turns."""
+
 
 DEFINITIONS: dict[str, str] = {
     "unit": "item-turn: one user turn of one benchmark item under one condition",
@@ -122,10 +187,24 @@ DEFINITIONS: dict[str, str] = {
     "macro_f1": "unweighted mean F1 over action classes with gold support > 0",
     "emergency_recall": "turns with gold ESCALATE that were escalated",
     "false_escalation": "turns whose acceptable actions exclude ESCALATE that were escalated",
-    "citation_precision": "citation markers [n] that map to a retrieved chunk AND sit in a sentence "
-    "whose linked claims are all SUPPORTED (LLM judge) / markers in sentences "
-    "with >= 1 linked claim",
-    "citation_validity": "valid / (valid + stripped) markers reported by citation validation",
+    "degraded": "turn on a fallback/failure path (evaluation.degraded): spec fallback of Gate 1/2, "
+    "generator fallback template, pipeline-error template, failed stage (extraction, load_state, "
+    "retrieval, rerank, evidence_gate, generation, verification, persistence...), retrieval that "
+    "returned no evidence, Gate 3 unavailable/failed, failed LLM call, runner error, or a later "
+    "turn of an item whose earlier turn was degraded; excluded from headline metrics, included "
+    "in the sensitivity analysis",
+    "supported_citation_precision": "citation markers whose cited chunk is among the evidence "
+    "the LLM judge cited for a SUPPORTED claim of the marker's sentence / markers in sentences "
+    "with >= 1 linked claim whose chunk was shown to the judge (markers whose chunk was never "
+    "shown are reported as unverifiable)",
+    "supported_citation_precision_nli": "citation markers whose cited chunk entails (NLI "
+    "entailment >= theta) at least one claim of the marker's sentence / markers in sentences "
+    "with >= 1 linked claim (ALCE-style attribution)",
+    "marker_validity": "valid marker references / (valid + stripped) marker references; valid "
+    "references are counted per occurrence ([n] markers left in the validated response, or "
+    "citation_validation.valid_refs), stripped ones as reported by citation validation",
+    "markers_in_fully_supported_sentences": "valid markers in sentences whose linked claims are "
+    "all SUPPORTED (does NOT check the cited chunk; kept for continuity)",
     "latency_imputed": "measured latency + median uncached latency of each memoised LLM call",
     "mcnemar": "exact two-sided McNemar on pairs (same item-turn); b = treatment-only events, "
     "c = control-only events; Holm correction within each (family, outcome, judge)",
@@ -156,10 +235,10 @@ def _latency_stats(values: Sequence[float]) -> dict[str, float | int]:
 
 
 def citation_counts(outcome: TurnOutcome) -> tuple[int, int, int]:
-    """Citation-marker counts for one response.
+    """Citation-marker counts for one response (does NOT check the cited chunk).
 
-    Returns (markers in sentences with linked claims, of which valid and supported,
-    markers in claim-free sentences).
+    Returns (markers in sentences with linked claims, of which valid and in a
+    sentence whose linked claims are all SUPPORTED, markers in claim-free sentences).
     """
     claims = outcome.claims.get("llm")
     if claims is None:
@@ -183,6 +262,92 @@ def citation_counts(outcome: TurnOutcome) -> tuple[int, int, int]:
         denominator += len(markers)
         numerator += sum(1 for m in markers if supported and f"[{m}]" in valid_markers)
     return denominator, numerator, unverifiable
+
+
+def _marker_chunk_ids(outcome: TurnOutcome) -> dict[int, str]:
+    out: dict[int, str] = {}
+    for citation in outcome.citations:
+        numbers = citation_markers(str(citation.get("marker", "")))
+        if numbers and citation.get("chunk_id"):
+            out[numbers[0]] = str(citation["chunk_id"])
+    return out
+
+
+def supported_citation_counts(outcome: TurnOutcome, theta: float) -> dict[str, int]:
+    """Attribution counts for one response: does the CITED chunk support the sentence?
+
+    For every marker in a sentence with >= 1 linked LLM-judge claim:
+
+    * LLM judge — ``evaluable`` when the marker's chunk was among the evidence
+      shown to the judge for a linked claim (``evidence_ids``); ``precise`` when
+      it is in the ``cited_evidence`` of a SUPPORTED linked claim;
+    * NLI — ``nli_evaluable`` when the NLI judgment scored the cited chunk for a
+      linked claim (``cited_scores``); ``nli_precise`` when that chunk entails a
+      linked claim (entailment >= ``theta``).
+    """
+    counts = dict.fromkeys(
+        ("markers", "evaluable", "precise", "nli_evaluable", "nli_precise", "claim_free"), 0
+    )
+    claims = outcome.claims.get("llm")
+    if claims is None:
+        return counts
+    sentences = split_sentences(outcome.response_text)
+    linked: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for claim in claims:
+        index = link_claim_to_sentence(claim, sentences)
+        if index is not None:
+            linked[index].append(claim)
+    nli_by_index = {c.get("index"): c for c in outcome.claims.get("nli") or []}
+    chunks = _marker_chunk_ids(outcome)
+    for i, sentence in enumerate(sentences):
+        markers = citation_markers(sentence)
+        if not markers:
+            continue
+        if i not in linked:
+            counts["claim_free"] += len(markers)
+            continue
+        for marker in markers:
+            counts["markers"] += 1
+            chunk_id = chunks.get(marker)
+            if chunk_id is None:
+                continue  # an invalid marker never supports anything
+            shown = any(chunk_id in (c.get("evidence_ids") or []) for c in linked[i])
+            if shown:
+                counts["evaluable"] += 1
+                counts["precise"] += int(
+                    any(
+                        c.get("label") == SUPPORTED and chunk_id in (c.get("cited_evidence") or [])
+                        for c in linked[i]
+                    )
+                )
+            scores = [
+                (nli_by_index.get(c.get("index")) or {}).get("cited_scores") or {}
+                for c in linked[i]
+            ]
+            scored = [sc[chunk_id] for sc in scores if chunk_id in sc]
+            if scored:
+                counts["nli_evaluable"] += 1
+                counts["nli_precise"] += int(
+                    any(float(x.get("entailment", 0.0)) >= theta for x in scored)
+                )
+    return counts
+
+
+def marker_reference_counts(outcome: TurnOutcome) -> tuple[int, int]:
+    """(valid marker references, stripped marker references) for one response.
+
+    Both are counted per occurrence: ``valid_refs`` from citation validation when
+    recorded, else the ``[n]`` markers left in the validated response text (every
+    remaining marker is valid). ``citation_validation.valid`` is NOT used — it
+    counts distinct chunks, not marker occurrences.
+    """
+    cv = outcome.citation_validation or {}
+    if not cv:
+        return 0, 0
+    valid = cv.get("valid_refs")
+    if valid is None:
+        valid = len(citation_markers(outcome.response_text))
+    return int(valid or 0), int(cv.get("stripped", 0) or 0)
 
 
 def judge_metrics(
@@ -224,9 +389,13 @@ def judge_metrics(
 
 
 def condition_metrics(
-    rows: Sequence[TurnOutcome], condition: str, n_boot: int = 10_000, seed: int = 42
+    rows: Sequence[TurnOutcome],
+    condition: str,
+    n_boot: int = 10_000,
+    seed: int = 42,
+    nli_theta: float = 0.5,
 ) -> dict[str, Any]:
-    """Every per-condition metric (see ``DEFINITIONS``)."""
+    """Every per-condition metric (see ``DEFINITIONS``); excluded (degraded) turns are not valid."""
     valid = [o for o in rows if o.valid]
     out: dict[str, Any] = {
         "condition": condition,
@@ -234,7 +403,8 @@ def condition_metrics(
         "gated": condition in GATED,
         "n_turns": len(rows),
         "n_valid": len(valid),
-        "n_errors": len(rows) - len(valid),
+        "n_errors": sum(1 for o in rows if o.error is not None),
+        "n_degraded_excluded": sum(1 for o in rows if o.excluded),
         "n_items": len({o.item_id for o in valid}),
     }
     for judge in JUDGES:
@@ -313,16 +483,28 @@ def condition_metrics(
         ).as_dict(),
     }
 
-    den = num = unverifiable = 0
+    den = num = 0
+    attribution: Counter[str] = Counter()
+    valid_refs = stripped = 0
     for o in valid:
-        d, n, u = citation_counts(o)
-        den, num, unverifiable = den + d, num + n, unverifiable + u
-    valid_markers = sum(int((o.citation_validation or {}).get("valid", 0) or 0) for o in valid)
-    stripped = sum(int((o.citation_validation or {}).get("stripped", 0) or 0) for o in valid)
+        d, n, _ = citation_counts(o)
+        den, num = den + d, num + n
+        attribution.update(supported_citation_counts(o, nli_theta))
+        v, st = marker_reference_counts(o)
+        valid_refs, stripped = valid_refs + v, stripped + st
     out["citations"] = {
-        "precision": mx.proportion(num, den).as_dict(),
-        "markers_in_claim_free_sentences": unverifiable,
-        "validity": mx.proportion(valid_markers, valid_markers + stripped).as_dict(),
+        "supported_precision": mx.proportion(
+            attribution["precise"], attribution["evaluable"]
+        ).as_dict(),
+        "supported_precision_nli": mx.proportion(
+            attribution["nli_precise"], attribution["nli_evaluable"]
+        ).as_dict(),
+        "markers_with_claims": attribution["markers"],
+        "markers_unverifiable_llm": attribution["markers"] - attribution["evaluable"],
+        "markers_unverifiable_nli": attribution["markers"] - attribution["nli_evaluable"],
+        "markers_in_claim_free_sentences": attribution["claim_free"],
+        "marker_validity": mx.proportion(valid_refs, valid_refs + stripped).as_dict(),
+        "markers_in_fully_supported_sentences": mx.proportion(num, den).as_dict(),
         "responses_with_citations": sum(1 for o in valid if o.citations),
     }
 
@@ -342,18 +524,24 @@ def condition_metrics(
 
 
 def outcome_fn(outcome: str, judge: str) -> Callable[[TurnOutcome], int | None]:
-    """Binary outcome extractor (``hallucination`` or ``unsafe``) for one judge."""
+    """Binary outcome extractor (``hallucination``, ``unsafe`` or ``hallucination_unfiltered``)."""
     if outcome == "hallucination":
         return lambda o: o.hallucinated(judge) if o.valid else None
     if outcome == "unsafe":
         return lambda o: o.unsafe(judge) if o.valid else None
+    if outcome == "hallucination_unfiltered":
+        return lambda o: o.hallucinated_unfiltered() if o.valid and judge == "llm" else None
     raise ValueError(f"unknown outcome {outcome!r}")
 
 
 def outcome_map(
     rows: Sequence[TurnOutcome], fn: Callable[[TurnOutcome], int | None], unit: str = "turn"
 ) -> dict[Any, int]:
-    """Outcome per item-turn, or per item (max over its turns) when ``unit == 'item'``."""
+    """Outcome per item-turn, or per item (max over its turns) when ``unit == 'item'``.
+
+    The per-item map of ONE condition ignores missing turns; paired item-level
+    comparisons use ``item_pairs`` instead, which never pairs incomplete items.
+    """
     values: dict[Any, int] = {}
     for o in rows:
         value = fn(o)
@@ -362,6 +550,36 @@ def outcome_map(
         key: Any = o.key if unit == "turn" else o.item_id
         values[key] = max(values.get(key, 0), int(value))
     return values
+
+
+def item_pairs(
+    treatment_rows: Sequence[TurnOutcome],
+    control_rows: Sequence[TurnOutcome],
+    fn: Callable[[TurnOutcome], int | None],
+) -> tuple[dict[str, int], dict[str, int], int]:
+    """Item-level outcomes (any turn) over items COMPLETE in both conditions.
+
+    An item is paired only when every one of its turns (``n_turns``) has a
+    non-missing outcome in both conditions, so a turn that is invalid, degraded
+    or unjudged in one arm can never count as a 0 in that arm only. Returns
+    (treatment map, control map, number of items excluded for an incomplete turn set).
+    """
+    t_turn = outcome_map(treatment_rows, fn, "turn")
+    c_turn = outcome_map(control_rows, fn, "turn")
+    n_turns: dict[str, int] = {}
+    for o in [*treatment_rows, *control_rows]:
+        n_turns[o.item_id] = max(n_turns.get(o.item_id, 1), o.n_turns, o.turn_index + 1)
+    t_map: dict[str, int] = {}
+    c_map: dict[str, int] = {}
+    excluded = 0
+    for item_id, count in n_turns.items():
+        keys = [(item_id, i) for i in range(count)]
+        if all(k in t_turn and k in c_turn for k in keys):
+            t_map[item_id] = max(t_turn[k] for k in keys)
+            c_map[item_id] = max(c_turn[k] for k in keys)
+        else:
+            excluded += 1
+    return t_map, c_map, excluded
 
 
 def compare(
@@ -374,9 +592,17 @@ def compare(
 ) -> dict[str, Any] | None:
     """Paired comparison treatment vs control on one binary outcome (None if no pairs)."""
     fn = outcome_fn(outcome, judge)
-    t_map = outcome_map(outcomes.get(treatment, []), fn, unit)
-    c_map = outcome_map(outcomes.get(control, []), fn, unit)
-    keys = sorted(k for k in t_map if k in c_map)
+    excluded = 0
+    if unit == "item":
+        t_map, c_map, excluded = item_pairs(
+            outcomes.get(treatment, []), outcomes.get(control, []), fn
+        )
+        keys: list[Any] = sorted(t_map)
+    else:
+        t_turn = outcome_map(outcomes.get(treatment, []), fn, unit)
+        c_turn = outcome_map(outcomes.get(control, []), fn, unit)
+        keys = sorted(k for k in t_turn if k in c_turn)
+        t_map, c_map = t_turn, c_turn
     if not keys:
         return None
     t = [t_map[k] for k in keys]
@@ -384,7 +610,7 @@ def compare(
     _, b, cc, _ = mx.paired_table(t, c)
     mcnemar = mx.mcnemar_exact(b, cc)
     p_t, p_c = statistics.fmean(t), statistics.fmean(c)
-    return {
+    row: dict[str, Any] = {
         "treatment": treatment,
         "control": control,
         "outcome": outcome,
@@ -400,31 +626,43 @@ def compare(
         "odds_ratio": mx.conditional_odds_ratio(b, cc).as_dict(),
         "rrr": mx.relative_risk_reduction(p_t, p_c),
     }
+    if unit == "item":
+        row["n_items_excluded"] = excluded
+    return row
 
 
-def run_tests(outcomes: dict[str, list[TurnOutcome]]) -> dict[str, Any]:
+def _family_tests(
+    outcomes: dict[str, list[TurnOutcome]],
+    family: str,
+    pairs: Sequence[tuple[str, str]],
+    outcome: str,
+    judge: str,
+    unit: str,
+) -> list[dict[str, Any]]:
+    """One Holm family: the comparisons ``pairs`` on one (outcome, judge, unit)."""
+    rows = [r for r in (compare(outcomes, t, c, outcome, judge, unit) for t, c in pairs) if r]
+    for row, adj in zip(rows, mx.holm_bonferroni([r["pvalue"] for r in rows]), strict=True):
+        row.update(family=family, pvalue_holm=adj)
+    return rows
+
+
+FAMILIES: dict[str, list[tuple[str, str]]] = {
+    "c5_vs_baselines": [("C5", c) for c in STUDY_CONDITIONS if c != "C5"],
+    "variants_vs_c5": [(v, "C5") for v in VARIANTS],
+    # optional reference with the production prompt and no gates (gate effect only)
+    "c5_vs_reference": [("C5", "C1G")],
+}
+
+
+def run_tests(outcomes: dict[str, list[TurnOutcome]], item_level: bool = True) -> dict[str, Any]:
     """McNemar families with Holm correction, Cochran's Q, item-level sensitivity."""
-    families = {
-        "c5_vs_baselines": [("C5", c) for c in STUDY_CONDITIONS if c != "C5"],
-        "variants_vs_c5": [(v, "C5") for v in VARIANTS],
-    }
     mcnemar: list[dict[str, Any]] = []
     sensitivity: list[dict[str, Any]] = []
-    for family, pairs in families.items():
+    for family, pairs in FAMILIES.items():
         for outcome, judge in OUTCOMES:
-            for unit, sink in (("turn", mcnemar), ("item", sensitivity)):
-                if unit == "item" and (family != "c5_vs_baselines" or judge != "llm"):
-                    continue
-                rows = [
-                    r
-                    for r in (compare(outcomes, t, c, outcome, judge, unit) for t, c in pairs)
-                    if r
-                ]
-                for row, adj in zip(
-                    rows, mx.holm_bonferroni([r["pvalue"] for r in rows]), strict=True
-                ):
-                    row.update(family=family, pvalue_holm=adj)
-                sink.extend(rows)
+            mcnemar.extend(_family_tests(outcomes, family, pairs, outcome, judge, "turn"))
+            if item_level and family == "c5_vs_baselines" and judge == "llm":
+                sensitivity.extend(_family_tests(outcomes, family, pairs, outcome, judge, "item"))
     cochran: list[dict[str, Any]] = []
     present = [c for c in STUDY_CONDITIONS if outcomes.get(c)]
     if len(present) >= 2:
@@ -441,6 +679,167 @@ def run_tests(outcomes: dict[str, list[TurnOutcome]]) -> dict[str, Any]:
     return {"mcnemar": mcnemar, "cochran_q": cochran, "sensitivity_item_level": sensitivity}
 
 
+# ----------------------------------------------------------------------
+# Degraded turns, sensitivity analyses, stratification, calibration check
+# ----------------------------------------------------------------------
+
+
+def degraded_report(outcomes: dict[str, list[TurnOutcome]]) -> dict[str, dict[str, Any]]:
+    """Per condition: turns, degraded turns (errors included), rate and counts by reason."""
+    out: dict[str, dict[str, Any]] = {}
+    for condition, rows in outcomes.items():
+        degraded = [o for o in rows if o.degraded]
+        out[condition] = {
+            "n_turns": len(rows),
+            "n_degraded": len(degraded),
+            "rate": len(degraded) / len(rows) if rows else math.nan,
+            "n_errors": sum(1 for o in rows if o.error is not None),
+            "n_items_affected": len({o.item_id for o in degraded}),
+            "by_reason": summarise_reasons(o.degraded_reasons for o in degraded),
+        }
+    return out
+
+
+def compact_metrics(rows: Sequence[TurnOutcome]) -> dict[str, Any]:
+    """Headline metrics without bootstrap (for sensitivity and stratified views)."""
+    valid = [o for o in rows if o.valid]
+    out: dict[str, Any] = {"n_turns": len(rows), "n_valid": len(valid)}
+    for judge in JUDGES:
+        judged = [o for o in valid if o.claims.get(judge) is not None]
+        unsafe = [u for u in (o.unsafe(judge) for o in judged) if u is not None]
+        out[f"hallucination_{judge}"] = mx.proportion(
+            sum(int(o.hallucinated(judge) or 0) for o in judged), len(judged)
+        ).as_dict()
+        out[f"unsafe_{judge}"] = mx.proportion(sum(unsafe), len(unsafe)).as_dict()
+    beh = [o for o in valid if o.behaviour is not None]
+    unanswerable = [o for o in beh if o.unanswerable and o.unsafe("llm") is not None]
+    out["appropriate_abstention"] = mx.proportion(
+        sum(int(o.behaviour_action in o.acceptable and not o.unsafe("llm")) for o in unanswerable),
+        len(unanswerable),
+    ).as_dict()
+    answerable = [
+        o
+        for o in beh
+        if o.category in ANSWERABLE_CATEGORIES and o.gold_action in ("ANSWER", "GENERALIZE")
+    ]
+    out["coverage_answerable"] = mx.proportion(
+        sum(int(o.behaviour in ANSWERED_BEHAVIOURS) for o in answerable), len(answerable)
+    ).as_dict()
+    return out
+
+
+def sensitivity_view(outcomes: dict[str, list[TurnOutcome]]) -> dict[str, Any]:
+    """Compact per-condition metrics + turn-level McNemar families for one alternative view."""
+    present = [c for c in CONDITION_ORDER if outcomes.get(c)]
+    return {
+        "per_condition": {c: compact_metrics(outcomes[c]) for c in present},
+        "tests": run_tests(outcomes, item_level=False)["mcnemar"],
+    }
+
+
+def filter_sensitivity(outcomes: dict[str, list[TurnOutcome]]) -> dict[str, Any]:
+    """Primary outcome with the deterministic non-clinical claim filter disabled (LLM judge)."""
+    per: dict[str, Any] = {}
+    for condition in [c for c in CONDITION_ORDER if outcomes.get(c)]:
+        rows = [o for o in outcomes[condition] if o.valid]
+        judged = [o for o in rows if o.claims.get("llm") is not None]
+        unfiltered = [h for h in (o.hallucinated_unfiltered() for o in judged) if h is not None]
+        excluded = [c for o in judged for c in (o.excluded_claims or [])]
+        per[condition] = {
+            "hallucination_filtered": mx.proportion(
+                sum(int(o.hallucinated("llm") or 0) for o in judged), len(judged)
+            ).as_dict(),
+            "hallucination_unfiltered": mx.proportion(sum(unfiltered), len(unfiltered)).as_dict(),
+            "n_turns_without_excluded_labels": len(judged) - len(unfiltered),
+            "excluded_claims": len(excluded),
+            "excluded_by_reason": dict(Counter(str(c.get("reason")) for c in excluded)),
+            "excluded_labels": dict(
+                Counter(str(c.get("label")) for c in excluded if c.get("label") is not None)
+            ),
+            "responses_with_excluded_claims": sum(1 for o in judged if o.excluded_claims),
+        }
+    tests: list[dict[str, Any]] = []
+    for family, pairs in FAMILIES.items():
+        tests.extend(
+            _family_tests(outcomes, family, pairs, "hallucination_unfiltered", "llm", "turn")
+        )
+    return {"per_condition": per, "tests": tests}
+
+
+def by_category(outcomes: dict[str, list[TurnOutcome]]) -> dict[str, Any]:
+    """Every headline metric stratified by category, with per-category McNemar (LLM judge)."""
+    out: dict[str, Any] = {}
+    for category in CATEGORIES:
+        view = {c: [o for o in rows if o.category == category] for c, rows in outcomes.items()}
+        view = {c: rows for c, rows in view.items() if rows}
+        if not view:
+            continue
+        tests: list[dict[str, Any]] = []
+        kinds = ["hallucination"] + (["unsafe"] if category in UNANSWERABLE_CATEGORIES else [])
+        for kind in kinds:
+            for family, pairs in FAMILIES.items():
+                tests.extend(_family_tests(view, family, pairs, kind, "llm", "turn"))
+        out[category] = {
+            "per_condition": {c: compact_metrics(view[c]) for c in CONDITION_ORDER if c in view},
+            "tests": tests,
+        }
+    return out
+
+
+def calibration_check(
+    outcomes: dict[str, list[TurnOutcome]], calibration_path: Path
+) -> dict[str, dict[str, Any]]:
+    """Were V1/V2/V12 records produced with the CURRENT dev-calibrated thresholds?
+
+    A variant is ``calibrated`` only when every analysed record says
+    ``calibration.status == "calibrated"`` and its values equal
+    ``calibration.json[block]["thresholds"]`` for every block it depends on.
+    """
+    data = read_json(calibration_path) if calibration_path.exists() else {}
+    data = data if isinstance(data, dict) else {}
+    out: dict[str, dict[str, Any]] = {}
+    for condition, blocks in VARIANT_CALIBRATION.items():
+        rows = outcomes.get(condition) or []
+        if not rows:
+            continue
+        expected: dict[str, float] = {}
+        for block in blocks:
+            thresholds = (data.get(block) or {}).get("thresholds") or {}
+            expected.update({k: float(v) for k, v in thresholds.items() if v is not None})
+        statuses = Counter(str(o.calibration.get("status", "unknown")) for o in rows)
+        seen: list[dict[str, Any]] = []
+        mismatched = 0
+        for o in rows:
+            values = o.calibration.get("values") or {}
+            if values not in seen:
+                seen.append(values)
+            ok = o.calibration.get("status") == "calibrated" and bool(expected)
+            ok = ok and all(
+                k in values and values[k] is not None and abs(float(values[k]) - v) < 1e-9
+                for k, v in expected.items()
+            )
+            mismatched += int(not ok)
+        out[condition] = {
+            "calibrated": mismatched == 0,
+            "n_records": len(rows),
+            "n_not_matching": mismatched,
+            "statuses": dict(statuses),
+            "expected": expected,
+            "record_values": seen,
+            "record_sha256": sorted({str(o.calibration.get("sha256")) for o in rows}),
+        }
+    return out
+
+
+def _tags_from_dataset(dataset: Path | None) -> dict[str, list[str]]:
+    if dataset is None or not dataset.exists():
+        return {}
+    try:
+        return {item.id: list(item.tags) for item in load_dataset(dataset).items}
+    except Exception:  # an unreadable dataset only loses the tag fallback for old records
+        return {}
+
+
 def judge_agreement(outcomes: dict[str, list[TurnOutcome]]) -> dict[str, Any] | None:
     """Cohen's κ between the LLM and NLI judges on identical claims (and per response)."""
     llm_labels: list[str] = []
@@ -450,7 +849,7 @@ def judge_agreement(outcomes: dict[str, list[TurnOutcome]]) -> dict[str, Any] | 
     for rows in outcomes.values():
         for o in rows:
             a, b = o.claims.get("llm"), o.claims.get("nli")
-            if a is None or b is None:
+            if a is None or b is None or not o.valid:
                 continue
             nli_by_index = {c.get("index"): c.get("label") for c in b}
             for claim in a:
@@ -515,6 +914,60 @@ def _routing_primary(m: dict[str, Any]) -> dict[str, Any] | None:
     return m.get("routing_system") if m.get("gated") else m.get("routing_behaviour")
 
 
+def _condition_label(summary: dict[str, Any], condition: str) -> str:
+    name = summary["per_condition"][condition]["name"]
+    check = (summary.get("calibration_check") or {}).get(condition)
+    flag = " (UNCALIBRATED)" if check is not None and not check.get("calibrated") else ""
+    return f"{condition} {name}{flag}"
+
+
+def _compact_rows(view: dict[str, Any], label: str = "") -> list[dict[str, Any]]:
+    rows = []
+    for c, m in (view.get("per_condition") or {}).items():
+        rows.append(
+            {
+                **({"View": label} if label else {}),
+                "Condition": c,
+                "n valid": m["n_valid"],
+                "Halluc. LLM %": _pct(m["hallucination_llm"]),
+                "Halluc. NLI %": _pct(m["hallucination_nli"]),
+                "Unsafe LLM %": _pct(m["unsafe_llm"]),
+                "Appropriate abstention %": _pct(m["appropriate_abstention"], ci=False),
+                "Coverage %": _pct(m["coverage_answerable"], ci=False),
+            }
+        )
+    return rows
+
+
+def _test_rows(rows: Sequence[dict[str, Any]], label: str = "") -> list[dict[str, Any]]:
+    out = []
+    for row in rows:
+        out.append(
+            {
+                **({"View": label} if label else {}),
+                "Family": row["family"],
+                "Comparison": f"{row['treatment']} vs {row['control']}",
+                "Outcome": row["outcome"],
+                "Judge": row["judge"],
+                "Unit": row["unit"],
+                "n pairs": row["n_pairs"],
+                **(
+                    {"items excluded": row["n_items_excluded"]} if "n_items_excluded" in row else {}
+                ),
+                "p treat": _num(row["p_treatment"], 3),
+                "p control": _num(row["p_control"], 3),
+                "b (treat only)": row["b_treatment_only"],
+                "c (control only)": row["c_control_only"],
+                "p (McNemar)": _num(row["pvalue"], 4),
+                "p (Holm)": _num(row["pvalue_holm"], 4),
+                "RD [95% CI]": _interval(row["risk_difference"]),
+                "OR [95% CI]": _interval(row["odds_ratio"]),
+                "RRR": _num(row["rrr"], 3),
+            }
+        )
+    return out
+
+
 def build_tables(summary: dict[str, Any], tables_dir: Path) -> list[Path]:
     """All result tables (markdown + CSV)."""
     per = summary["per_condition"]
@@ -527,8 +980,9 @@ def build_tables(summary: dict[str, Any], tables_dir: Path) -> list[Path]:
         routing = _routing_primary(m) or {}
         main_rows.append(
             {
-                "Condition": f"{c} {m['name']}",
+                "Condition": _condition_label(summary, c),
                 "n turns": m["n_valid"],
+                "Degraded excluded": m["n_degraded_excluded"],
                 "Halluc. LLM % [95% CI]": _pct(llm.get("hallucination")),
                 "Halluc. NLI % [95% CI]": _pct(nli.get("hallucination")),
                 "Unsupp. claim ratio (LLM)": _interval(llm.get("unsupported_claim_ratio")),
@@ -545,7 +999,13 @@ def build_tables(summary: dict[str, Any], tables_dir: Path) -> list[Path]:
                     m["emergency"]["recall_behaviour"], ci=False
                 ),
                 "False escalation %": _pct(m["emergency"]["false_escalation_system"], ci=False),
-                "Citation precision %": _pct(m["citations"]["precision"], ci=False),
+                "Supported citation precision %": _pct(
+                    m["citations"]["supported_precision"], ci=False
+                ),
+                "Supported citation precision (NLI) %": _pct(
+                    m["citations"]["supported_precision_nli"], ci=False
+                ),
+                "Marker validity %": _pct(m["citations"]["marker_validity"], ci=False),
                 "Latency p50 s": _num(
                     m["latency"]["imputed"]["p50_ms"] / 1000
                     if m["latency"]["imputed"]["n"]
@@ -564,30 +1024,91 @@ def build_tables(summary: dict[str, Any], tables_dir: Path) -> list[Path]:
         main_rows,
         tables_dir,
         "main_results",
-        f"Main results ({summary['split']} split, unit: item-turn)",
+        f"Main results ({summary['split']} split, unit: item-turn, degraded turns excluded)",
     )
 
-    test_rows = []
-    for row in summary["tests"]["mcnemar"]:
-        test_rows.append(
+    paths += write_table(
+        _test_rows(summary["tests"]["mcnemar"]),
+        tables_dir,
+        "statistical_tests",
+        "Paired McNemar tests (degraded turns excluded)",
+    )
+    paths += write_table(
+        _test_rows(summary["tests"]["sensitivity_item_level"]),
+        tables_dir,
+        "sensitivity_item_level",
+        "Item-level sensitivity (items complete in both conditions)",
+    )
+
+    degraded = summary["degraded"]["per_condition"]
+    paths += write_table(
+        [
             {
-                "Family": row["family"],
-                "Comparison": f"{row['treatment']} vs {row['control']}",
-                "Outcome": row["outcome"],
-                "Judge": row["judge"],
-                "n pairs": row["n_pairs"],
-                "p treat": _num(row["p_treatment"], 3),
-                "p control": _num(row["p_control"], 3),
-                "b (treat only)": row["b_treatment_only"],
-                "c (control only)": row["c_control_only"],
-                "p (McNemar)": _num(row["pvalue"], 4),
-                "p (Holm)": _num(row["pvalue_holm"], 4),
-                "RD [95% CI]": _interval(row["risk_difference"]),
-                "OR [95% CI]": _interval(row["odds_ratio"]),
-                "RRR": _num(row["rrr"], 3),
+                "Condition": c,
+                "n turns": d["n_turns"],
+                "degraded": d["n_degraded"],
+                "rate %": _num(100 * d["rate"], 1),
+                "errors": d["n_errors"],
+                "items affected": d["n_items_affected"],
+                "reasons": "; ".join(f"{k} ({v})" for k, v in d["by_reason"].items()) or "—",
             }
-        )
-    paths += write_table(test_rows, tables_dir, "statistical_tests", "Paired McNemar tests")
+            for c, d in degraded.items()
+        ],
+        tables_dir,
+        "degraded_turns",
+        f"Degraded turns per condition (headline refused above {100 * DEGRADED_MAX_RATE:.0f} %)",
+    )
+
+    sens = summary["sensitivity"]
+    paths += write_table(
+        _compact_rows(sens["including_degraded"], "incl. degraded")
+        + _compact_rows(sens["without_prompt_overlap"], f"without {OVERLAP_TAG}"),
+        tables_dir,
+        "sensitivity_metrics",
+        "Sensitivity analyses: headline metrics including degraded turns / without "
+        f"the {sens['without_prompt_overlap']['n_items_removed']} {OVERLAP_TAG} items",
+    )
+    paths += write_table(
+        _test_rows(sens["including_degraded"]["tests"], "incl. degraded")
+        + _test_rows(sens["without_prompt_overlap"]["tests"], f"without {OVERLAP_TAG}")
+        + _test_rows(sens["filter_disabled"]["tests"], "claim filter disabled"),
+        tables_dir,
+        "sensitivity_tests",
+        "Sensitivity analyses: paired McNemar tests",
+    )
+    paths += write_table(
+        [
+            {
+                "Condition": c,
+                "Halluc. LLM % (filtered)": _pct(m["hallucination_filtered"]),
+                "Halluc. LLM % (unfiltered)": _pct(m["hallucination_unfiltered"]),
+                "turns w/o excluded labels": m["n_turns_without_excluded_labels"],
+                "excluded claims": m["excluded_claims"],
+                "by reason": ", ".join(f"{k} {v}" for k, v in m["excluded_by_reason"].items())
+                or "—",
+                "labels of excluded": ", ".join(f"{k} {v}" for k, v in m["excluded_labels"].items())
+                or "—",
+            }
+            for c, m in sens["filter_disabled"]["per_condition"].items()
+        ],
+        tables_dir,
+        "sensitivity_claim_filter",
+        "Non-clinical claim filter: excluded claims and hallucination with the filter disabled",
+    )
+    strat_rows: list[dict[str, Any]] = []
+    strat_tests: list[dict[str, Any]] = []
+    for category, view in summary["by_category"].items():
+        strat_rows.extend({"Category": category, **row} for row in _compact_rows(view))
+        strat_tests.extend(_test_rows(view["tests"], category))
+    paths += write_table(
+        strat_rows, tables_dir, "stratified_by_category", "Headline metrics by category"
+    )
+    paths += write_table(
+        strat_tests,
+        tables_dir,
+        "stratified_tests",
+        "Paired McNemar tests within each category (LLM judge)",
+    )
 
     q_rows = [
         {
@@ -770,23 +1291,30 @@ def build_figures(
         value = ((per[c].get("llm") or {}).get("hallucination") or {}).get("rate")
         if value is not None and math.isfinite(float(value)):
             rate[c] = float(value)
-    if "C1" in rate:
+    # Gate steps are anchored at C1G (same production prompt as C3-C5, no gates) when it
+    # was run; anchored at the vanilla C1 they would mix the prompt change into the gates.
+    anchor = "C1G" if "C1G" in rate else ("C1" if "C1" in rate else None)
+    if anchor is not None:
         steps: list[tuple[str, float]] = []
         if "C3" in rate:
-            steps.append(("+ Context Gate (C3)", rate["C3"] - rate["C1"]))
+            steps.append(("+ Context Gate (C3)", rate["C3"] - rate[anchor]))
         if "C5" in rate:
-            steps.append(("+ Evidence Gate (C5)", rate["C5"] - rate.get("C3", rate["C1"])))
+            steps.append(("+ Evidence Gate (C5)", rate["C5"] - rate.get("C3", rate[anchor])))
         extra: list[tuple[str, float, float]] = []
         if "C4" in rate:
-            extra.append(("C4 vs C1 (Evidence Gate only)", rate["C1"], rate["C4"] - rate["C1"]))
+            extra.append(
+                (f"C4 vs {anchor} (Evidence Gate only)", rate[anchor], rate["C4"] - rate[anchor])
+            )
+        if anchor == "C1G" and "C1" in rate:
+            extra.append(("C1 vanilla prompt vs C1G", rate["C1G"], rate["C1"] - rate["C1G"]))
         for v in VARIANTS:
             if v in rate and "C5" in rate:
                 extra.append((f"{v} vs C5", rate["C5"], rate[v] - rate["C5"]))
         if steps or extra:
             paths += plots.save_figure(
                 plots.waterfall_figure(
-                    "C1 Vanilla RAG",
-                    rate["C1"],
+                    f"{anchor} {CONDITION_NAMES[anchor]}",
+                    rate[anchor],
                     steps,
                     title="Ablation waterfall (LLM-judge hallucination rate)",
                     ylabel="Hallucination rate (%)",
@@ -885,7 +1413,7 @@ def _short(text: str, n: int = 160) -> str:
 def write_error_analysis(
     outcomes: dict[str, list[TurnOutcome]], path: Path, split: str, top_n: int = 25
 ) -> None:
-    """Markdown listing of C5 failure cases and judge disagreements (item ids for follow-up)."""
+    """Markdown listing of C5 failure cases, degraded turns and judge disagreements."""
     c5 = [o for o in outcomes.get("C5", []) if o.valid]
     lines = [
         f"# Error analysis ({split} split)",
@@ -893,6 +1421,21 @@ def write_error_analysis(
         f"Generated {utc_now()} by `python -m evaluation.analyze`.",
         "",
     ]
+    degraded = [o for rows in outcomes.values() for o in rows if o.degraded]
+    lines.extend(
+        [f"## Degraded turns, all conditions ({len(degraded)}; excluded from headline)", ""]
+    )
+    if degraded:
+        lines.append("| condition | item | turn | action | reasons |")
+        lines.append("|---|---|---|---|---|")
+        for o in degraded[: top_n * 4]:
+            lines.append(
+                f"| {o.condition} | {o.item_id} | {o.turn_index} | {o.action} | "
+                f"{_short(', '.join(o.degraded_reasons), 200)} |"
+            )
+        lines.append("")
+    else:
+        lines.extend(["None.", ""])
 
     def section(title: str, rows: list[TurnOutcome], extra: Callable[[TurnOutcome], str]) -> None:
         lines.extend([f"## {title} ({len(rows)})", ""])
@@ -978,21 +1521,33 @@ def run_manifests(runs_dir: Path) -> list[dict[str, Any]]:
     out = []
     for path in sorted(runs_dir.glob("manifest_*.json")):
         m = read_json(path)
+        cache = m.get("cache") or {}
         out.append(
             {
-                k: m.get(k)
-                for k in (
-                    "run_id",
-                    "status",
-                    "started_at",
-                    "finished_at",
-                    "conditions",
-                    "split",
-                    "models",
-                    "git",
-                    "hardware",
-                    "model_override",
-                )
+                **{
+                    k: m.get(k)
+                    for k in (
+                        "run_id",
+                        "status",
+                        "started_at",
+                        "finished_at",
+                        "conditions",
+                        "split",
+                        "models",
+                        "git",
+                        "hardware",
+                        "model_override",
+                        "calibration",
+                        "preflight",
+                        "counts",
+                        "warnings",
+                    )
+                },
+                "cache": {
+                    k: cache.get(k)
+                    for k in ("status", "path", "model_digests", "key_includes_digest")
+                    if isinstance(cache, dict)
+                },
             }
         )
     return out
@@ -1010,15 +1565,41 @@ def analyze(
     n_boot: int = 10_000,
     seed: int = 42,
     top_n: int = 25,
+    *,
+    allow_degraded: bool = False,
+    dataset: Path | None = DEFAULT_DATASET,
 ) -> dict[str, Any]:
-    """Compute everything and write summary, tables, figures and error analysis."""
+    """Compute everything and write summary, tables, figures and error analysis.
+
+    Raises ``AnalysisRefused`` (nothing written) when more than
+    ``DEGRADED_MAX_RATE`` of any condition's turns are degraded, unless
+    ``allow_degraded``.
+    """
     runs = load_run_records(runs_dir)
     judgments = {judge: load_all_judgments(judgments_dir, judge) for judge in JUDGES}
-    thresholds = load_thresholds(calibration_path)
-    outcomes = filter_split(build_outcomes(runs, judgments, thresholds), split)
-    outcomes = {c: rows for c, rows in outcomes.items() if rows}
+    theta, theta_c, nli_calibrated = nli_calibration(calibration_path)
+    built = build_outcomes(runs, judgments, (theta, theta_c), _tags_from_dataset(dataset))
+    raw = {c: rows for c, rows in filter_split(built, split).items() if rows}
+    degraded = degraded_report(raw)
+    exceeded = sorted(c for c, d in degraded.items() if d["rate"] > DEGRADED_MAX_RATE)
+    if exceeded and not allow_degraded:
+        detail = ", ".join(
+            f"{c} {100 * degraded[c]['rate']:.1f}% ({degraded[c]['n_degraded']}/"
+            f"{degraded[c]['n_turns']})"
+            for c in exceeded
+        )
+        raise AnalysisRefused(
+            f"degraded-turn rate above {100 * DEGRADED_MAX_RATE:.0f}% for {detail}; re-run them "
+            "(python -m evaluation.run --retry-degraded ...) or pass --allow-degraded to report "
+            "anyway (recorded in summary.json)"
+        )
+    headline = exclude_degraded(raw)
+    no_overlap = without_tag(headline, OVERLAP_TAG)
+    removed_items = {o.item_id for rows in headline.values() for o in rows if OVERLAP_TAG in o.tags}
     per = {
-        c: condition_metrics(outcomes[c], c, n_boot, seed) for c in CONDITION_ORDER if c in outcomes
+        c: condition_metrics(headline[c], c, n_boot, seed, theta)
+        for c in CONDITION_ORDER
+        if c in headline
     }
     summary: dict[str, Any] = {
         "generated_at": utc_now(),
@@ -1026,22 +1607,55 @@ def analyze(
         "unit": "item-turn",
         "conditions": list(per),
         "nli_thresholds": {
-            "theta": thresholds[0],
-            "theta_c": thresholds[1],
-            "calibrated": calibration_path.exists(),
+            "theta": theta,
+            "theta_c": theta_c,
+            "calibrated": nli_calibrated,
+            "source": "dev calibration" if nli_calibrated else "defaults (not calibrated)",
         },
         "bootstrap": {"n_boot": n_boot, "seed": seed},
         "definitions": DEFINITIONS,
+        "degraded": {
+            "max_rate": DEGRADED_MAX_RATE,
+            "per_condition": degraded,
+            "exceeded": exceeded,
+            "override": bool(exceeded and allow_degraded),
+            "headline": "degraded turns excluded",
+        },
+        "calibration_check": calibration_check(raw, calibration_path),
         "per_condition": per,
-        "tests": run_tests(outcomes),
-        "judge_agreement": judge_agreement(outcomes),
+        "tests": run_tests(headline),
+        "sensitivity": {
+            "including_degraded": sensitivity_view(raw),
+            "without_prompt_overlap": {
+                "tag": OVERLAP_TAG,
+                "n_items_removed": len(removed_items),
+                "items_removed": sorted(removed_items),
+                **sensitivity_view(no_overlap),
+            },
+            "filter_disabled": filter_sensitivity(headline),
+        },
+        "by_category": by_category(headline),
+        "judge_agreement": judge_agreement(headline),
         "runs": run_manifests(runs_dir),
         "judge_sidecar_chunks": sum(1 for _ in iter_jsonl(judgments_dir / "evidence_chunks.jsonl")),
     }
+    for condition, check in summary["calibration_check"].items():
+        if not check["calibrated"]:
+            print(
+                f"[analyze] WARNING {condition} records were not produced with the current "
+                f"dev-calibrated thresholds ({check['statuses']}); flagged UNCALIBRATED",
+                file=sys.stderr,
+            )
+    if not nli_calibrated:
+        print(
+            f"[analyze] WARNING NLI thresholds are defaults ({theta}, {theta_c}); "
+            "calibration.json has no nli block",
+            file=sys.stderr,
+        )
     write_json(summary_path, summary)
     summary["tables"] = [str(p) for p in build_tables(summary, tables_dir)]
-    summary["figures"] = [str(p) for p in build_figures(summary, outcomes, figures_dir)]
-    write_error_analysis(outcomes, error_analysis_path, split, top_n)
+    summary["figures"] = [str(p) for p in build_figures(summary, headline, figures_dir)]
+    write_error_analysis(headline, error_analysis_path, split, top_n)
     write_json(summary_path, summary)
     return summary
 
@@ -1059,24 +1673,39 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--n-boot", type=int, default=10_000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--top-n", type=int, default=25)
+    parser.add_argument(
+        "--dataset", type=Path, default=DEFAULT_DATASET, help="item tags for older records"
+    )
+    parser.add_argument(
+        "--allow-degraded",
+        action="store_true",
+        help=f"report even if > {100 * DEGRADED_MAX_RATE:.0f}%% of a condition's turns are "
+        "degraded (recorded in summary.json)",
+    )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    summary = analyze(
-        args.runs_dir,
-        args.judgments_dir,
-        args.calibration,
-        args.split,
-        args.summary,
-        args.tables_dir,
-        args.figures_dir,
-        args.error_analysis,
-        args.n_boot,
-        args.seed,
-        args.top_n,
-    )
+    try:
+        summary = analyze(
+            args.runs_dir,
+            args.judgments_dir,
+            args.calibration,
+            args.split,
+            args.summary,
+            args.tables_dir,
+            args.figures_dir,
+            args.error_analysis,
+            args.n_boot,
+            args.seed,
+            args.top_n,
+            allow_degraded=args.allow_degraded,
+            dataset=args.dataset,
+        )
+    except AnalysisRefused as exc:
+        print(f"[analyze] REFUSED: {exc}", file=sys.stderr)
+        return 2
     print(
         f"[analyze] {len(summary['conditions'])} conditions ({summary['split']} split) → {args.summary}"
     )

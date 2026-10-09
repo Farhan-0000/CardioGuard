@@ -21,6 +21,12 @@ Every ciphertext of that session — including rows in the append-only
 deleted — becomes permanently unreadable, so erasure does not violate the
 immutability invariant.
 
+Limitation: only *ciphertext* is shredded. Rows written before encryption
+existed (or with ``ENCRYPTION_ENABLED=false``) are plaintext; in the append-only
+tables they can never be rewritten, so erasure counts them into
+``sessions.legacy_plaintext_rows`` and every reader hides the erased session
+(see ``medbridge/privacy/README.md`` — reset such databases).
+
 Unwrapped DEKs are kept in a small in-process LRU cache that is invalidated on
 shred. Keys created inside a not-yet-committed transaction live in
 ``AsyncSession.info`` (never in the shared cache), so a rolled-back session

@@ -5,7 +5,8 @@ Admin / evaluation dashboard routes (ADL-034).
   (constant-time comparison; rate limited to 5/min per IP by the security middleware)
 - GET  /api/admin/audit?limit=50 → recent audit rows. Request/response previews are
   decrypted with the session key and passed through the PII redactor; rows of
-  erased sessions show ``[erased]``.
+  erased sessions show ``[erased]`` — including legacy plaintext rows written
+  before encryption existed, which are only flagged (``legacy_plaintext``).
 
 The dashboard is disabled (403) while ``ADMIN_PASSWORD`` is empty.
 """
@@ -56,6 +57,10 @@ class AuditItem(BaseModel):
     request_preview: str
     response_preview: str
     erased: bool = False
+    legacy_plaintext: bool = Field(
+        default=False,
+        description="Plaintext at rest (written before encryption existed or with it disabled)",
+    )
 
 
 class AuditListResponse(BaseModel):
@@ -124,6 +129,7 @@ async def handle_admin_audit(
             request_preview=preview(e.request_text),
             response_preview=preview(e.response_text),
             erased=e.erased,
+            legacy_plaintext=e.legacy_plaintext,
         )
         for e in entries
     ]

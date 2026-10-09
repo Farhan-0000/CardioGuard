@@ -93,7 +93,7 @@ async def test_audit_requires_admin_token(monkeypatch: pytest.MonkeyPatch) -> No
         AuditEntry(uuid.uuid4(), sid, datetime.now(UTC), "ANSWER", "PROCEED", "ANSWER", 812, 3,
                    "My name is Rahul Sharma and my BP is 150/95", "Stage 2 [1].", False),
         AuditEntry(uuid.uuid4(), sid, datetime.now(UTC), "ESCALATE", None, None, 4, 0,
-                   None, None, True),
+                   None, None, True, legacy_plaintext=True),
     ]
     listing = AsyncMock(return_value=entries)
     monkeypatch.setattr(turn_store, "list_audit_entries", listing)
@@ -112,6 +112,8 @@ async def test_audit_requires_admin_token(monkeypatch: pytest.MonkeyPatch) -> No
     assert first["request_preview"] == "My name is [NAME] and my BP is 150/95"
     assert first["session_ref"] == str(sid)[:8] and first["evidence_chunks"] == 3
     assert second["request_preview"] == ERASED_MARKER and second["erased"] is True
+    # a legacy plaintext row of an erased session is flagged, never shown
+    assert second["legacy_plaintext"] is True and first["legacy_plaintext"] is False
     assert listing.await_args.args[1] == 2
 
 

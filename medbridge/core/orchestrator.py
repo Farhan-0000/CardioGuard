@@ -8,7 +8,9 @@ One patient turn flows through explicit stage methods operating on a
                   below except the emergency classifier
 1. emergency      deterministic fast-path on the RAW text, before any LLM call
                   (Non-Negotiable #1) → ESCALATE template
-2. load_state     snapshot + soft-ask counter + recent turns (turn store)
+2. load_state     snapshot + soft-ask counter + recent turns (turn store); when
+                  the previous answer was a SOFT-ASK, the "effective patient
+                  message" (original question + follow-up details) is built
 2b small_talk     deterministic, claim-free GENERALIZE template (no LLM)
 3. extraction     ContextExtractor → delta events → pure in-memory projection
 4. context_gate   Gate 1: SOFT-ASK | PROCEED, loop-breaker at 2 (Non-Negotiable #4);
@@ -22,9 +24,32 @@ One patient turn flows through explicit stage methods operating on a
 8. persistence    ONE ``turn_store.persist_turn`` call (single flush)
 
 Spec fallbacks are unchanged: extractor failure → raw message and no events;
-Gate 1 failure → PROCEED; Gate 2 failure → GENERALIZE; generator failure →
-pre-vetted GENERALIZE template. :meth:`PipelineOrchestrator.process_message`
-never raises (Non-Negotiable #7).
+Gate 1 failure → PROCEED; Gate 2 failure (incl. every V1 vote failing) →
+GENERALIZE; generator failure → pre-vetted GENERALIZE template; retrieval
+failure → empty evidence, ``retrieval_status="failed"`` and Gate 2 still
+decides. :meth:`PipelineOrchestrator.process_message` never raises
+(Non-Negotiable #7).
+
+Multi-turn follow-ups: a reply to a clarifying question ("I had a stroke two
+years ago") is not a question on its own. When the previous answer was a
+SOFT-ASK (one or more in a row — the loop-breaker sequence), Gate 1, Gate 2
+and the generator receive an *effective patient message*: the redacted
+question that triggered the first SOFT-ASK plus every follow-up since, the
+current one last. The emergency classifier and the extractor still see only
+the current message; the persisted user message is the current one; the trace
+records only counts (``explanation.effective_question``), never text.
+
+Concurrency: turns of one session are serialised in-process (one asyncio lock
+per session, held from state loading to persistence) so two turns never gate
+on the same stale counter or snapshot. A message that triggers the emergency
+fast-path is never queued behind another turn: it is classified before the
+lock and, on ESCALATE, answered and stored without waiting (it changes neither
+the snapshot nor the counter). Across processes the turn store's row lock and
+re-projection keep ``snapshot == fold(events)``.
+
+Regenerate re-runs the last user message starting from the loop-breaker
+counter recorded *before* that turn (``explanation.soft_ask_count_before``),
+so repeated regenerates are idempotent and never trip or undo the loop-breaker.
 """
 
 from __future__ import annotations
@@ -36,7 +61,7 @@ import inspect
 import threading
 import time
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -96,7 +121,12 @@ from medbridge.retrieval.hybrid_retriever import (
 from medbridge.retrieval.reranker import CrossEncoderReranker, get_reranker
 from medbridge.state import turn_store
 from medbridge.state.projector import StateProjector
-from medbridge.state.turn_store import ChatTurn, SessionState, TurnRecord
+from medbridge.state.turn_store import (
+    ChatTurn,
+    RegenerateConflictError,
+    SessionState,
+    TurnRecord,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -105,6 +135,8 @@ _GATE2_ACTIONS = frozenset({"ANSWER", "GENERALIZE", "ABSTAIN", "ESCALATE"})
 # audit-log gate columns stay NULL for them (the trace still records them).
 _NON_DECISION_SOURCES = frozenset({"ablation", "rule"})
 _EVIDENCE_EXCERPT_CHARS = 300
+ORIGINAL_QUESTION_LABEL = "Original question:"
+FOLLOW_UP_LABEL = "Follow-up details from the patient:"
 
 TimingStatus = Literal["ok", "skipped", "failed", "discarded"]
 
@@ -140,6 +172,11 @@ class TurnContext:
     new_snapshot: dict[str, Any] | None = None
     soft_ask_count: int = 0
     history: list[ChatTurn] = field(default_factory=list)
+    # Effective patient message (original SOFT-ASK question + follow-ups) — see module doc.
+    earlier_messages: list[str] = field(default_factory=list)
+    effective_message: str = ""
+    counter_updated: bool = False  # Gate 1 ran (or was bypassed) and set soft_ask_count
+    failed_votes: int | None = None  # V1: evidence-gate votes that failed
     delta_events: list[DeltaEvent] = field(default_factory=list)
     search_query: str = ""
     raw_intent: str = ""
@@ -163,6 +200,16 @@ class TurnContext:
     def gate_snapshot(self) -> dict[str, Any]:
         """Snapshot after this turn's (in-memory) projection."""
         return self.new_snapshot if self.new_snapshot is not None else self.snapshot
+
+    @property
+    def patient_message(self) -> str:
+        """What Gate 1, Gate 2 and the generator read as the patient's message."""
+        return self.effective_message or self.message
+
+    @property
+    def carried_text(self) -> str:
+        """Earlier SOFT-ASK question(s) and this message as plain text (fallback query)."""
+        return " ".join([*self.earlier_messages, self.message])
 
 
 @dataclass
@@ -228,6 +275,69 @@ def _trim_history(history: list[ChatTurn], regenerate: bool, n: int) -> list[Cha
             if turns.pop().role == "user":
                 break
     return turns[-n:] if n > 0 else []
+
+
+def _is_soft_ask(action: Any) -> bool:
+    text = str(getattr(action, "value", action) or "").strip().upper().replace("_", "-")
+    return text == ActionEnum.SOFT_ASK.value
+
+
+def soft_ask_chain(history: Sequence[ChatTurn], limit: int) -> list[str]:
+    """User messages of the SOFT-ASK exchange the next message answers (oldest first).
+
+    Each user message is paired with the latest assistant reply to it (a
+    regenerated reply supersedes earlier ones). Walking back from the most
+    recent pair, messages are collected while their reply was a SOFT-ASK, at
+    most ``limit`` of them. ``[]`` when the previous reply was not a SOFT-ASK.
+    """
+    pairs: list[tuple[str, Any]] = []
+    for turn in history:
+        if turn.role == "user":
+            pairs.append((turn.content, None))
+        elif turn.role == "assistant" and pairs:
+            pairs[-1] = (pairs[-1][0], turn.action)
+    chain: list[str] = []
+    for content, action in reversed(pairs):
+        if len(chain) >= limit or not _is_soft_ask(action):
+            break
+        chain.append(content)
+    return list(reversed(chain))
+
+
+def compose_effective_message(earlier: Sequence[str], current: str) -> str:
+    """Original question + follow-up details, one labelled line each (current last)."""
+    lines = [f"{ORIGINAL_QUESTION_LABEL} {earlier[0]}"]
+    lines += [f"{FOLLOW_UP_LABEL} {text}" for text in [*earlier[1:], current]]
+    return "\n".join(lines)
+
+
+class SessionTurnLocks:
+    """One asyncio lock per session: turns of a session run one at a time in-process.
+
+    Locks are created on demand and dropped as soon as no turn holds or waits
+    for them, so the map stays small and no lock outlives its event loop.
+    """
+
+    def __init__(self) -> None:
+        self._locks: dict[uuid.UUID, asyncio.Lock] = {}
+        self._users: dict[uuid.UUID, int] = {}
+
+    @asynccontextmanager
+    async def hold(self, session_id: uuid.UUID) -> AsyncIterator[float]:
+        """Hold the session's lock; yields the milliseconds spent waiting for it."""
+        lock = self._locks.setdefault(session_id, asyncio.Lock())
+        self._users[session_id] = self._users.get(session_id, 0) + 1
+        started = time.perf_counter()
+        try:
+            async with lock:
+                yield (time.perf_counter() - started) * 1000
+        finally:
+            remaining = self._users[session_id] - 1
+            if remaining:
+                self._users[session_id] = remaining
+            else:
+                del self._users[session_id]
+                self._locks.pop(session_id, None)
 
 
 def _evidence(rank: int, chunk: RetrievedChunk) -> RetrievedEvidence:
@@ -332,6 +442,7 @@ class PipelineOrchestrator:
         self._redactor = redactor
         self._grounding_verifier = grounding_verifier
         self._is_small_talk = smalltalk_detector or is_small_talk
+        self._turn_locks = SessionTurnLocks()
 
     # ==================================================================
     # Public API
@@ -457,10 +568,28 @@ class PipelineOrchestrator:
     # ==================================================================
 
     async def _run_turn(self, ctx: TurnContext, db: AsyncSession | None) -> None:
-        if ctx.regenerate:
-            await self._resolve_regenerated_message(ctx, db)
-        await self._stage_privacy(ctx)
-        await self._stage_emergency(ctx)
+        if not ctx.regenerate:
+            await self._stage_privacy(ctx)
+            await self._stage_emergency(ctx)
+            if ctx.complete:
+                # Emergency fast-path: never queued behind another turn of this
+                # session. It changes neither the snapshot nor the counter.
+                await self._run_stages(ctx, db)
+                return
+        async with self._turn_locks.hold(ctx.session_id) as waited_ms:
+            if waited_ms >= 1.0:
+                logger.info(
+                    "session_turn_serialised",
+                    session_id=str(ctx.session_id),
+                    waited_ms=round(waited_ms, 1),
+                )
+            if ctx.regenerate:  # resolve under the lock: the latest stored message
+                await self._resolve_regenerated_message(ctx, db)
+                await self._stage_privacy(ctx)
+                await self._stage_emergency(ctx)
+            await self._run_stages(ctx, db)
+
+    async def _run_stages(self, ctx: TurnContext, db: AsyncSession | None) -> None:
         await self._stage_load_state(ctx, db)
         await self._stage_small_talk(ctx)
         await self._stage_extraction(ctx)
@@ -619,16 +748,40 @@ class PipelineOrchestrator:
     # Stage 2 — session state
     # ------------------------------------------------------------------
 
+    def _chain_limit(self) -> int:
+        """Earlier messages carried into the effective message (≤ consecutive SOFT-ASKs)."""
+        return max(1, int(self._settings.SOFT_ASK_MAX_COUNT))
+
+    async def _counter_before_regenerated_turn(
+        self, session: AsyncSession, ctx: TurnContext
+    ) -> int | None:
+        """Loop-breaker counter recorded before the turn a regenerate replaces."""
+        lookup = getattr(self._store, "get_soft_ask_count_before", None)
+        if lookup is None or ctx.regenerated_user_message_id is None:
+            return None
+        try:
+            value = await lookup(session, ctx.session_id, ctx.regenerated_user_message_id)
+        except Exception as exc:  # keep the stored counter rather than failing the turn
+            logger.warning("regenerate_counter_lookup_failed", error=type(exc).__name__)
+            return None
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            return None
+        return value
+
     async def _stage_load_state(self, ctx: TurnContext, db: AsyncSession | None) -> None:
         n = self._settings.EXTRACTOR_HISTORY_TURNS
+        window = max(n, 2 * self._chain_limit())  # pairs needed for the effective message
         history: list[ChatTurn] = []
+        counter_before: int | None = None
         async with self._stage(ctx, StageName.LOAD_STATE) as run:
             try:
                 async with self._session_scope(db) as session:
                     state = await self._store.load_session_state(session, ctx.session_id)
                     if not ctx.complete:
-                        limit = n + 2 if ctx.regenerate else n
+                        limit = window + 2 if ctx.regenerate else window
                         history = await self._store.get_recent_turns(session, ctx.session_id, limit)
+                    if ctx.regenerate:
+                        counter_before = await self._counter_before_regenerated_turn(session, ctx)
             except Exception as exc:  # degrade: continue with an empty state
                 logger.warning(
                     "load_state_failed", session_id=str(ctx.session_id), error=type(exc).__name__
@@ -637,7 +790,34 @@ class PipelineOrchestrator:
                 state = SessionState(exists=False)
         ctx.snapshot = dict(state.snapshot or {})
         ctx.soft_ask_count = int(state.soft_ask_count or 0)
-        ctx.history = _trim_history(history, ctx.regenerate, n)
+        if counter_before is not None:  # regenerate: re-run the turn from its own start value
+            ctx.soft_ask_count = counter_before
+        ctx.explanation.soft_ask_count_before = ctx.soft_ask_count
+        recent = _trim_history(history, ctx.regenerate, window)
+        ctx.history = recent[-n:] if n > 0 else []
+        self._build_effective_message(ctx, recent)
+
+    def _build_effective_message(self, ctx: TurnContext, history: list[ChatTurn]) -> None:
+        """Original SOFT-ASK question + follow-up details for Gate 1, Gate 2 and the generator."""
+        if ctx.complete:
+            return
+        chain = soft_ask_chain(history, self._chain_limit())
+        earlier: list[str] = []
+        for text in chain:
+            try:  # stored messages are redacted already; re-redact legacy rows to be sure
+                cleaned = (
+                    self._redact(text)[0] if self._settings.PII_REDACTION_ENABLED else text
+                ).strip()
+            except Exception as exc:  # fail closed: answer from the current message only
+                logger.warning("effective_message_redaction_failed", error=type(exc).__name__)
+                return
+            if cleaned:
+                earlier.append(cleaned)
+        if not earlier:
+            return
+        ctx.earlier_messages = earlier
+        ctx.effective_message = compose_effective_message(earlier, ctx.message)
+        ctx.explanation.effective_question = {"used": True, "earlier_messages": len(earlier)}
 
     # ------------------------------------------------------------------
     # Stage 2b — small talk (deterministic, claim-free)
@@ -689,11 +869,11 @@ class PipelineOrchestrator:
             if output is None:
                 run.status = "failed"
         if output is None:  # spec fallback: the (redacted) message, no events
-            ctx.raw_intent = ctx.message
-            ctx.search_query = self._fallback_query(ctx.message)
+            ctx.raw_intent = ctx.patient_message
+            ctx.search_query = self._fallback_query(ctx.carried_text)
             return
-        ctx.search_query = (output.search_query or "").strip() or ctx.message
-        ctx.raw_intent = (output.raw_intent or "").strip() or ctx.message
+        ctx.search_query = (output.search_query or "").strip() or ctx.carried_text
+        ctx.raw_intent = (output.raw_intent or "").strip() or ctx.patient_message
         events = list(output.delta_events)
         if not events or ctx.regenerate:  # a regeneration never re-applies its events
             return
@@ -723,6 +903,7 @@ class PipelineOrchestrator:
                 source="ablation",
             )
             ctx.soft_ask_count = 0
+            ctx.counter_updated = True
             return
 
         if self._settings.SPECULATIVE_RETRIEVAL and ctx.ablation.use_retrieval:
@@ -733,7 +914,7 @@ class PipelineOrchestrator:
         async with self._stage(ctx, StageName.CONTEXT_GATE) as run:
             try:
                 output = await self._context_gate.evaluate(
-                    ctx.gate_snapshot, ctx.message, ctx.raw_intent
+                    ctx.gate_snapshot, ctx.patient_message, ctx.raw_intent
                 )
             except Exception as exc:
                 logger.warning("context_gate_failed", error=type(exc).__name__)
@@ -756,6 +937,7 @@ class PipelineOrchestrator:
                 source="llm",
             )
         ctx.explanation.gate1 = decision
+        ctx.counter_updated = True
 
         if decision.action != "SOFT-ASK":
             ctx.soft_ask_count = 0
@@ -797,6 +979,7 @@ class PipelineOrchestrator:
             self._record(ctx, StageName.RETRIEVAL, outcome.retrieval_ms, "discarded")
             self._record(ctx, StageName.RERANK, outcome.rerank_ms, "discarded")
         ctx.retrieval_recorded = True
+        ctx.explanation.retrieval_status = "discarded"
         ctx.explanation.speculative_retrieval = {
             "launched": True,
             "used": False,
@@ -869,6 +1052,7 @@ class PipelineOrchestrator:
         ):
             await self._skip(ctx, StageName.RETRIEVAL)
             await self._skip(ctx, StageName.RERANK)
+            ctx.explanation.retrieval_status = "skipped"
             return
         if ctx.speculative is not None:
             task, ctx.speculative = ctx.speculative, None
@@ -890,6 +1074,13 @@ class PipelineOrchestrator:
             }
         self._record(ctx, StageName.RETRIEVAL, outcome.retrieval_ms, outcome.retrieval_status)
         self._record(ctx, StageName.RERANK, outcome.rerank_ms, outcome.rerank_status)
+        if outcome.retrieval_status == "failed":
+            # Degraded turn: the retriever could not run. Gate 2 still decides on no
+            # evidence (spec); the status lets evaluation and metrics tell this apart
+            # from a corpus that simply had nothing relevant.
+            ctx.explanation.retrieval_status = "failed"
+        else:
+            ctx.explanation.retrieval_status = "ok" if outcome.candidates else "empty"
         ctx.chunks = outcome.chunks
         ctx.explanation.retrieval = [_evidence(i, c) for i, c in enumerate(outcome.chunks, 1)]
 
@@ -908,7 +1099,7 @@ class PipelineOrchestrator:
             from medbridge.ai.evidence_calibration import evidence_features
 
             features = evidence_features(
-                ctx.message or ctx.search_query, ctx.chunks, ctx.gate_snapshot
+                ctx.patient_message or ctx.search_query, ctx.chunks, ctx.gate_snapshot
             )
         except Exception as exc:
             logger.warning("evidence_features_failed", error=type(exc).__name__)
@@ -923,7 +1114,7 @@ class PipelineOrchestrator:
                 chunks=ctx.chunks,
                 snapshot=ctx.gate_snapshot,
                 query=self._retrieval_query(ctx),
-                message=ctx.message,
+                message=ctx.patient_message,
             )
         except Exception as exc:
             logger.warning("evidence_gate_failed", error=type(exc).__name__)
@@ -943,21 +1134,30 @@ class PipelineOrchestrator:
                 self._retrieval_query(ctx),
                 votes=self._settings.EVIDENCE_GATE_VOTES,
                 settings=self._settings,
-                message=ctx.message,
+                message=ctx.patient_message,
             )
         except Exception as exc:
             logger.warning("calibrated_evidence_gate_failed", error=type(exc).__name__)
+            return None
+        failed_votes = getattr(result, "failed_votes", 0)
+        ctx.failed_votes = failed_votes if isinstance(failed_votes, int) else 0
+        votes = [str(v) for v in (getattr(result, "votes", None) or [])]
+        if not votes:
+            # Every vote failed: this is the Gate 2 spec fallback, not a calibrated
+            # decision (stage "failed", source "fallback" — counted by /api/metrics).
+            logger.warning("calibrated_evidence_gate_all_votes_failed", failed=ctx.failed_votes)
             return None
         action = str(getattr(result, "action", ""))
         if action not in _GATE2_ACTIONS:
             return None
         features = dict(getattr(result, "features", None) or {})
         features["overridden"] = bool(getattr(result, "overridden", False))
+        features["failed_votes"] = float(ctx.failed_votes)  # partial vote loss stays visible
         return GateDecision(
             action=action,
             rationale=str(getattr(result, "rationale", "") or ""),
             source="calibrated",
-            votes=[str(v) for v in (getattr(result, "votes", None) or [])],
+            votes=votes,
             features=features,
         )
 
@@ -992,6 +1192,8 @@ class PipelineOrchestrator:
             )
         if not decision.features:  # the calibrated gate already carries its own features
             decision.features = self._evidence_features(ctx)
+            if ctx.failed_votes is not None:
+                decision.features["failed_votes"] = float(ctx.failed_votes)
         ctx.explanation.gate2 = decision
         ctx.final_action = ActionEnum(decision.action)
 
@@ -1015,7 +1217,7 @@ class PipelineOrchestrator:
                 chunks=chunks,
                 snapshot=ctx.gate_snapshot,
                 query=self._retrieval_query(ctx),
-                message=ctx.message,
+                message=ctx.patient_message,
                 **kwargs,
             )
         except Exception as exc:
@@ -1188,6 +1390,8 @@ class PipelineOrchestrator:
             delta_events=[] if ctx.regenerate else list(ctx.delta_events),
             new_snapshot=None if ctx.regenerate else ctx.new_snapshot,
             soft_ask_count=ctx.soft_ask_count,
+            regenerated_user_message_id=ctx.regenerated_user_message_id,
+            update_soft_ask_count=ctx.counter_updated,
         )
 
     async def _stage_persistence(self, ctx: TurnContext, db: AsyncSession | None) -> None:
@@ -1205,6 +1409,9 @@ class PipelineOrchestrator:
                             with contextlib.suppress(Exception):
                                 await db.rollback()
                         raise
+            except RegenerateConflictError:  # a newer turn was stored meanwhile
+                logger.warning("regenerate_not_persisted", session_id=str(ctx.session_id))
+                run.status = "failed"
             except Exception as exc:  # the patient still gets the answer
                 logger.error(
                     "persistence_failed",

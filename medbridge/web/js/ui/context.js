@@ -4,10 +4,14 @@
  * (clinician summary, export, print, clear my data).
  *
  * The snapshot shown here is the server's event-sourced projection; manual
- * readings go through POST /bp so they follow the same event pipeline.
+ * readings go through POST /bp so they follow the same event pipeline. A
+ * reading is never saved while another write to the same conversation (an
+ * answer being generated or finished) is in flight: the form is disabled and
+ * says why (see writeguard.js).
  */
 
 import { BP_LIMITS, categoryLabel, validateBpInput } from '../bp.js';
+import { errorMessage } from '../errors.js';
 import { formatDateTime, toLocalInputValue } from '../format.js';
 import { normalizeContext } from '../normalize.js';
 import { renderBpChart } from './bpchart.js';
@@ -23,7 +27,11 @@ import { icon } from './icons.js';
  *   onSummary: () => void, onExport: () => void, onPrint: () => void, onClear: () => void,
  *   onToast: (message: string, tone?: 'info' | 'success' | 'error') => void,
  *   onVisibility: (open: boolean) => void,
+ *   writeBlocked: (sessionId: string | null) => string | null,
+ *   beginWrite: (sessionId: string) => {release: () => void} | null,
  * }} ContextDeps
+ *   `writeBlocked` returns why writes to the conversation are paused (or null);
+ *   `beginWrite` takes the conversation's write lock (null when it is held).
  */
 
 /**
@@ -58,6 +66,7 @@ export function createContextPanel(deps) {
           h('label', { for: 'bp-measuredAt', text: 'Measured at' }),
           h('input', { id: 'bp-measuredAt', name: 'measuredAt', type: 'datetime-local', value: toLocalInputValue(new Date()), 'aria-describedby': 'bp-measuredAt-err' }),
           h('p', { class: 'field__error', id: 'bp-measuredAt-err', 'aria-live': 'polite' }))),
+      h('p', { class: 'bp-form__hold', role: 'status', hidden: true }),
       h('button', { type: 'submit', class: 'btn btn--primary btn--block' }, icon('plus', { size: 16 }), 'Add reading')));
     const when = /** @type {HTMLInputElement} */ (form.querySelector('#bp-measuredAt'));
     form.addEventListener('submit', async (event) => {
@@ -75,11 +84,23 @@ export function createContextPanel(deps) {
         /** @type {HTMLElement | null} */ (form.querySelector('[aria-invalid="true"]'))?.focus();
         return;
       }
-      const button = /** @type {HTMLButtonElement} */ (form.querySelector('button[type="submit"]'));
-      button.disabled = true;
+      const blocked = deps.writeBlocked(deps.getSession()?.id ?? null);
+      if (blocked) {
+        deps.onToast(blocked, 'info');
+        return;
+      }
+      form.dataset.submitting = 'true';
+      syncWriteState();
+      /** @type {{release: () => void} | null} */
+      let lock = null;
       try {
         const session = deps.getSession() ?? (await deps.ensureSession('Blood pressure log'));
         if (!session) return;
+        lock = deps.beginWrite(session.id);
+        if (!lock) {
+          deps.onToast(deps.writeBlocked(session.id) ?? 'Please wait a moment and try again.', 'info');
+          return;
+        }
         const response = await deps.api.postBp(session, result.value);
         when.defaultValue = toLocalInputValue(new Date());
         form.reset();
@@ -89,13 +110,30 @@ export function createContextPanel(deps) {
         }
         await refresh();
       } catch (error) {
-        deps.onToast(/** @type {any} */ (error).safeFallback || 'Could not save the reading.', 'error');
+        deps.onToast(errorMessage(/** @type {any} */ (error), 'Could not save the reading.'), 'error');
       } finally {
-        button.disabled = false;
+        delete form.dataset.submitting;
+        lock?.release();
+        syncWriteState();
       }
     });
     return form;
   };
+
+  /** Enable/disable every BP form for the open conversation's write state. */
+  function syncWriteState() {
+    const reason = deps.writeBlocked(deps.getSession()?.id ?? null);
+    for (const form of body.querySelectorAll('form.bp-form')) {
+      const submitting = /** @type {HTMLElement} */ (form).dataset.submitting === 'true';
+      const button = /** @type {HTMLButtonElement | null} */ (form.querySelector('button[type="submit"]'));
+      const note = /** @type {HTMLElement | null} */ (form.querySelector('.bp-form__hold'));
+      if (button) button.disabled = submitting || reason !== null;
+      if (note) {
+        note.textContent = submitting ? '' : reason ?? '';
+        note.hidden = submitting || reason === null;
+      }
+    }
+  }
 
   /** @param {string} title @param {...(Node | null)} children */
   const card = (title, ...children) => h('section', { class: 'ctx-card' }, h('h3', { class: 'ctx-card__title', text: title }), ...children);
@@ -166,6 +204,7 @@ export function createContextPanel(deps) {
         h('section', { class: 'ctx-card' }, h('details', { class: 'ctx-form', open: true },
           h('summary', null, icon('plus', { size: 16 }), 'Add a blood pressure reading'), bpForm())),
         actionsCard(false), note);
+      syncWriteState();
       return;
     }
     body.setAttribute('aria-busy', 'true');
@@ -173,12 +212,13 @@ export function createContextPanel(deps) {
       const ctx = normalizeContext(await deps.api.getContext(session));
       if (seq !== loadSeq) return;
       body.replaceChildren(...renderContext(ctx), actionsCard(true), note);
+      syncWriteState();
     } catch (error) {
       if (seq !== loadSeq) return;
       body.replaceChildren(
         h('p', { class: 'notice notice--error' }, icon('alert', { size: 16 }),
           /** @type {any} */ (error).sessionUnavailable
-            ? 'This conversation is no longer available on the server.'
+            ? errorMessage(/** @type {any} */ (error))
             : 'Could not load your health context. Please try again.'),
         actionsCard(true), note);
     } finally {
@@ -211,5 +251,6 @@ export function createContextPanel(deps) {
       if (open) setOpen(false);
     },
     refresh,
+    syncWriteState,
   };
 }

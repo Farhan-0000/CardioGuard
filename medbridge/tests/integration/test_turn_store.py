@@ -153,8 +153,11 @@ async def test_persist_turn_single_flush_and_encryption(
     snapshot = ContextSnapshot(session_id=sid, snapshot={}, soft_ask_count=1)
     db = _mock_db({(Session, sid): session, (ContextSnapshot, sid): snapshot})
     monkeypatch.setattr(turn_store, "require_cipher", AsyncMock(return_value=cipher))
+    lock = AsyncMock(return_value=snapshot)
+    monkeypatch.setattr(turn_store, "_lock_session_snapshot", lock)
 
     user_id, assistant_id = await turn_store.persist_turn(db, _record(sid))
+    lock.assert_awaited_once_with(db, sid)  # row-locked before anything is written
 
     db.flush.assert_awaited_once()
     added = [c.args[0] for c in db.add.call_args_list]
@@ -171,6 +174,7 @@ async def test_persist_turn_single_flush_and_encryption(
     for field in ("request_message", "response_text", "gate_1_rationale", "gate_2_rationale"):
         assert getattr(audit, field).startswith("enc:v1:")
     assert audit.trace["assistant_message_id"] == str(assistant_id)
+    assert audit.trace["user_message_id"] == str(user_id)
     assert cipher.decrypt_json(audit.trace["private"])["gate1"]["rationale"] == "has BP 150/95"
     assert audit.gate_1_action.value == "PROCEED" and audit.final_action.value == "ANSWER"
     assert cipher.decrypt_json(snapshot.snapshot)["recent_bp_readings"][0]["systolic"] == 150
@@ -196,6 +200,10 @@ async def test_unknown_gate_and_event_types_are_dropped(
     sid = uuid.uuid4()
     db = _mock_db({(Session, sid): Session(session_id=sid)})
     monkeypatch.setattr(turn_store, "require_cipher", AsyncMock(return_value=cipher))
+    monkeypatch.setattr(
+        turn_store, "_lock_session_snapshot",
+        AsyncMock(return_value=ContextSnapshot(session_id=sid, snapshot={}, soft_ask_count=0)),
+    )
     record = _record(sid, gate_1_action="soft_ask", gate_2_action="MAYBE",
                      delta_events=[DeltaEvent(event_type="NOT_A_TYPE", payload={})])
     await turn_store.persist_turn(db, record)

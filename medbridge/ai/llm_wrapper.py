@@ -11,9 +11,17 @@ Single gateway for every LLM call in MedBridge:
 * **Optional remote providers** (Groq / OpenAI, OpenAI-compatible
   ``/chat/completions`` with ``response_format=json_object``). With
   ``LOCAL_ONLY_MODE=true`` (default) they are never contacted, whatever
-  ``LLM_PROVIDER`` says — no patient text leaves the machine.
+  ``LLM_PROVIDER`` says, and the Ollama endpoint itself must be a loopback
+  host (``localhost``, ``127.0.0.0/8``, ``::1``) serving a local (non-cloud)
+  model — otherwise every call fails closed and the orchestrator applies its
+  spec fallbacks. No patient text leaves the machine.
 * Exponential-backoff retry (``base · 2^(n-1)``), markdown/think-block JSON
   extraction and malformed-JSON repair, Pydantic validation → model or ``None``.
+* Truncation is a failure, never repaired: a reply cut off by the token limit
+  (``done_reason``/``finish_reason == "length"``) is discarded, retried once
+  with a doubled token budget, and never cached; output whose JSON is
+  structurally incomplete (open string or bracket) is never "repaired" into a
+  valid result.
 * Per-turn call statistics via :func:`llm_call_log` (context-variable scoped)
   and an optional content-addressed request cache (:func:`set_request_cache`)
   used by the evaluation harness to memoise identical requests.
@@ -24,6 +32,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import ipaddress
 import json
 import re
 import time
@@ -52,7 +61,23 @@ _CONNECT_TIMEOUT_S = 5.0
 _PROBE_TIMEOUT_S = 5.0
 _TOP_P_DETERMINISTIC = 1.0
 _TOP_P_SAMPLING = 0.95
-_LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "host.docker.internal"})
+_CLOUD_MODEL_SUFFIXES = ("-cloud", ":cloud")
+
+
+def is_loopback_host(host: str) -> bool:
+    """True for ``localhost`` and any loopback IP (``127.0.0.0/8``, ``::1``)."""
+    name = (host or "").strip().lower().rstrip(".").strip("[]")
+    if name == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(name).is_loopback
+    except ValueError:
+        return False
+
+
+def is_cloud_model(model: str) -> bool:
+    """Ollama tags that run on a remote cloud backend (e.g. ``gpt-oss:120b-cloud``)."""
+    return (model or "").strip().lower().endswith(_CLOUD_MODEL_SUFFIXES)
 
 
 # ---------------------------------------------------------------------------
@@ -76,6 +101,8 @@ class LLMCallStat:
     # Server-side timings reported by Ollama (0 when unavailable / cached).
     total_duration_ms: float = 0.0
     load_duration_ms: float = 0.0
+    # At least one attempt was cut off by the token limit (and discarded).
+    truncated: bool = False
 
 
 class RequestCache(Protocol):
@@ -175,10 +202,17 @@ class _Provider:
     base_url: str
     api_key: str = ""
     model: str | None = None  # fixed model for remote providers
+    # Why this provider must not be contacted ("" = allowed); set for an Ollama
+    # endpoint that is not loopback while LOCAL_ONLY_MODE is on.
+    blocked_reason: str = ""
 
 
 class _RemoteBlockedError(RuntimeError):
     """Raised if a remote provider is reached while LOCAL_ONLY_MODE is on (defence in depth)."""
+
+
+class _TruncatedOutputError(RuntimeError):
+    """The provider stopped at the token limit; the partial content is never used."""
 
 
 # ---------------------------------------------------------------------------
@@ -227,6 +261,11 @@ class ResilientLLMWrapper:
         """Providers in failover order."""
         return [p.name for p in self._providers]
 
+    @property
+    def blocked_reason(self) -> str:
+        """Why the primary provider refuses every call ("" when it is usable)."""
+        return self._providers[0].blocked_reason
+
     def _build_providers(self) -> list[_Provider]:
         s = self._settings
         ollama = _Provider("ollama", self.ollama_base_url)
@@ -238,8 +277,13 @@ class ResilientLLMWrapper:
                     reason="LOCAL_ONLY_MODE is enabled; using local Ollama only",
                 )
             host = urlparse(self.ollama_base_url).hostname or ""
-            if host not in _LOCAL_HOSTS:
-                logger.warning("ollama_host_not_loopback", host=host)
+            if not is_loopback_host(host):
+                # Fail closed: a LAN box or tunnel would receive patient text.
+                logger.error("ollama_host_not_loopback_blocked", host=host)
+                return [_Provider(
+                    "ollama", self.ollama_base_url,
+                    blocked_reason=f"LOCAL_ONLY_MODE: Ollama host '{host}' is not loopback",
+                )]
             return [ollama]
 
         remotes: list[_Provider] = []
@@ -340,9 +384,15 @@ class ResilientLLMWrapper:
         if self._providers[0].name != "ollama":
             return {}
         targets = _unique(models or [self._settings.gates_model, self._settings.generator_model])
-        client = self._get_client()
         results: dict[str, bool] = {}
+        if self.blocked_reason:
+            logger.error("llm_warmup_blocked", reason=self.blocked_reason)
+            return dict.fromkeys(targets, False)
+        client = self._get_client()
         for name in targets:
+            if self._local_violation(name):
+                results[name] = False
+                continue
             try:
                 response = await client.post(
                     f"{self.ollama_base_url}/api/generate",
@@ -376,6 +426,15 @@ class ResilientLLMWrapper:
                 "local_only": self.local_only,
             }
         configured = _unique([self._settings.gates_model, self._settings.generator_model])
+        if self.blocked_reason:
+            return {
+                "provider": "ollama",
+                "reachable": False,
+                "models": dict.fromkeys(configured, False),
+                "loaded": [],
+                "local_only": self.local_only,
+                "blocked": self.blocked_reason,
+            }
         client = self._get_client()
         try:
             tags = await client.get(f"{self.ollama_base_url}/api/tags", timeout=_PROBE_TIMEOUT_S)
@@ -422,8 +481,20 @@ class ResilientLLMWrapper:
         model: str | None,
         seed: int | None,
     ) -> T | None:
-        """Up to ``max_retries`` attempts against one provider (cache first)."""
+        """Up to ``max_retries`` attempts against one provider (cache first).
+
+        A reply cut off by the token limit is never parsed, repaired or cached:
+        the request is retried once with a doubled token budget (that retry does
+        not consume a regular attempt); a second truncation is a permanent
+        failure for this provider (the orchestrator then applies its fallbacks).
+        """
         stat.provider = provider.name
+        if provider.blocked_reason or (
+            provider.name == "ollama" and self._local_violation(model or self._settings.LLM_MODEL)
+        ):
+            logger.error("llm_call_blocked", call=call_name, provider=provider.name,
+                         reason=provider.blocked_reason or "cloud model in LOCAL_ONLY_MODE")
+            return None
         payload = await self._build_payload(
             provider, system_prompt, user_prompt, output_schema, temperature, max_tokens,
             model, seed,
@@ -439,11 +510,24 @@ class ResilientLLMWrapper:
                     stat.cached = True
                     return parsed
 
-        for attempt in range(1, self.max_retries + 1):
+        budget_doubled = False
+        attempt = 0
+        while attempt < self.max_retries:
+            attempt += 1
             stat.attempts += 1
             delay = self.retry_base_delay * (2 ** (attempt - 1))
             try:
                 raw = await self._send(provider, payload, stat)
+            except _TruncatedOutputError:
+                stat.truncated = True
+                logger.warning("llm_output_truncated", call=call_name, provider=provider.name,
+                               model=stat.model, budget_doubled=budget_doubled)
+                if budget_doubled:
+                    break
+                budget_doubled = True
+                payload = self._with_doubled_budget(provider, payload)
+                attempt -= 1  # the larger-budget retry is not a regular retry
+                continue
             except httpx.HTTPStatusError as exc:
                 status = exc.response.status_code
                 logger.error("llm_http_error", call=call_name, provider=provider.name,
@@ -468,11 +552,32 @@ class ResilientLLMWrapper:
                 parsed = self._parse(raw, output_schema, call_name)
                 if parsed is not None:
                     if cache is not None:
+                        # Keyed by the original request: after a doubled-budget retry
+                        # this is the complete answer to that request.
                         cache.set(cache_key, raw)
                     return parsed
             if attempt < self.max_retries:
                 await asyncio.sleep(delay)
         return None
+
+    @staticmethod
+    def _with_doubled_budget(provider: _Provider, payload: dict[str, Any]) -> dict[str, Any]:
+        """Copy of ``payload`` with twice the generation budget (num_predict / max_tokens)."""
+        bigger = dict(payload)
+        if provider.name == "ollama":
+            options = dict(payload.get("options") or {})
+            options["num_predict"] = int(options.get("num_predict") or 512) * 2
+            bigger["options"] = options
+        else:
+            bigger["max_tokens"] = int(payload.get("max_tokens") or 512) * 2
+        return bigger
+
+    def _local_violation(self, model: str) -> bool:
+        """True when LOCAL_ONLY_MODE forbids ``model`` (a cloud-offloaded Ollama tag)."""
+        if self.local_only and is_cloud_model(model):
+            logger.error("llm_cloud_model_blocked", model=model)
+            return True
+        return False
 
     @staticmethod
     def _is_retryable(exc: httpx.HTTPStatusError) -> bool:
@@ -540,6 +645,8 @@ class ResilientLLMWrapper:
         """Whether ``model`` advertises the ``thinking`` capability (cached per model)."""
         if model in self._thinking_support:
             return self._thinking_support[model]
+        if self.blocked_reason:
+            return False
         try:
             response = await self._get_client().post(
                 f"{self.ollama_base_url}/api/show", json={"model": model}, timeout=_PROBE_TIMEOUT_S
@@ -554,7 +661,13 @@ class ResilientLLMWrapper:
         return supported
 
     async def _send(self, provider: _Provider, payload: dict[str, Any], stat: LLMCallStat) -> str:
-        """POST the request and return the raw message content."""
+        """POST the request and return the raw message content.
+
+        Raises ``_TruncatedOutputError`` when the provider stopped at the token
+        limit, so a cut-off reply can never be parsed or cached.
+        """
+        if provider.blocked_reason:
+            raise _RemoteBlockedError(provider.blocked_reason)
         client = self._get_client()
         if provider.name == "ollama":
             response = await client.post(f"{provider.base_url}/api/chat", json=payload)
@@ -564,9 +677,10 @@ class ResilientLLMWrapper:
             stat.completion_tokens = int(data.get("eval_count") or 0)
             stat.total_duration_ms = round(int(data.get("total_duration") or 0) / 1e6, 1)
             stat.load_duration_ms = round(int(data.get("load_duration") or 0) / 1e6, 1)
+            content = str(data["message"]["content"])
             if data.get("done_reason") == "length":
-                logger.warning("llm_output_truncated", model=payload["model"])
-            return str(data["message"]["content"])
+                raise _TruncatedOutputError(str(payload["model"]))
+            return content
 
         if self.local_only:
             raise _RemoteBlockedError(provider.name)
@@ -583,7 +697,11 @@ class ResilientLLMWrapper:
         usage = data.get("usage") or {}
         stat.prompt_tokens = int(usage.get("prompt_tokens") or 0)
         stat.completion_tokens = int(usage.get("completion_tokens") or 0)
-        return str(data["choices"][0]["message"]["content"])
+        choice = data["choices"][0]
+        content = str(choice["message"]["content"])
+        if choice.get("finish_reason") == "length":
+            raise _TruncatedOutputError(str(payload.get("model")))
+        return content
 
     def _record(self, stat: LLMCallStat) -> None:
         log = _call_log.get()
@@ -600,6 +718,7 @@ class ResilientLLMWrapper:
             attempts=stat.attempts,
             success=stat.success,
             cached=stat.cached,
+            truncated=stat.truncated,
         )
 
     # ------------------------------------------------------------------
@@ -607,8 +726,17 @@ class ResilientLLMWrapper:
     # ------------------------------------------------------------------
 
     def _parse(self, raw: str, output_schema: type[T], call_name: str) -> T | None:
-        """Validate the raw content; on failure retry once with the repaired JSON."""
+        """Validate the raw content; on failure retry once with the repaired JSON.
+
+        Structurally incomplete JSON (an unterminated string or unclosed
+        brackets) is a cut-off reply, not a formatting slip: it is rejected
+        instead of being closed into a valid-looking result. This also keeps
+        truncated entries in an old request cache from being served.
+        """
         candidate = self._extract_json(raw)
+        if self._is_incomplete(candidate):
+            logger.warning("llm_output_incomplete", call=call_name)
+            return None
         try:
             return output_schema.model_validate_json(candidate)
         except ValidationError:
@@ -624,7 +752,9 @@ class ResilientLLMWrapper:
         """Extract the JSON object from a model reply.
 
         Handles ``<think>…</think>`` traces, markdown code fences (```json … ```)
-        and surrounding prose (keeps the outermost ``{…}`` span).
+        and surrounding prose. The first complete JSON object is returned
+        exactly (a ``}`` inside a string or trailing text after the object never
+        moves its end); otherwise the outermost ``{…}`` span is kept for repair.
         """
         text = re.sub(r"<think>.*?</think>", "", raw or "", flags=re.DOTALL).strip()
         fenced = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", text, re.DOTALL)
@@ -633,25 +763,27 @@ class ResilientLLMWrapper:
         start = text.find("{")
         if start == -1:
             return text
+        decoder = json.JSONDecoder()
+        position = start
+        while position != -1:
+            try:
+                value, end = decoder.raw_decode(text, position)
+            except json.JSONDecodeError:
+                position = text.find("{", position + 1)
+                continue
+            if isinstance(value, dict):
+                return text[position:end]
+            position = text.find("{", end)
         end = text.rfind("}")
         return text[start:end + 1] if end > start else text[start:]
 
     @staticmethod
-    def _repair_json(json_str: str) -> str:
-        """Repair common malformed-JSON patterns.
-
-        Fixes single-quoted keys/values (apostrophes inside words are kept),
-        trailing commas, an unterminated final string and unclosed
-        brackets/braces (closed in the correct nesting order).
-        """
-        repaired = re.sub(r"(?<!\w)'|'(?!\w)", '"', json_str)
-        repaired = re.sub(r",\s*([}\]])", r"\1", repaired)
-        repaired = re.sub(r",\s*$", "", repaired)
-
+    def _open_structure(json_str: str) -> tuple[bool, list[str]]:
+        """(inside an unterminated string?, stack of unclosed ``{``/``[``) after scanning."""
         stack: list[str] = []
         in_string = False
         escaped = False
-        for char in repaired:
+        for char in json_str:
             if in_string:
                 if escaped:
                     escaped = False
@@ -666,6 +798,30 @@ class ResilientLLMWrapper:
                 stack.append(char)
             elif char in "}]" and stack:
                 stack.pop()
+        return in_string, stack
+
+    @classmethod
+    def _is_incomplete(cls, json_str: str) -> bool:
+        """True when a ``{``-JSON candidate ends inside a string or with open brackets."""
+        text = json_str.strip()
+        if not text.startswith("{"):
+            return False
+        in_string, stack = cls._open_structure(text)
+        return in_string or bool(stack)
+
+    @staticmethod
+    def _repair_json(json_str: str) -> str:
+        """Repair common malformed-JSON patterns.
+
+        Fixes single-quoted keys/values (apostrophes inside words are kept),
+        trailing commas, an unterminated final string and unclosed
+        brackets/braces (closed in the correct nesting order).
+        """
+        repaired = re.sub(r"(?<!\w)'|'(?!\w)", '"', json_str)
+        repaired = re.sub(r",\s*([}\]])", r"\1", repaired)
+        repaired = re.sub(r",\s*$", "", repaired)
+
+        in_string, stack = ResilientLLMWrapper._open_structure(repaired)
         suffix = '"' if in_string else ""
         suffix += "".join("}" if opener == "{" else "]" for opener in reversed(stack))
         return repaired + suffix

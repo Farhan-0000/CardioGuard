@@ -5,3 +5,4 @@ import './markdown.test.mjs';
 import './sse.test.mjs';
 import './store.test.mjs';
 import './helpers.test.mjs';
+import './safety.test.mjs';

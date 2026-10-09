@@ -169,6 +169,10 @@ GENERIC_ALIASES: dict[str, str] = {
     "acetylsalicylic acid": "aspirin",
     "sacubitril valsartan": "sacubitril + valsartan",
     "sacubitril/valsartan": "sacubitril + valsartan",
+    "valsartan sacubitril": "sacubitril + valsartan",
+    "valsartan/sacubitril": "sacubitril + valsartan",
+    # Sacubitril is only marketed combined with valsartan (ARNI).
+    "sacubitril": "sacubitril + valsartan",
 }
 
 # ---------------------------------------------------------------------------
@@ -416,6 +420,22 @@ _SALT_WORDS: frozenset[str] = frozenset({
 })
 _STRENGTH_RE = re.compile(r"\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|g|ml|iu)?\b")
 _TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*")
+# Two scanned tokens form one name only when nothing but spaces, a hyphen or a
+# slash separates them ("Met XL", "Telma-AM", "valsartan/sacubitril"); a strength
+# in between ("Telma 40 am") means they are separate words.
+_BIGRAM_GAP = re.compile(r"\s*[-/]?\s*")
+# Ordinary English words that collide with short brand suffixes ("Amlopres at
+# night", "Telma am"). Written in lower case after a brand they are read as
+# English; upper case ("Telma AM") or hyphenated ("Telma-AM") still matches.
+_SUFFIX_ENGLISH_WORDS: frozenset[str] = frozenset({
+    "a", "am", "an", "as", "at", "by", "in", "is", "it", "me", "my", "no", "of", "on", "or",
+    "pm", "so", "to", "up", "us", "we",
+})
+# Times of day after a suffix mean the suffix is the English word ("AT NIGHT").
+_TIME_WORDS: frozenset[str] = frozenset({
+    "night", "nights", "bedtime", "morning", "mornings", "noon", "evening", "evenings",
+    "lunch", "breakfast", "dinner", "daytime", "midday",
+})
 # Common words that must never be fuzzy-matched to a drug while scanning text.
 _SCAN_STOPWORDS: frozenset[str] = frozenset({
     "efficient", "pressure", "patient", "control", "concern", "contain", "content",
@@ -531,6 +551,27 @@ def _fuzzy_scan(word: str) -> DrugInfo | None:
     return _INDEX[close[0]] if close else None
 
 
+def _is_name_bigram(text: str, spans: list[re.Match[str]], i: int) -> bool:
+    """Whether tokens ``i`` and ``i + 1`` can be read as one two-word drug name.
+
+    They must be adjacent (only spaces, a hyphen or a slash between them), and a
+    lower-case second token that is an ordinary English word, or a suffix
+    followed by a time of day, is read as English rather than as a brand suffix.
+    """
+    first, second = spans[i], spans[i + 1]
+    if not _BIGRAM_GAP.fullmatch(text[first.end():second.start()]):
+        return False
+    word = second.group(0)
+    if word.islower() and word in _SUFFIX_ENGLISH_WORDS:
+        return False
+    if len(word) <= 3 and i + 2 < len(spans):
+        following = spans[i + 2]
+        between = text[second.end():following.start()]
+        if not between.strip(" ,") and following.group(0).lower() in _TIME_WORDS:
+            return False
+    return True
+
+
 def find_drugs(text: str) -> list[DrugInfo]:
     """Find every recognised drug mentioned in free text, in order of appearance.
 
@@ -539,14 +580,16 @@ def find_drugs(text: str) -> list[DrugInfo]:
     Fuzzy matching is applied only to words of 7+ characters to avoid
     false positives on ordinary English words. Duplicates are removed.
     """
-    tokens = _TOKEN_RE.findall(text or "")
+    source = text or ""
+    spans = list(_TOKEN_RE.finditer(source))
+    tokens = [m.group(0) for m in spans]
     found: list[DrugInfo] = []
     seen: set[tuple[str, str | None]] = set()
     i = 0
     while i < len(tokens):
         match: DrugInfo | None = None
         width = 1
-        if i + 1 < len(tokens):
+        if i + 1 < len(tokens) and _is_name_bigram(source, spans, i):
             match = _INDEX.get(_normalise_text(f"{tokens[i]} {tokens[i + 1]}"))
             width = 2 if match else 1
         if match is None:

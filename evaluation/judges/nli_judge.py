@@ -17,7 +17,14 @@ maximum over all windows of all its passages. Labels::
 θ and θ_c come from ``evaluation/results/calibration.json`` (``nli.theta`` /
 ``nli.theta_c``; defaults 0.5) — they are calibrated on the dev split only.
 Raw scores are stored, so the analysis re-applies the calibrated thresholds
-without recomputing the model.
+without recomputing the model. ``nli_calibration`` also says whether the
+thresholds really come from a calibration (a ``calibration.json`` without an
+``nli`` block means the defaults are in use).
+
+Citation attribution (finding statistics-judges-8): for every claim the judge
+also scores the chunks the response CITED in the claim's sentence
+(``cited_scores``), so the analysis can count a citation marker as precise only
+when its own chunk entails a claim of the sentence (ALCE-style precision).
 """
 
 from __future__ import annotations
@@ -25,7 +32,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -121,12 +128,26 @@ def claims_fingerprint(llm_judgment: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:16]
 
 
+def nli_calibration(calibration_path: Path) -> tuple[float, float, bool]:
+    """``(θ, θ_c, calibrated)``: the dev-calibrated thresholds, or the defaults with ``False``.
+
+    ``calibrated`` is True only when calibration.json holds an ``nli`` block with
+    a θ — the file existing is not enough (it may carry only V1/V2 thresholds, or
+    ``"nli": null`` when no dev claims were scored by both judges).
+    """
+    if not calibration_path.exists():
+        return DEFAULT_THETA, DEFAULT_THETA_C, False
+    data = read_json(calibration_path)
+    nli = data.get("nli") if isinstance(data, dict) else None
+    if not isinstance(nli, dict) or nli.get("theta") is None:
+        return DEFAULT_THETA, DEFAULT_THETA_C, False
+    return float(nli["theta"]), float(nli.get("theta_c", DEFAULT_THETA_C)), True
+
+
 def load_thresholds(calibration_path: Path) -> tuple[float, float]:
     """``(θ, θ_c)`` from calibration.json, defaults when not calibrated yet."""
-    if not calibration_path.exists():
-        return DEFAULT_THETA, DEFAULT_THETA_C
-    nli = read_json(calibration_path).get("nli") or {}
-    return float(nli.get("theta", DEFAULT_THETA)), float(nli.get("theta_c", DEFAULT_THETA_C))
+    theta, theta_c, _ = nli_calibration(calibration_path)
+    return theta, theta_c
 
 
 class NLIJudge:
@@ -147,9 +168,16 @@ class NLIJudge:
         self.use_pool = use_pool
 
     def judge_turn(
-        self, llm_judgment: dict[str, Any], evidence_text: Callable[[str], str | None]
+        self,
+        llm_judgment: dict[str, Any],
+        evidence_text: Callable[[str], str | None],
+        cited: Mapping[Any, Sequence[str]] | None = None,
     ) -> dict[str, Any]:
-        """Label the claims of one LLM judgment. ``evidence_text(chunk_id)`` resolves passages."""
+        """Label the claims of one LLM judgment. ``evidence_text(chunk_id)`` resolves passages.
+
+        ``cited`` maps a claim ``index`` to the chunk ids the response cited in
+        that claim's sentence; each gets its own scores in ``cited_scores``.
+        """
         out: dict[str, Any] = {
             "judge": "nli",
             "judge_model": self.scorer.name,
@@ -182,29 +210,47 @@ class NLIJudge:
         }
         rows: list[dict[str, Any]] = []
         for claim in llm_judgment.get("claims") or []:
-            ids = claim.get("pool_ids" if self.use_pool else "evidence_ids") or []
+            ids = [str(i) for i in claim.get("pool_ids" if self.use_pool else "evidence_ids") or []]
+            cited_ids = [str(i) for i in (cited or {}).get(claim.get("index"), [])]
             pairs: list[tuple[str, str]] = []
             owners: list[str] = []
-            for chunk_id in ids:
+            for chunk_id in dict.fromkeys([*ids, *cited_ids]):
                 text = evidence_text(chunk_id)
                 for window in premise_windows(text or "", self.window):
                     pairs.append((window, str(claim["claim"])))
                     owners.append(chunk_id)
             scores = self.scorer.score(pairs)
-            entail = max((s[0] for s in scores), default=0.0)
-            contra = max((s[1] for s in scores), default=0.0)
-            best = max(range(len(scores)), key=lambda i: scores[i][0], default=None)
-            rows.append(
-                {
-                    "index": claim.get("index"),
-                    "claim": claim.get("claim"),
-                    "entailment": entail,
-                    "contradiction": contra,
-                    "label": nli_label(entail, contra, self.theta, self.theta_c),
-                    "best_chunk_id": owners[best] if best is not None else None,
-                    "n_windows": len(pairs),
+            per_chunk: dict[str, tuple[float, float]] = {}
+            for (entail_i, contra_i), owner in zip(scores, owners, strict=True):
+                best_e, best_c = per_chunk.get(owner, (0.0, 0.0))
+                per_chunk[owner] = (max(best_e, entail_i), max(best_c, contra_i))
+            evidence_set = set(ids)
+            evidence_scores = [
+                (score, owner)
+                for score, owner in zip(scores, owners, strict=True)
+                if owner in evidence_set
+            ]
+            entail = max((s[0] for s, _ in evidence_scores), default=0.0)
+            contra = max((s[1] for s, _ in evidence_scores), default=0.0)
+            best = max(evidence_scores, key=lambda pair: pair[0][0], default=None)
+            row: dict[str, Any] = {
+                "index": claim.get("index"),
+                "claim": claim.get("claim"),
+                "entailment": entail,
+                "contradiction": contra,
+                "label": nli_label(entail, contra, self.theta, self.theta_c),
+                "best_chunk_id": best[1] if best is not None else None,
+                "n_windows": len(evidence_scores),
+            }
+            if cited is not None:
+                row["cited_scores"] = {
+                    cid: {
+                        "entailment": per_chunk.get(cid, (0.0, 0.0))[0],
+                        "contradiction": per_chunk.get(cid, (0.0, 0.0))[1],
+                    }
+                    for cid in dict.fromkeys(cited_ids)
                 }
-            )
+            rows.append(row)
         out["claims"] = rows
         out["n_claims"] = len(rows)
         out["n_supported"] = sum(1 for r in rows if r["label"] == SUPPORTED)

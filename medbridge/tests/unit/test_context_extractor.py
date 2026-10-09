@@ -84,7 +84,7 @@ class TestSystemPrompt:
                       "DEMOGRAPHIC", "LAB_RESULT", "search_query", "raw_intent"):
             assert token in SYSTEM_PROMPT
         assert SYSTEM_PROMPT.count("Example ") == 3
-        assert "150 over 95" in SYSTEM_PROMPT and "the other one" in SYSTEM_PROMPT
+        assert "152 over 97" in SYSTEM_PROMPT and "the other one" in SYSTEM_PROMPT
         assert "heart failure" in SYSTEM_PROMPT and "atrial fibrillation" in SYSTEM_PROMPT
         assert "untrusted_user_input" in SYSTEM_PROMPT
 
@@ -217,7 +217,79 @@ class TestPostprocessing:
         assert "telmisartan" in out.search_query
         assert "thiazide diuretic" in out.search_query
 
-    def test_empty_query_and_intent_fall_back_to_message(self) -> None:
+    def test_empty_query_falls_back_to_message_but_intent_stays_empty(self) -> None:
+        """Regression (llm-prompts-06): the raw message is never copied into the intent."""
         out = postprocess_extraction(_output([], query=" ", intent=""), "What is hypertension?", {})
         assert out.search_query.startswith("What is hypertension?")
-        assert out.raw_intent == "What is hypertension?"
+        assert out.raw_intent == ""
+
+
+class TestBPQuestionsAreNotReadings:
+    """Regression (llm-prompts-01): targets, thresholds and hypotheticals are not readings."""
+
+    @pytest.mark.parametrize("message", [
+        "Is 130/80 a good target for someone with diabetes like me? My eGFR was 45",
+        "Is 140/90 considered high blood pressure?",
+        "is 130/80 my target",
+        "should it be below 140/90",
+        "what if it's 160/100",
+        "At what point is 160/100 dangerous?",
+        "Is a reading of 150/95 bad?",
+        "Would 125/75 be a sensible goal with my heart failure? My potassium was 5.3",
+    ])
+    def test_llm_without_bp_event_gets_none_added(self, message: str) -> None:
+        out = postprocess_extraction(_output([]), message, {})
+        assert _events(out, "BP_READING") == []
+
+    @pytest.mark.parametrize(("message", "pair"), [
+        ("is 130/80 my target", (130, 80)),
+        ("should it be below 140/90", (140, 90)),
+        ("what if it's 160/100", (160, 100)),
+        ("What if my bp is 160/100?", (160, 100)),
+        ("Is 130/80 a good target?", (130, 80)),
+    ])
+    def test_llm_bp_event_for_target_or_hypothetical_is_dropped(
+        self, message: str, pair: tuple[int, int]
+    ) -> None:
+        out = postprocess_extraction(_output([{"event_type": "BP_READING", "payload": {
+            "systolic": pair[0], "diastolic": pair[1]}}]), message, {})
+        assert _events(out, "BP_READING") == []
+
+    @pytest.mark.parametrize(("message", "pair"), [
+        ("I'm 59, bp was 152 over 97 at the clinic.", (152, 97)),
+        ("is my bp of 150/95 too high?", (150, 95)),
+        ("Is 150/95 this morning too high?", (150, 95)),
+        ("it said 128/76", (128, 76)),
+        ("My BP hasn't been well controlled lately, around 150/95", (150, 95)),
+        ("its 210/130 and my head is killing me", (210, 130)),
+    ])
+    def test_own_readings_still_recorded_when_llm_missed_them(
+        self, message: str, pair: tuple[int, int]
+    ) -> None:
+        out = postprocess_extraction(_output([]), message, {})
+        assert _events(out, "BP_READING") == [{"systolic": pair[0], "diastolic": pair[1]}]
+
+    def test_llm_reading_kept_for_an_ambiguous_question(self) -> None:
+        """A question about a number defers to the LLM (it may know the number is theirs)."""
+        out = postprocess_extraction(_output([{"event_type": "BP_READING", "payload": {
+            "systolic": 150, "diastolic": 95}}]), "Is 150/95 bad? That is what I got", {})
+        assert _events(out, "BP_READING") == [{"systolic": 150, "diastolic": 95}]
+
+    def test_few_shot_example_3_yields_no_reading(self) -> None:
+        """The prompt's own target example, post-processed as the LLM is told to answer it."""
+        example = SYSTEM_PROMPT.split("Example 3")[1]
+        message = example.split("Message: ")[1].split("\n")[0]
+        out = postprocess_extraction(_output([{"event_type": "LAB_RESULT", "payload": {
+            "lab_type": "potassium", "value": 5.3, "unit": "mmol/L"}}]), message, {})
+        assert _events(out, "BP_READING") == []
+
+
+class TestDrugNormalisationAcrossSpellings:
+    def test_stop_of_brand_reconciles_with_reversed_generic_combination(self) -> None:
+        """Regression (llm-prompts-07): 'valsartan/sacubitril' then 'stopped Entresto'."""
+        snapshot = {"current_medications": [{"drug": "valsartan/sacubitril", "dosage": "49/51"}]}
+        out = postprocess_extraction(_output([{"event_type": "MEDICATION_STOPPED", "payload": {
+            "drug_name": "Entresto", "reason": "cough"}}]), "I stopped Entresto", snapshot)
+        stopped = _events(out, "MEDICATION_STOPPED")[0]
+        assert stopped["drug_name"] == "valsartan/sacubitril"
+        assert "neprilysin" in stopped["drug_class"]

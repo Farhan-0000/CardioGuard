@@ -99,6 +99,22 @@ class Explanation(BaseModel):
     llm_calls: list[dict[str, Any]] = Field(default_factory=list)
     ablation: str | None = None
     regenerated: bool = False
+    soft_ask_count_before: int | None = Field(
+        default=None,
+        ge=0,
+        description="Loop-breaker counter before this turn's Gate 1 (a regenerate restarts "
+        "from the replaced turn's value)",
+    )
+    retrieval_status: Literal["ok", "empty", "failed", "skipped", "discarded"] | None = Field(
+        default=None,
+        description="'failed' = the retriever could not run (degraded turn; Gate 2 decided on "
+        "no evidence), 'empty' = it ran and nothing matched",
+    )
+    effective_question: dict[str, Any] | None = Field(
+        default=None,
+        description="Set when the gates and generator saw the earlier SOFT-ASK question plus "
+        "this follow-up (counts only, never text)",
+    )
 
 
 class MessageResponse(BaseModel):

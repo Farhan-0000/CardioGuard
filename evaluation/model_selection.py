@@ -36,6 +36,7 @@ from typing import Any
 from evaluation import metrics as mx
 from evaluation import plots
 from evaluation.datasets.schema import ACTIONS
+from evaluation.degraded import record_degraded
 from evaluation.io import load_run_records, write_json, write_table
 from evaluation.manifest import ollama_models, utc_now
 from evaluation.outcomes import impute_latency, uncached_call_medians
@@ -68,6 +69,9 @@ def run_model(
         "--out",
         str(runs_root / safe_name(model)),
         "--fresh" if fresh else "--resume",
+        # LLM failures are what this experiment measures: never trip the outage breaker
+        "--max-consecutive-degraded",
+        "0",
     ]
     if limit is not None:
         cmd += ["--limit", str(limit)]
@@ -128,6 +132,7 @@ def summarize_model(
         "n_turns": len(records),
         "n_valid": len(valid),
         "n_errors": len(records) - len(valid),
+        "n_degraded": sum(1 for r in records if record_degraded(r)),
         "routing": routing,
         "roles": role_stats(valid),
         "latency_turn_p50_ms": mx.percentile(latencies, 50),

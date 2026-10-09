@@ -36,7 +36,7 @@ from evaluation.io import iter_jsonl, load_all_judgments, load_run_records, writ
 from evaluation.judges.common import CLAIM_LABELS, EVIDENCE_SIDECAR, SUPPORTED
 from evaluation.judges.nli_judge import load_thresholds
 from evaluation.manifest import utc_now
-from evaluation.outcomes import TurnOutcome, build_outcomes, filter_split
+from evaluation.outcomes import TurnOutcome, build_outcomes, exclude_degraded, filter_split
 from evaluation.paths import (
     ANNOTATION_DIR,
     CALIBRATION_PATH,
@@ -367,8 +367,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         judgments = {
             j: load_all_judgments(args.judgments_dir, j, ["C5", "C1"]) for j in ("llm", "nli")
         }
-        outcomes = filter_split(
-            build_outcomes(runs, judgments, load_thresholds(args.calibration)), args.split
+        outcomes = exclude_degraded(  # same turns as the headline analysis
+            filter_split(
+                build_outcomes(runs, judgments, load_thresholds(args.calibration)), args.split
+            )
         )
         sidecar = {
             str(r["chunk_id"]): str(r.get("text", ""))

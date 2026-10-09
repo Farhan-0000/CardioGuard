@@ -158,3 +158,19 @@ def test_model_selection_summary(tmp_path):
         "model_selection.svg",
     }
     assert ms.safe_name("qwen3.5:4b") == "qwen3.5_4b"
+
+
+def test_model_selection_never_trips_the_outage_breaker(tmp_path, monkeypatch):
+    """LLM failures are the measured outcome of model selection, not an outage."""
+    import subprocess
+    import types
+
+    seen = []
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda cmd, check=False: seen.append(cmd) or types.SimpleNamespace(returncode=0),
+    )
+    assert ms.run_model("m:1b", "dev", 4, tmp_path, tmp_path / "d.json") == 0
+    cmd = seen[0]
+    assert cmd[cmd.index("--max-consecutive-degraded") + 1] == "0"

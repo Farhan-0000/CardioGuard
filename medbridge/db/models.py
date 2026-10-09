@@ -13,6 +13,12 @@ silently turned into no-ops. Privacy additions (migration
 * ``audit_logs.trace`` — PHI-free pipeline trace (timings, actions, chunk ids);
   the PHI-bearing parts of the trace are stored encrypted inside it.
 
+Migration ``h2b8d4f6a1c3_feedback_unique_legacy_marker``:
+
+* ``feedback`` — ``UNIQUE (session_id, message_id)`` (one rating per message; upsert).
+* ``sessions.legacy_plaintext_rows`` — set at erasure: append-only rows of the
+  session written before encryption existed, which crypto-shredding cannot cover.
+
 Sessions are never deleted: rows in the rule-protected tables reference them.
 """
 import enum
@@ -29,6 +35,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
@@ -74,6 +81,8 @@ class Session(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
     erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Recorded at erasure: plaintext (pre-encryption) rows left in the append-only tables.
+    legacy_plaintext_rows: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Relationships
     clinical_events: Mapped[list["ClinicalEvent"]] = relationship(
@@ -234,7 +243,10 @@ class Feedback(Base):
     """Thumbs up (+1) / down (-1) on an assistant message."""
 
     __tablename__ = "feedback"
-    __table_args__ = (CheckConstraint("rating IN (-1, 1)", name="ck_feedback_rating"),)
+    __table_args__ = (
+        CheckConstraint("rating IN (-1, 1)", name="ck_feedback_rating"),
+        UniqueConstraint("session_id", "message_id", name="uq_feedback_session_message"),
+    )
 
     feedback_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

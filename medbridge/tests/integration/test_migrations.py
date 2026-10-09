@@ -3,8 +3,9 @@ Alembic migrations against the isolated ``medbridge_test`` database.
 
 Runs ``downgrade base`` / ``upgrade head`` (destructive, hence the test DB),
 verifies the immutability rules on the append-only tables and the privacy
-migration (``g1a7c3e9d2b4``: trace, erased_at, session_keys, feedback) in both
-directions.
+migration (``g1a7c3e9d2b4``: trace, erased_at, session_keys, feedback) and the
+hardening migration (``h2b8d4f6a1c3``: one feedback row per message with
+de-duplication, ``sessions.legacy_plaintext_rows``) in both directions.
 """
 import os
 from collections.abc import Iterator
@@ -26,6 +27,7 @@ pytestmark = pytest.mark.postgres
 
 PRIVACY_REVISION = "g1a7c3e9d2b4"
 PREVIOUS_REVISION = "f7737fab1c53"
+HEAD_REVISION = "h2b8d4f6a1c3"
 
 
 def run_alembic(cmd, *args, **kwargs):
@@ -173,4 +175,34 @@ def test_privacy_migration_downgrade_and_upgrade(sync_engine: Engine):
         run_alembic("upgrade", "head")
     with sync_engine.connect() as conn:
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-    assert version == PRIVACY_REVISION
+    assert version == HEAD_REVISION
+
+
+def test_feedback_unique_migration_dedupes_and_enforces(sync_engine: Engine):
+    """h2b8d4f6a1c3: duplicates collapse to the newest row, then one row per message."""
+    run_alembic("downgrade", PRIVACY_REVISION)
+    try:
+        insp = inspect(sync_engine)
+        assert "legacy_plaintext_rows" not in {c["name"] for c in insp.get_columns("sessions")}
+        with sync_engine.begin() as conn:
+            sid = conn.execute(text("INSERT INTO sessions (session_id) VALUES "
+                                    "(gen_random_uuid()) RETURNING session_id")).scalar()
+            mid = conn.execute(text("SELECT gen_random_uuid()")).scalar()
+            for rating, age in ((1, "2 minutes"), (-1, "1 minute")):  # a raced duplicate
+                conn.execute(text(
+                    "INSERT INTO feedback (feedback_id, session_id, message_id, rating, created_at)"
+                    " VALUES (gen_random_uuid(), :sid, :mid, :rating, now() - CAST(:age AS interval))"
+                ), {"sid": sid, "mid": mid, "rating": rating, "age": age})
+    finally:
+        run_alembic("upgrade", "head")
+    with sync_engine.connect() as conn:
+        ratings = conn.execute(text("SELECT rating FROM feedback WHERE message_id = :mid"),
+                               {"mid": mid}).scalars().all()
+    assert ratings == [-1]  # the newest rating survives
+    insp = inspect(sync_engine)
+    uniques = {u["name"]: u["column_names"] for u in insp.get_unique_constraints("feedback")}
+    assert uniques["uq_feedback_session_message"] == ["session_id", "message_id"]
+    assert "legacy_plaintext_rows" in {c["name"] for c in insp.get_columns("sessions")}
+    with pytest.raises(IntegrityError), sync_engine.begin() as conn:
+        conn.execute(text("INSERT INTO feedback (feedback_id, session_id, message_id, rating) "
+                          "VALUES (gen_random_uuid(), :sid, :mid, 1)"), {"sid": sid, "mid": mid})
