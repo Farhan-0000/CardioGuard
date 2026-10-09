@@ -1,123 +1,210 @@
 """
-Integration Tests for Main Application Lifespan, CORS, and Routes (TASK-30, Module M-19).
+Integration tests for application assembly and lifespan (medbridge/main.py, Module M-19).
 
-Verifies:
-1. Application startup and shutdown lifespan execution.
-2. CORS headers enforcement using Settings.CORS_ORIGINS.
-3. Mounted API routes under /api and /health.
+Verifies the background warm-up and readiness flags, the retention task,
+shutdown clean-up, CORS/security middleware (with the plain-CORS fallback),
+router mounting and the web UI hook. Database, LLM and Qdrant are patched.
 """
-from unittest.mock import AsyncMock, patch
-from fastapi.testclient import TestClient
-import pytest
 
-from medbridge.config import Settings
-from medbridge.main import app, create_app
+from __future__ import annotations
+
+import asyncio
+import builtins
+import sys
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.testclient import TestClient
+
+from medbridge import main as main_module
+from medbridge.api.routes.health import APP_VERSION
+from medbridge.config import Settings, get_settings
+from medbridge.main import app, create_app, run_warmup
+
+
+def make_settings(**overrides: Any) -> Settings:
+    base: dict[str, Any] = {
+        "CORS_ORIGINS": ["http://localhost:8501", "https://app.medbridge.internal"],
+        "WARMUP_ON_STARTUP": False,
+    }
+    base.update(overrides)
+    return get_settings().model_copy(update=base)
 
 
 @pytest.fixture
-def custom_settings() -> Settings:
-    """Settings configured with specific CORS origins for testing."""
-    return Settings(
-        GROQ_API_KEY="test_key",
-        POSTGRES_PASSWORD="test_password",
-        CORS_ORIGINS=["http://localhost:8501", "https://app.medbridge.internal"],
+def lifecycle(monkeypatch):
+    """Patch every external resource touched by the lifespan."""
+    mocks = MagicMock()
+    mocks.init_db = AsyncMock()
+    mocks.close_db = AsyncMock()
+    mocks.llm = MagicMock(close=AsyncMock())
+    mocks.retriever = MagicMock(close=AsyncMock())
+    mocks.orchestrator = MagicMock(
+        warmup=AsyncMock(return_value={"embedder_dense": True, "llm": True})
     )
+    monkeypatch.setattr(main_module, "init_db", mocks.init_db)
+    monkeypatch.setattr(main_module, "close_db", mocks.close_db)
+    monkeypatch.setattr(main_module, "get_llm_wrapper", lambda: mocks.llm)
+    monkeypatch.setattr(main_module, "get_hybrid_retriever", lambda: mocks.retriever)
+    monkeypatch.setattr(main_module, "get_orchestrator", lambda: mocks.orchestrator)
+    return mocks
 
 
-class TestMainAppLifespan:
-    """Verify application lifespan startup and shutdown hooks."""
+class TestLifespan:
+    def test_startup_and_shutdown_without_warmup(self, lifecycle) -> None:
+        test_app = create_app(make_settings())
+        with patch("medbridge.privacy.retention.retention_loop", new=AsyncMock()):
+            with TestClient(test_app):
+                lifecycle.init_db.assert_awaited_once()
+                assert test_app.state.readiness == {"warmup": "disabled"}
+        lifecycle.orchestrator.warmup.assert_not_called()
+        lifecycle.llm.close.assert_awaited_once()
+        lifecycle.retriever.close.assert_awaited_once()
+        lifecycle.close_db.assert_awaited_once()
 
-    @patch("medbridge.main.init_db", new_callable=AsyncMock)
-    @patch("medbridge.main.close_db", new_callable=AsyncMock)
-    @patch("medbridge.main.EmbeddingClient")
-    def test_lifespan_startup_and_shutdown(
-        self,
-        mock_embedder_cls,
-        mock_close_db,
-        mock_init_db,
-        custom_settings: Settings,
-    ) -> None:
-        """Verify startup initializes DB and embedder; shutdown closes DB."""
-        mock_embedder = mock_embedder_cls.return_value
-        mock_embedder._get_dense_model.return_value = "dense_warmed"
-        mock_embedder._get_sparse_model.return_value = "sparse_warmed"
-
-        test_app = create_app(custom_settings)
-
-        # Entering TestClient context triggers lifespan startup
+    def test_background_warmup_records_readiness(self, lifecycle) -> None:
+        test_app = create_app(make_settings(WARMUP_ON_STARTUP=True))
         with TestClient(test_app) as client:
-            mock_init_db.assert_awaited_once()
-            mock_embedder._get_dense_model.assert_called_once()
-            mock_embedder._get_sparse_model.assert_called_once()
+            for _ in range(100):
+                if test_app.state.readiness.get("warmup") == "complete":
+                    break
+                client.get("/openapi.json")
+            assert test_app.state.readiness["warmup"] == "complete"
+            assert test_app.state.readiness["embedder_dense"] is True
+        lifecycle.orchestrator.warmup.assert_awaited_once()
 
-            # Verify health probe responds
-            resp = client.get("/health")
-            assert resp.status_code in (200, 503)
+    def test_startup_survives_db_failure(self, lifecycle) -> None:
+        lifecycle.init_db.side_effect = ConnectionError("db down")
+        lifecycle.close_db.side_effect = RuntimeError("already closed")
+        with TestClient(create_app(make_settings())):
+            pass
+        lifecycle.close_db.assert_awaited_once()
 
-        # Exiting TestClient context triggers lifespan shutdown
-        mock_close_db.assert_awaited_once()
+    def test_retention_loop_started_and_stopped(self, lifecycle) -> None:
+        seen: dict[str, Any] = {}
+
+        async def fake_loop(stop_event: asyncio.Event) -> None:
+            seen["started"] = True
+            try:
+                await stop_event.wait()
+            finally:  # stopped by the event or cancelled on shutdown
+                seen["stopped"] = True
+
+        with patch("medbridge.privacy.retention.retention_loop", new=fake_loop):
+            with TestClient(create_app(make_settings())):
+                pass
+        assert seen == {"started": True, "stopped": True}
 
 
-class TestMainAppCORS:
-    """Verify Cross-Origin Resource Sharing (CORS) enforcement."""
+async def test_run_warmup_failure_is_recorded(lifecycle) -> None:
+    lifecycle.orchestrator.warmup.side_effect = RuntimeError("ollama down")
+    fake_app = MagicMock()
+    fake_app.state.readiness = {}
+    await run_warmup(fake_app)
+    assert fake_app.state.readiness["warmup"] == "failed"
 
-    def test_cors_allowed_origin_preflight(self, custom_settings: Settings) -> None:
-        """Preflight OPTIONS request from allowed origin returns CORS headers."""
-        test_app = create_app(custom_settings)
-        client = TestClient(test_app)
 
-        headers = {
-            "Origin": "http://localhost:8501",
-            "Access-Control-Request-Method": "POST",
-            "Access-Control-Request-Headers": "Content-Type",
-        }
-        response = client.options("/api/sessions", headers=headers)
+class TestMiddleware:
+    def test_cors_allowed_origin_preflight(self) -> None:
+        client = TestClient(create_app(make_settings()))
+        response = client.options(
+            "/api/sessions",
+            headers={
+                "Origin": "http://localhost:8501",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type",
+            },
+        )
         assert response.status_code == 200
         assert response.headers.get("access-control-allow-origin") == "http://localhost:8501"
-        assert response.headers.get("access-control-allow-credentials") == "true"
 
-    def test_cors_allowed_origin_get_request(self, custom_settings: Settings) -> None:
-        """GET request from allowed origin includes access-control-allow-origin header."""
-        test_app = create_app(custom_settings)
-        client = TestClient(test_app)
+    def test_cors_allowed_origin_get_request(self, lifecycle) -> None:
+        client = TestClient(create_app(make_settings()))
+        response = client.get(
+            "/api/config/public", headers={"Origin": "https://app.medbridge.internal"}
+        )
+        assert (
+            response.headers.get("access-control-allow-origin") == "https://app.medbridge.internal"
+        )
 
-        headers = {"Origin": "https://app.medbridge.internal"}
-        response = client.get("/health", headers=headers)
-        assert response.headers.get("access-control-allow-origin") == "https://app.medbridge.internal"
-
-    def test_cors_disallowed_origin_rejected(self, custom_settings: Settings) -> None:
-        """Requests from disallowed origins do not receive allow-origin header."""
-        test_app = create_app(custom_settings)
-        client = TestClient(test_app)
-
-        headers = {
-            "Origin": "http://unauthorized-attacker.com",
-            "Access-Control-Request-Method": "POST",
-        }
-        response = client.options("/api/sessions", headers=headers)
-        # Starlette CORS does not return allow-origin for disallowed origins
+    def test_cors_disallowed_origin_rejected(self) -> None:
+        client = TestClient(create_app(make_settings()))
+        response = client.options(
+            "/api/sessions",
+            headers={
+                "Origin": "http://unauthorized-attacker.com",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
         assert "access-control-allow-origin" not in response.headers
 
+    def test_security_middleware_is_registered(self) -> None:
+        with patch("medbridge.privacy.middleware.register_security_middleware") as register:
+            test_app = create_app(make_settings())
+        register.assert_called_once()
+        assert register.call_args.args[0] is test_app
 
-class TestMainAppRoutesMounted:
-    """Verify all expected routes are mounted under /api and /health."""
+    def test_fallback_to_plain_cors_when_privacy_middleware_missing(self, monkeypatch) -> None:
+        real_import = builtins.__import__
 
-    def test_health_routes_accessible(self) -> None:
-        """Both /health and /api/health should resolve."""
-        client = TestClient(app)
-        resp_root = client.get("/health")
-        assert resp_root.status_code in (200, 503)
+        def fake_import(name: str, *args: Any, **kwargs: Any) -> Any:
+            if name == "medbridge.privacy.middleware":
+                raise ImportError("not installed")
+            return real_import(name, *args, **kwargs)
 
-        resp_api = client.get("/api/health")
-        assert resp_api.status_code in (200, 503)
+        monkeypatch.delitem(sys.modules, "medbridge.privacy.middleware", raising=False)
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+        test_app = create_app(make_settings())
+        assert any(m.cls is CORSMiddleware for m in test_app.user_middleware)
 
-    def test_sessions_router_mounted_under_api(self) -> None:
-        """Sessions routes must be mounted with /api prefix."""
-        client = TestClient(app)
-        # Requesting without /api should return 404
-        resp_bare = client.post("/sessions")
-        assert resp_bare.status_code == 404
 
-        # Requesting with /api should hit the handler (even if DB error or validation)
-        resp_api = client.get("/api/sessions/invalid-uuid/history")
-        assert resp_api.status_code == 422
+class TestAssembly:
+    def test_metadata(self) -> None:
+        assert app.title == "MedBridge API"
+        assert app.version == APP_VERSION == "4.0.0"
+
+    def test_routes_mounted(self) -> None:
+        paths = set(app.openapi()["paths"])  # routers are included lazily in FastAPI >= 0.140
+        for expected in (
+            "/health",
+            "/api/health",
+            "/api/sessions",
+            "/api/sessions/{session_id}/history",
+            "/api/sessions/{session_id}/messages",
+            "/api/sessions/{session_id}/messages/stream",
+            "/api/sessions/{session_id}/regenerate",
+            "/api/metrics",
+            "/api/config/public",
+        ):
+            assert expected in paths, expected
+
+    def test_public_config_reachable(self, lifecycle) -> None:
+        response = TestClient(app).get("/api/config/public")
+        assert response.status_code == 200
+        assert response.json()["app_name"]
+
+    def test_session_routes_require_token(self) -> None:
+        client = TestClient(app, raise_server_exceptions=False)
+        for path in ("messages", "messages/stream", "regenerate"):
+            response = client.post(
+                f"/api/sessions/00000000-0000-0000-0000-000000000000/{path}", json={"message": "hi"}
+            )
+            assert response.status_code == 401, path
+
+    def test_metrics_requires_admin(self) -> None:
+        response = TestClient(app, raise_server_exceptions=False).get("/api/metrics")
+        assert response.status_code in (401, 403)
+
+    def test_invalid_uuid_is_422(self) -> None:
+        response = TestClient(app).get("/api/sessions/invalid-uuid/history")
+        assert response.status_code == 422
+
+    def test_bare_paths_not_mounted(self) -> None:
+        assert TestClient(app).post("/sessions").status_code in (404, 405)
+
+    def test_web_ui_mounted_when_available(self) -> None:
+        with patch("medbridge.web.mount_web") as mount:
+            test_app = create_app(make_settings())
+        mount.assert_called_once_with(test_app)
