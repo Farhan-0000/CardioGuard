@@ -1,0 +1,4115 @@
+{
+  "name": "MedBridge synthetic PII/PHI redaction test set - blind held-out v2",
+  "version": "2.0",
+  "created": "2026-10-09",
+  "description": "Fully synthetic patient-style messages (Indian, US and UK contexts; casual, formal, Hinglish and SMS-style with typos) mixed with clinical content. All names, numbers and addresses are invented. Authored BLIND: the author did not read the redaction detector (medbridge/privacy/redaction.py), its evaluation script (scripts/pii_eval.py) or its reported metrics; only the schema of pii_testset.json (conventions plus its first 3 records) was inspected. Never used for tuning. Includes hard negatives (drug brand names, festival/weekday names, capitalised common nouns, dates of readings, PIN-like lab values) and out-of-scope positives (names with no introduction cue) so recall and precision are not overstated.",
+  "authoring_protocol": {
+    "blind": true,
+    "not_read": [
+      "medbridge/privacy/redaction.py",
+      "scripts/pii_eval.py",
+      "reports/privacy_redaction_metrics.*"
+    ],
+    "schema_source": "tests/privacy/pii_testset.json (conventions + first 3 records)",
+    "synthetic_identifiers": "Aadhaar numbers carry a valid Verhoeff check digit; NHS numbers are in the 999 test range with a valid mod-11 check digit; US phone numbers use 555-01xx; UK phone numbers use Ofcom drama ranges (07700 900xxx, 020 7946 0xxx); other ids are random strings in realistic formats"
+  },
+  "conventions": {
+    "NAME": "person-name tokens only; titles (Mr./Dr./Mrs.), honorifics (ji) and cue words excluded; possessive 's excluded",
+    "PHONE": "full number incl. country code / trunk prefix and internal separators; label excluded",
+    "EMAIL": "full address",
+    "URL": "full URL without trailing punctuation",
+    "IP": "IPv4 / IPv6 address (an IP inside a URL counts as URL only)",
+    "AADHAAR|PAN|SSN|MRN|INSURANCE_ID": "identifier value only, label excluded; MRN also covers UHID, ABHA, CR/IP numbers and NHS numbers",
+    "ADDRESS": "from the house/flat cue or house number through street, locality, city and state; PIN/ZIP excluded; a UK postcode is not a PIN/ZIP and stays inside ADDRESS",
+    "PINCODE": "6-digit Indian PIN or US ZIP (ZIP+4 kept whole) value only",
+    "AGE": "the exact date-of-birth expression only (replaced by [AGE: N]); year-only mentions are not redacted",
+    "protected": "substrings that must survive redaction unchanged (clinical values, drug names, doses, ages)",
+    "negatives": "kind=negative examples contain no PII; the redacted text must equal the input exactly",
+    "start/end": "added in v2: 0-based character offsets into text (end exclusive); text[start:end] == span text"
+  },
+  "splits": {
+    "heldout": "blind v2: authored without access to the detector, its eval script or its metrics; never used for tuning"
+  },
+  "examples": [
+    {
+      "id": "B2P001",
+      "kind": "positive",
+      "text": "Hello doctor, myself Sunil Ghodke, 58 yrs, BP today morning 156/98 after Telma 40.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Sunil Ghodke",
+          "start": 21,
+          "end": 33
+        }
+      ],
+      "protected": [
+        "58",
+        "156/98",
+        "Telma 40"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P002",
+      "kind": "positive",
+      "text": "Lalitha here. My sugar is ok but BP is 148/90 since two days, feeling heaviness in head.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Lalitha",
+          "start": 0,
+          "end": 7
+        }
+      ],
+      "protected": [
+        "148/90"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P003",
+      "kind": "positive",
+      "text": "Patient name: Venkatesh Raghunathan\nAge: 66\nBP: 162/94\nMeds: Amlong 5, Ecosprin 75",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Venkatesh Raghunathan",
+          "start": 14,
+          "end": 35
+        }
+      ],
+      "protected": [
+        "66",
+        "162/94",
+        "Amlong 5",
+        "Ecosprin 75"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P004",
+      "kind": "positive",
+      "text": "I'm Farhana from Pune, 41, on Concor 2.5 mg. pulse is 54 is that too low?",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Farhana",
+          "start": 4,
+          "end": 11
+        }
+      ],
+      "protected": [
+        "41",
+        "Concor 2.5 mg",
+        "54"
+      ],
+      "split": "heldout",
+      "note": "city alone (Pune) is not an ADDRESS"
+    },
+    {
+      "id": "B2P005",
+      "kind": "positive",
+      "text": "my wife Sunita has BP 170/105 and swelling in feet, she takes Cilacar 10.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Sunita",
+          "start": 8,
+          "end": 14
+        }
+      ],
+      "protected": [
+        "170/105",
+        "Cilacar 10"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P006",
+      "kind": "positive",
+      "text": "This is Dinesh Choudhary calling for my father Ramprasad Choudhary, 79, BP 182/88 on Stamlo 5.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Dinesh Choudhary",
+          "start": 8,
+          "end": 24
+        },
+        {
+          "category": "NAME",
+          "text": "Ramprasad Choudhary",
+          "start": 47,
+          "end": 66
+        }
+      ],
+      "protected": [
+        "79",
+        "182/88",
+        "Stamlo 5"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P007",
+      "kind": "positive",
+      "text": "hi im rohit frm nagpur, bp 138/92 is this high for 32 age?",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "rohit",
+          "start": 6,
+          "end": 11
+        }
+      ],
+      "protected": [
+        "138/92",
+        "32"
+      ],
+      "split": "heldout",
+      "note": "all-lowercase name with typo'd cue"
+    },
+    {
+      "id": "B2P008",
+      "kind": "positive",
+      "text": "Kishore Nambiar this side. Doctor added Telma H 40/12.5 last week, now feeling dizzy on standing.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Kishore Nambiar",
+          "start": 0,
+          "end": 15
+        }
+      ],
+      "protected": [
+        "Telma H 40/12.5"
+      ],
+      "split": "heldout",
+      "note": "Indian-English cue 'X this side'"
+    },
+    {
+      "id": "B2P009",
+      "kind": "positive",
+      "text": "Respected sir, I Ramesh Kumar Yadav am suffering from high BP 158/102 since 3 months.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Ramesh Kumar Yadav",
+          "start": 17,
+          "end": 35
+        }
+      ],
+      "protected": [
+        "158/102"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P010",
+      "kind": "positive",
+      "text": "Hello Doctor, Myself Jaswinder Kaur from Ludhiana. Mere BP 150/100 hai, Telma 40 le rahi hoon.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Jaswinder Kaur",
+          "start": 21,
+          "end": 35
+        }
+      ],
+      "protected": [
+        "150/100",
+        "Telma 40"
+      ],
+      "split": "heldout",
+      "note": "Hinglish"
+    },
+    {
+      "id": "B2P011",
+      "kind": "positive",
+      "text": "papa ka BP 180/100 hai, unka naam Awadhesh Pandey hai, age 72",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Awadhesh Pandey",
+          "start": 34,
+          "end": 49
+        }
+      ],
+      "protected": [
+        "180/100",
+        "72"
+      ],
+      "split": "heldout",
+      "note": "Hinglish cue 'naam'"
+    },
+    {
+      "id": "B2P012",
+      "kind": "positive",
+      "text": "mera naam Imran hai, BP 160/100 aa raha hai subah se",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Imran",
+          "start": 10,
+          "end": 15
+        }
+      ],
+      "protected": [
+        "160/100"
+      ],
+      "split": "heldout",
+      "note": "Hinglish"
+    },
+    {
+      "id": "B2P013",
+      "kind": "positive",
+      "text": "asking for my father Mr. Gurdev Singh Gill, 84, his BP drops to 96/58 when he stands",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Gurdev Singh Gill",
+          "start": 25,
+          "end": 42
+        }
+      ],
+      "protected": [
+        "84",
+        "96/58"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P014",
+      "kind": "positive",
+      "text": "my mother-in-law Kamla ji takes Aten 25 and her pulse is 52",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Kamla",
+          "start": 17,
+          "end": 22
+        }
+      ],
+      "protected": [
+        "Aten 25",
+        "52"
+      ],
+      "split": "heldout",
+      "note": "honorific 'ji' excluded like a title"
+    },
+    {
+      "id": "B2P015",
+      "kind": "positive",
+      "text": "Beta Arjun typed this for me. BP 168/96 today, I am 77, taking Telma AM 40/5.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Arjun",
+          "start": 5,
+          "end": 10
+        }
+      ],
+      "protected": [
+        "168/96",
+        "77",
+        "Telma AM 40/5"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P016",
+      "kind": "positive",
+      "text": "Name - Mohammed Arif Qureshi\nAge - 52\nComplaint - headache with BP 172/108",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Mohammed Arif Qureshi",
+          "start": 7,
+          "end": 28
+        }
+      ],
+      "protected": [
+        "52",
+        "172/108"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P017",
+      "kind": "positive",
+      "text": "From: Margaret Holloway\nSubject: BP readings\nMorning 151/93, evening 144/90, on losartan 50 mg.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Margaret Holloway",
+          "start": 6,
+          "end": 23
+        }
+      ],
+      "protected": [
+        "151/93",
+        "144/90",
+        "losartan 50 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P018",
+      "kind": "positive",
+      "text": "call me Raj, everyone does. 60 yrs old, BP 150 over 95 on Repace 50.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Raj",
+          "start": 8,
+          "end": 11
+        }
+      ],
+      "protected": [
+        "60",
+        "150 over 95",
+        "Repace 50"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P019",
+      "kind": "positive",
+      "text": "My neighbour Mrs. Usha Rangarajan checked my BP with her machine: 158/99.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Usha Rangarajan",
+          "start": 18,
+          "end": 33
+        }
+      ],
+      "protected": [
+        "158/99"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P020",
+      "kind": "positive",
+      "text": "I am Yogesh Patil, 45, smoker, BP 146/96, LDL 168 mg/dL.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Yogesh Patil",
+          "start": 5,
+          "end": 17
+        }
+      ],
+      "protected": [
+        "45",
+        "146/96",
+        "LDL 168 mg/dL"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P021",
+      "kind": "positive",
+      "text": "Tanvir and Fatima (my parents) both on Amlong 5, readings 152/90 and 148/94.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Tanvir",
+          "start": 0,
+          "end": 6
+        },
+        {
+          "category": "NAME",
+          "text": "Fatima",
+          "start": 11,
+          "end": 17
+        }
+      ],
+      "protected": [
+        "Amlong 5",
+        "152/90",
+        "148/94"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P022",
+      "kind": "positive",
+      "text": "my name's Brian Kowalski and the ER put me on clonidine 0.1 mg after a 204/118 reading.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Brian Kowalski",
+          "start": 10,
+          "end": 24
+        }
+      ],
+      "protected": [
+        "clonidine 0.1 mg",
+        "204/118"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P023",
+      "kind": "positive",
+      "text": "Me (Rohan Batra) and my brother Kunal both have BP around 140/90 at 35 and 38.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Rohan Batra",
+          "start": 4,
+          "end": 15
+        },
+        {
+          "category": "NAME",
+          "text": "Kunal",
+          "start": 32,
+          "end": 37
+        }
+      ],
+      "protected": [
+        "140/90",
+        "35",
+        "38"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P024",
+      "kind": "positive",
+      "text": "Anjali Bhosale, 47 - on Telma 20, BP still 146/94.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Anjali Bhosale",
+          "start": 0,
+          "end": 14
+        }
+      ],
+      "protected": [
+        "47",
+        "Telma 20",
+        "146/94"
+      ],
+      "split": "heldout",
+      "note": "name at message start, no verbal cue"
+    },
+    {
+      "id": "B2P025",
+      "kind": "positive",
+      "text": "Sent by Hemant Ghosh on behalf of my uncle, BP 190/100 headache since morning",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Hemant Ghosh",
+          "start": 8,
+          "end": 20
+        }
+      ],
+      "protected": [
+        "190/100"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P026",
+      "kind": "positive",
+      "text": "Hi, I'm Ethan Brooks, 34, and my BP at the pharmacy kiosk was 148/96.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Ethan Brooks",
+          "start": 8,
+          "end": 20
+        }
+      ],
+      "protected": [
+        "34",
+        "148/96"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P027",
+      "kind": "positive",
+      "text": "my name is Tom Whitfield , on amlodipine 5mg, BP 139/85",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Tom Whitfield",
+          "start": 11,
+          "end": 24
+        }
+      ],
+      "protected": [
+        "amlodipine 5mg",
+        "139/85"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P028",
+      "kind": "positive",
+      "text": "hii doctr this is meena, my bp is 160/100 and i hav headache",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "meena",
+          "start": 18,
+          "end": 23
+        }
+      ],
+      "protected": [
+        "160/100"
+      ],
+      "split": "heldout",
+      "note": "lowercase name, typos"
+    },
+    {
+      "id": "B2P029",
+      "kind": "positive",
+      "text": "im sneha frm nagpur, my husbnd ashok is 68 n his bp 170/90 even on amlong",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "sneha",
+          "start": 3,
+          "end": 8
+        },
+        {
+          "category": "NAME",
+          "text": "ashok",
+          "start": 31,
+          "end": 36
+        }
+      ],
+      "protected": [
+        "68",
+        "170/90",
+        "amlong"
+      ],
+      "split": "heldout",
+      "note": "lowercase names, SMS style"
+    },
+    {
+      "id": "B2P030",
+      "kind": "positive",
+      "text": "My husband Vikas's BP is 160/105 since he stopped Telma 40.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Vikas",
+          "start": 11,
+          "end": 16
+        }
+      ],
+      "protected": [
+        "160/105",
+        "Telma 40"
+      ],
+      "split": "heldout",
+      "note": "possessive 's excluded from span"
+    },
+    {
+      "id": "B2P031",
+      "kind": "positive",
+      "text": "Mridula Sen (64F) - BP 158/88, eGFR 41, on Telma 40 + Dytor 10.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Mridula Sen",
+          "start": 0,
+          "end": 11
+        }
+      ],
+      "protected": [
+        "64F",
+        "158/88",
+        "eGFR 41",
+        "Telma 40",
+        "Dytor 10"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P032",
+      "kind": "positive",
+      "text": "Sarita Bose: 150/90 this morning, 146/88 evening, Telma 40 taken.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Sarita Bose",
+          "start": 0,
+          "end": 11
+        }
+      ],
+      "protected": [
+        "150/90",
+        "146/88",
+        "Telma 40"
+      ],
+      "split": "heldout",
+      "note": "name directly followed by a BP value"
+    },
+    {
+      "id": "B2P033",
+      "kind": "positive",
+      "text": "Took Amlokind 5 at night as you said, morning BP 128/82. Thanks doc. - Bhavna",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Bhavna",
+          "start": 71,
+          "end": 77
+        }
+      ],
+      "protected": [
+        "Amlokind 5",
+        "128/82"
+      ],
+      "split": "heldout",
+      "note": "sign-off name"
+    },
+    {
+      "id": "B2P034",
+      "kind": "positive",
+      "text": "BP log for the week: avg 142/89, max 156/97.\nRegards,\nGopal Saxena\n+91 98450 33127",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Gopal Saxena",
+          "start": 54,
+          "end": 66
+        },
+        {
+          "category": "PHONE",
+          "text": "+91 98450 33127",
+          "start": 67,
+          "end": 82
+        }
+      ],
+      "protected": [
+        "142/89",
+        "156/97"
+      ],
+      "split": "heldout",
+      "note": "signature block"
+    },
+    {
+      "id": "B2P035",
+      "kind": "positive",
+      "text": "Dr. Bhandari increased my Telma to 80 mg. Is that a high dose?",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Bhandari",
+          "start": 4,
+          "end": 12
+        }
+      ],
+      "protected": [
+        "Telma",
+        "80 mg"
+      ],
+      "split": "heldout",
+      "note": "doctor surname after title"
+    },
+    {
+      "id": "B2P036",
+      "kind": "positive",
+      "text": "my GP, Dr Pemberton, wants a fasting lipid panel and eGFR before starting ramipril.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Pemberton",
+          "start": 10,
+          "end": 19
+        }
+      ],
+      "protected": [
+        "eGFR",
+        "ramipril"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P037",
+      "kind": "positive",
+      "text": "Consulted Dr. Nandini Ramaswamy at the cardiac clinic, she said LVH on echo, EF 55%.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Nandini Ramaswamy",
+          "start": 14,
+          "end": 31
+        }
+      ],
+      "protected": [
+        "LVH",
+        "EF 55%"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P038",
+      "kind": "positive",
+      "text": "I told Dr. Sethi that Concor makes me tired.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Sethi",
+          "start": 11,
+          "end": 16
+        }
+      ],
+      "protected": [
+        "Concor"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P039",
+      "kind": "positive",
+      "text": "Please ask Carol Dempsey at the front desk to fax my records; last BP 152/96.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Carol Dempsey",
+          "start": 11,
+          "end": 24
+        }
+      ],
+      "protected": [
+        "152/96"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P040",
+      "kind": "positive",
+      "text": "Prakash said I should stop salt totally, is that right? BP 150/94",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Prakash",
+          "start": 0,
+          "end": 7
+        }
+      ],
+      "protected": [
+        "150/94"
+      ],
+      "split": "heldout",
+      "note": "name with no introduction cue"
+    },
+    {
+      "id": "B2P041",
+      "kind": "positive",
+      "text": "Went to the camp with Savita and Mohan, all three of us had BP above 140/90.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Savita",
+          "start": 22,
+          "end": 28
+        },
+        {
+          "category": "NAME",
+          "text": "Mohan",
+          "start": 33,
+          "end": 38
+        }
+      ],
+      "protected": [
+        "140/90"
+      ],
+      "split": "heldout",
+      "note": "names with no introduction cue"
+    },
+    {
+      "id": "B2P042",
+      "kind": "positive",
+      "text": "Can you call me back on +91 97412 58836? my BP machine shows 165/101.",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "+91 97412 58836",
+          "start": 24,
+          "end": 39
+        }
+      ],
+      "protected": [
+        "165/101"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P043",
+      "kind": "positive",
+      "text": "Pls whatsapp the diet chart to 9823047761, BP 144/92 even after reducing salt",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "9823047761",
+          "start": 31,
+          "end": 41
+        }
+      ],
+      "protected": [
+        "144/92"
+      ],
+      "split": "heldout",
+      "note": "bare 10-digit mobile"
+    },
+    {
+      "id": "B2P044",
+      "kind": "positive",
+      "text": "Landline 020-2567 4412 works better in the evening, I am usually home after 7. Readings 150/96 and 147/93.",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "020-2567 4412",
+          "start": 9,
+          "end": 22
+        }
+      ],
+      "protected": [
+        "150/96",
+        "147/93"
+      ],
+      "split": "heldout",
+      "note": "Pune landline with STD code"
+    },
+    {
+      "id": "B2P045",
+      "kind": "positive",
+      "text": "my son's number is 094483-17725, please inform him if my bp goes above 180/110",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "094483-17725",
+          "start": 19,
+          "end": 31
+        }
+      ],
+      "protected": [
+        "180/110"
+      ],
+      "split": "heldout",
+      "note": "trunk-prefixed mobile"
+    },
+    {
+      "id": "B2P046",
+      "kind": "positive",
+      "text": "Contact: (022) 2414 8890 / +91-98204 63317. Mother 74 yrs, on Losar 50.",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "(022) 2414 8890",
+          "start": 9,
+          "end": 24
+        },
+        {
+          "category": "PHONE",
+          "text": "+91-98204 63317",
+          "start": 27,
+          "end": 42
+        }
+      ],
+      "protected": [
+        "74",
+        "Losar 50"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P047",
+      "kind": "positive",
+      "text": "home phone 080 4112 7735, mobile +91 99001 84426. BP 154/92.",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "080 4112 7735",
+          "start": 11,
+          "end": 24
+        },
+        {
+          "category": "PHONE",
+          "text": "+91 99001 84426",
+          "start": 33,
+          "end": 48
+        }
+      ],
+      "protected": [
+        "154/92"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P048",
+      "kind": "positive",
+      "text": "011-26593318 is my residence number, I am 69, on Cardace 5.",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "011-26593318",
+          "start": 0,
+          "end": 12
+        }
+      ],
+      "protected": [
+        "69",
+        "Cardace 5"
+      ],
+      "split": "heldout",
+      "note": "Delhi landline at message start"
+    },
+    {
+      "id": "B2P049",
+      "kind": "positive",
+      "text": "my no. 88064 12937 call after 5, bp 130/80 now ok?",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "88064 12937",
+          "start": 7,
+          "end": 18
+        }
+      ],
+      "protected": [
+        "130/80"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P050",
+      "kind": "positive",
+      "text": "If I don't pick up try office +91 80 4920 3311. Started Cilacar 10 yesterday.",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "+91 80 4920 3311",
+          "start": 30,
+          "end": 46
+        }
+      ],
+      "protected": [
+        "Cilacar 10"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P051",
+      "kind": "positive",
+      "text": "Ring me on 07700 900461 after 6pm. GP increased amlodipine to 10 mg.",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "07700 900461",
+          "start": 11,
+          "end": 23
+        }
+      ],
+      "protected": [
+        "amlodipine",
+        "10 mg"
+      ],
+      "split": "heldout",
+      "note": "UK mobile (Ofcom drama range)"
+    },
+    {
+      "id": "B2P052",
+      "kind": "positive",
+      "text": "+44 7700 900872 is my mobile, I'm Malcolm Fairweather, 71, on bendroflumethiazide 2.5 mg.",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "+44 7700 900872",
+          "start": 0,
+          "end": 15
+        },
+        {
+          "category": "NAME",
+          "text": "Malcolm Fairweather",
+          "start": 34,
+          "end": 53
+        }
+      ],
+      "protected": [
+        "71",
+        "bendroflumethiazide 2.5 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P053",
+      "kind": "positive",
+      "text": "Please call (312) 555-0147 - it's my daughter Patricia. Mom's BP was 188/104.",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "(312) 555-0147",
+          "start": 12,
+          "end": 26
+        },
+        {
+          "category": "NAME",
+          "text": "Patricia",
+          "start": 46,
+          "end": 54
+        }
+      ],
+      "protected": [
+        "188/104"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P054",
+      "kind": "positive",
+      "text": "text me at 617-555-0123 when the lab results (BMP, potassium 5.4) are back",
+      "spans": [
+        {
+          "category": "PHONE",
+          "text": "617-555-0123",
+          "start": 11,
+          "end": 23
+        }
+      ],
+      "protected": [
+        "BMP",
+        "potassium 5.4"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P055",
+      "kind": "positive",
+      "text": "Mail the report to kavita.joshi1971@gmail.com please. LDL 3.4 mmol/L, BP 142/88.",
+      "spans": [
+        {
+          "category": "EMAIL",
+          "text": "kavita.joshi1971@gmail.com",
+          "start": 19,
+          "end": 45
+        }
+      ],
+      "protected": [
+        "LDL 3.4 mmol/L",
+        "142/88"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P056",
+      "kind": "positive",
+      "text": "my email id is rk_sharma56@yahoo.co.in , send me the BP log sheet",
+      "spans": [
+        {
+          "category": "EMAIL",
+          "text": "rk_sharma56@yahoo.co.in",
+          "start": 15,
+          "end": 38
+        }
+      ],
+      "protected": [
+        "BP log sheet"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P057",
+      "kind": "positive",
+      "text": "Email: d.okafor@outlook.com - BP average this week 134/86 on lisinopril 20 mg.",
+      "spans": [
+        {
+          "category": "EMAIL",
+          "text": "d.okafor@outlook.com",
+          "start": 7,
+          "end": 27
+        }
+      ],
+      "protected": [
+        "134/86",
+        "lisinopril 20 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P058",
+      "kind": "positive",
+      "text": "Pls cc my daughter Shalini on shalini.mathur.83@hotmail.co.uk - she manages my meds (bisoprolol 2.5 mg)",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Shalini",
+          "start": 19,
+          "end": 26
+        },
+        {
+          "category": "EMAIL",
+          "text": "shalini.mathur.83@hotmail.co.uk",
+          "start": 30,
+          "end": 61
+        }
+      ],
+      "protected": [
+        "bisoprolol 2.5 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P059",
+      "kind": "positive",
+      "text": "email ramu.kaka1949@rediffmail.com only, I don't use whatsapp. BP 142/80 ok?",
+      "spans": [
+        {
+          "category": "EMAIL",
+          "text": "ramu.kaka1949@rediffmail.com",
+          "start": 6,
+          "end": 34
+        }
+      ],
+      "protected": [
+        "142/80"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P060",
+      "kind": "positive",
+      "text": "My email: Imran.Siddiqui@Outlook.com (BP 150/95, need diet plan)",
+      "spans": [
+        {
+          "category": "EMAIL",
+          "text": "Imran.Siddiqui@Outlook.com",
+          "start": 10,
+          "end": 36
+        }
+      ],
+      "protected": [
+        "150/95"
+      ],
+      "split": "heldout",
+      "note": "mixed-case email"
+    },
+    {
+      "id": "B2P061",
+      "kind": "positive",
+      "text": "e-mail me at t.wagh_88@gmail.com, name Tejas Wagh, BP 136/88 on Telma 20",
+      "spans": [
+        {
+          "category": "EMAIL",
+          "text": "t.wagh_88@gmail.com",
+          "start": 13,
+          "end": 32
+        },
+        {
+          "category": "NAME",
+          "text": "Tejas Wagh",
+          "start": 39,
+          "end": 49
+        }
+      ],
+      "protected": [
+        "136/88",
+        "Telma 20"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P062",
+      "kind": "positive",
+      "text": "Aadhaar no. 5725 1387 3179 for the PMJAY registration, BP check camp tomorrow.",
+      "spans": [
+        {
+          "category": "AADHAAR",
+          "text": "5725 1387 3179",
+          "start": 12,
+          "end": 26
+        }
+      ],
+      "protected": [
+        "BP check camp"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P063",
+      "kind": "positive",
+      "text": "my aadhar is 645486670874 and they are asking for it at the cardiology OPD, is it safe to give?",
+      "spans": [
+        {
+          "category": "AADHAAR",
+          "text": "645486670874",
+          "start": 13,
+          "end": 25
+        }
+      ],
+      "protected": [
+        "cardiology OPD"
+      ],
+      "split": "heldout",
+      "note": "ungrouped 12 digits, misspelt label"
+    },
+    {
+      "id": "B2P064",
+      "kind": "positive",
+      "text": "Aadhaar: 8376-3984-5879, PAN: AFZPD2290L (for the insurance claim of my angiography).",
+      "spans": [
+        {
+          "category": "AADHAAR",
+          "text": "8376-3984-5879",
+          "start": 9,
+          "end": 23
+        },
+        {
+          "category": "PAN",
+          "text": "AFZPD2290L",
+          "start": 30,
+          "end": 40
+        }
+      ],
+      "protected": [
+        "angiography"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P065",
+      "kind": "positive",
+      "text": "Lakshmi Narayanan aadhaar 886161169064 for the BP camp registration, she is 70",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Lakshmi Narayanan",
+          "start": 0,
+          "end": 17
+        },
+        {
+          "category": "AADHAAR",
+          "text": "886161169064",
+          "start": 26,
+          "end": 38
+        }
+      ],
+      "protected": [
+        "70"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P066",
+      "kind": "positive",
+      "text": "Aadhar card: 8883 0858 9516 (name Gurpreet Kaur Sandhu), BP 154/96",
+      "spans": [
+        {
+          "category": "AADHAAR",
+          "text": "8883 0858 9516",
+          "start": 13,
+          "end": 27
+        },
+        {
+          "category": "NAME",
+          "text": "Gurpreet Kaur Sandhu",
+          "start": 34,
+          "end": 54
+        }
+      ],
+      "protected": [
+        "154/96"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P067",
+      "kind": "positive",
+      "text": "my wife's aadhaar 6258-0065-8136 and mine 6981 1296 3505 - needed for the cardiac camp",
+      "spans": [
+        {
+          "category": "AADHAAR",
+          "text": "6258-0065-8136",
+          "start": 18,
+          "end": 32
+        },
+        {
+          "category": "AADHAAR",
+          "text": "6981 1296 3505",
+          "start": 42,
+          "end": 56
+        }
+      ],
+      "protected": [
+        "cardiac camp"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P068",
+      "kind": "positive",
+      "text": "PAN card BXRPS4492F needed for reimbursement? BP med cost is 900 per month.",
+      "spans": [
+        {
+          "category": "PAN",
+          "text": "BXRPS4492F",
+          "start": 9,
+          "end": 19
+        }
+      ],
+      "protected": [
+        "900"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P069",
+      "kind": "positive",
+      "text": "pan no cwnpm8812q for the 80D tax receipt of my BP medicines",
+      "spans": [
+        {
+          "category": "PAN",
+          "text": "cwnpm8812q",
+          "start": 7,
+          "end": 17
+        }
+      ],
+      "protected": [
+        "80D"
+      ],
+      "split": "heldout",
+      "note": "lowercase PAN"
+    },
+    {
+      "id": "B2P070",
+      "kind": "positive",
+      "text": "Claim form: Suresh Kulkarni, PAN AQKPK7316M, hospital bill for hypertensive emergency admission, BP 210/120 at admission.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Suresh Kulkarni",
+          "start": 12,
+          "end": 27
+        },
+        {
+          "category": "PAN",
+          "text": "AQKPK7316M",
+          "start": 33,
+          "end": 43
+        }
+      ],
+      "protected": [
+        "210/120"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P071",
+      "kind": "positive",
+      "text": "PAN No.: DKLPR6604B\nName: Pallavi Rane\nPurpose: claim for 24-hr ABPM and echo",
+      "spans": [
+        {
+          "category": "PAN",
+          "text": "DKLPR6604B",
+          "start": 9,
+          "end": 19
+        },
+        {
+          "category": "NAME",
+          "text": "Pallavi Rane",
+          "start": 26,
+          "end": 38
+        }
+      ],
+      "protected": [
+        "24-hr ABPM",
+        "echo"
+      ],
+      "split": "heldout",
+      "note": "form-style block"
+    },
+    {
+      "id": "B2P072",
+      "kind": "positive",
+      "text": "the insurance guy wants my pan AJTPN5170E and BP readings (last 3: 148/92, 151/94, 146/90)",
+      "spans": [
+        {
+          "category": "PAN",
+          "text": "AJTPN5170E",
+          "start": 31,
+          "end": 41
+        }
+      ],
+      "protected": [
+        "148/92",
+        "151/94",
+        "146/90"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P073",
+      "kind": "positive",
+      "text": "Is it okay to share PAN BGHPV3381K with the pharmacy app to get 20% off Telma 40?",
+      "spans": [
+        {
+          "category": "PAN",
+          "text": "BGHPV3381K",
+          "start": 24,
+          "end": 34
+        }
+      ],
+      "protected": [
+        "20%",
+        "Telma 40"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P074",
+      "kind": "positive",
+      "text": "My SSN is 412-58-7731, the pharmacy needs it for the Medicare Part D form. BP 148/90.",
+      "spans": [
+        {
+          "category": "SSN",
+          "text": "412-58-7731",
+          "start": 10,
+          "end": 21
+        }
+      ],
+      "protected": [
+        "148/90"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P075",
+      "kind": "positive",
+      "text": "social security 523 47 9918, date of birth 08/30/1951. On amlodipine 10 mg.",
+      "spans": [
+        {
+          "category": "SSN",
+          "text": "523 47 9918",
+          "start": 16,
+          "end": 27
+        },
+        {
+          "category": "AGE",
+          "text": "08/30/1951",
+          "start": 43,
+          "end": 53
+        }
+      ],
+      "protected": [
+        "amlodipine 10 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P076",
+      "kind": "positive",
+      "text": "ssn: 287519034 - why does the portal ask for this when I just want my lipid panel? LDL 162 mg/dL",
+      "spans": [
+        {
+          "category": "SSN",
+          "text": "287519034",
+          "start": 5,
+          "end": 14
+        }
+      ],
+      "protected": [
+        "LDL 162 mg/dL"
+      ],
+      "split": "heldout",
+      "note": "ungrouped 9 digits"
+    },
+    {
+      "id": "B2P077",
+      "kind": "positive",
+      "text": "SSN 301-44-8826 and DOB 11/02/1949 for the cardiology referral - BP 166/92",
+      "spans": [
+        {
+          "category": "SSN",
+          "text": "301-44-8826",
+          "start": 4,
+          "end": 15
+        },
+        {
+          "category": "AGE",
+          "text": "11/02/1949",
+          "start": 24,
+          "end": 34
+        }
+      ],
+      "protected": [
+        "166/92"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P078",
+      "kind": "positive",
+      "text": "My social is 458-21-6603; insurance member ID UHC9937410286. Losartan 100 mg.",
+      "spans": [
+        {
+          "category": "SSN",
+          "text": "458-21-6603",
+          "start": 13,
+          "end": 24
+        },
+        {
+          "category": "INSURANCE_ID",
+          "text": "UHC9937410286",
+          "start": 46,
+          "end": 59
+        }
+      ],
+      "protected": [
+        "Losartan 100 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P079",
+      "kind": "positive",
+      "text": "MRN 00482913 at the clinic. Last visit BP was 158/96 and creatinine 1.3.",
+      "spans": [
+        {
+          "category": "MRN",
+          "text": "00482913",
+          "start": 4,
+          "end": 12
+        }
+      ],
+      "protected": [
+        "158/96",
+        "creatinine 1.3"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P080",
+      "kind": "positive",
+      "text": "UHID: APH-2024-118734, discharge summary says hypertensive urgency, BP 196/112.",
+      "spans": [
+        {
+          "category": "MRN",
+          "text": "APH-2024-118734",
+          "start": 6,
+          "end": 21
+        }
+      ],
+      "protected": [
+        "196/112"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P081",
+      "kind": "positive",
+      "text": "My ABHA number is 91-4827-3365-1902, can you pull my echo and lipid reports from it?",
+      "spans": [
+        {
+          "category": "MRN",
+          "text": "91-4827-3365-1902",
+          "start": 18,
+          "end": 35
+        }
+      ],
+      "protected": [
+        "echo",
+        "lipid"
+      ],
+      "split": "heldout",
+      "note": "ABHA health id labelled MRN"
+    },
+    {
+      "id": "B2P082",
+      "kind": "positive",
+      "text": "CR No. 202301184432 at AIIMS cardiology, next appointment for TMT.",
+      "spans": [
+        {
+          "category": "MRN",
+          "text": "202301184432",
+          "start": 7,
+          "end": 19
+        }
+      ],
+      "protected": [
+        "AIIMS",
+        "TMT"
+      ],
+      "split": "heldout",
+      "note": "12-digit registration number (not Aadhaar)"
+    },
+    {
+      "id": "B2P083",
+      "kind": "positive",
+      "text": "NHS number 999 802 9252. GP says my home average 141/88 is stage 1.",
+      "spans": [
+        {
+          "category": "MRN",
+          "text": "999 802 9252",
+          "start": 11,
+          "end": 23
+        }
+      ],
+      "protected": [
+        "141/88",
+        "stage 1"
+      ],
+      "split": "heldout",
+      "note": "NHS number labelled MRN (999 test range)"
+    },
+    {
+      "id": "B2P084",
+      "kind": "positive",
+      "text": "Hello, Deepa Menon here (UHID KMC/2022/0457821), my potassium came 5.6 on Telma.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Deepa Menon",
+          "start": 7,
+          "end": 18
+        },
+        {
+          "category": "MRN",
+          "text": "KMC/2022/0457821",
+          "start": 30,
+          "end": 46
+        }
+      ],
+      "protected": [
+        "5.6",
+        "Telma"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P085",
+      "kind": "positive",
+      "text": "hospital MRN# 7734-2218, discharged on metoprolol succinate 25 mg",
+      "spans": [
+        {
+          "category": "MRN",
+          "text": "7734-2218",
+          "start": 14,
+          "end": 23
+        }
+      ],
+      "protected": [
+        "metoprolol succinate 25 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P086",
+      "kind": "positive",
+      "text": "Discharge card IP No. 23/48817, BP at discharge 136/84.",
+      "spans": [
+        {
+          "category": "MRN",
+          "text": "23/48817",
+          "start": 22,
+          "end": 30
+        }
+      ],
+      "protected": [
+        "136/84"
+      ],
+      "split": "heldout",
+      "note": "in-patient number; 'IP' here is not an IP address"
+    },
+    {
+      "id": "B2P087",
+      "kind": "positive",
+      "text": "Patient ID PT-55821-K at the diagnostic centre, lipid profile attached.",
+      "spans": [
+        {
+          "category": "MRN",
+          "text": "PT-55821-K",
+          "start": 11,
+          "end": 21
+        }
+      ],
+      "protected": [
+        "lipid profile"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P088",
+      "kind": "positive",
+      "text": "NHS no: 999 979 7385; on amlodipine 5 mg and atorvastatin 20 mg",
+      "spans": [
+        {
+          "category": "MRN",
+          "text": "999 979 7385",
+          "start": 8,
+          "end": 20
+        }
+      ],
+      "protected": [
+        "amlodipine 5 mg",
+        "atorvastatin 20 mg"
+      ],
+      "split": "heldout",
+      "note": "NHS number labelled MRN (999 test range)"
+    },
+    {
+      "id": "B2P089",
+      "kind": "positive",
+      "text": "Star Health policy no. P/141113/01/2025/004417 - does it cover ABPM?",
+      "spans": [
+        {
+          "category": "INSURANCE_ID",
+          "text": "P/141113/01/2025/004417",
+          "start": 23,
+          "end": 46
+        }
+      ],
+      "protected": [
+        "ABPM"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P090",
+      "kind": "positive",
+      "text": "My member ID is XWG884213907 (BCBS). Will they cover Entresto 49/51?",
+      "spans": [
+        {
+          "category": "INSURANCE_ID",
+          "text": "XWG884213907",
+          "start": 16,
+          "end": 28
+        }
+      ],
+      "protected": [
+        "Entresto 49/51"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P091",
+      "kind": "positive",
+      "text": "Medicare number 4QM7-HJ2-WD58, my cardiologist wants a 2D echo",
+      "spans": [
+        {
+          "category": "INSURANCE_ID",
+          "text": "4QM7-HJ2-WD58",
+          "start": 16,
+          "end": 29
+        }
+      ],
+      "protected": [
+        "2D echo"
+      ],
+      "split": "heldout",
+      "note": "Medicare MBI format"
+    },
+    {
+      "id": "B2P092",
+      "kind": "positive",
+      "text": "CGHS card no 4471823, can I get Telma 40 from the wellness centre?",
+      "spans": [
+        {
+          "category": "INSURANCE_ID",
+          "text": "4471823",
+          "start": 13,
+          "end": 20
+        }
+      ],
+      "protected": [
+        "Telma 40"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P093",
+      "kind": "positive",
+      "text": "ESIC IP number 3115678942, they gave me Amlodipine 5 mg only.",
+      "spans": [
+        {
+          "category": "INSURANCE_ID",
+          "text": "3115678942",
+          "start": 15,
+          "end": 25
+        }
+      ],
+      "protected": [
+        "Amlodipine 5 mg"
+      ],
+      "split": "heldout",
+      "note": "10-digit insurance number that looks like a phone"
+    },
+    {
+      "id": "B2P094",
+      "kind": "positive",
+      "text": "TPA ID MDI-88213467, cashless for the angioplasty?",
+      "spans": [
+        {
+          "category": "INSURANCE_ID",
+          "text": "MDI-88213467",
+          "start": 7,
+          "end": 19
+        }
+      ],
+      "protected": [
+        "angioplasty"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P095",
+      "kind": "positive",
+      "text": "Ayushman Bharat card no P8XK42R7T, can I get free Telma at the PHC?",
+      "spans": [
+        {
+          "category": "INSURANCE_ID",
+          "text": "P8XK42R7T",
+          "start": 24,
+          "end": 33
+        }
+      ],
+      "protected": [
+        "Telma"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P096",
+      "kind": "positive",
+      "text": "Mediclaim policy no OG-24-1905-8402-00004417 - does it cover home BP monitor?",
+      "spans": [
+        {
+          "category": "INSURANCE_ID",
+          "text": "OG-24-1905-8402-00004417",
+          "start": 20,
+          "end": 44
+        }
+      ],
+      "protected": [
+        "home BP monitor"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P097",
+      "kind": "positive",
+      "text": "my Aetna member ID is W219847763; they denied Entresto.",
+      "spans": [
+        {
+          "category": "INSURANCE_ID",
+          "text": "W219847763",
+          "start": 22,
+          "end": 32
+        }
+      ],
+      "protected": [
+        "Entresto"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P098",
+      "kind": "positive",
+      "text": "Sending reports for Chitra Venkataraman, policy 21170034220000981, LDL 3.9, HbA1c 6.8%.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Chitra Venkataraman",
+          "start": 20,
+          "end": 39
+        },
+        {
+          "category": "INSURANCE_ID",
+          "text": "21170034220000981",
+          "start": 48,
+          "end": 65
+        }
+      ],
+      "protected": [
+        "LDL 3.9",
+        "HbA1c 6.8%"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P099",
+      "kind": "positive",
+      "text": "Daniel Okafor, SSN 615-32-4478, Medicare 7TW2-KD4-PX19 - Entresto 24/26 twice daily, BP 118/74.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Daniel Okafor",
+          "start": 0,
+          "end": 13
+        },
+        {
+          "category": "SSN",
+          "text": "615-32-4478",
+          "start": 19,
+          "end": 30
+        },
+        {
+          "category": "INSURANCE_ID",
+          "text": "7TW2-KD4-PX19",
+          "start": 41,
+          "end": 54
+        }
+      ],
+      "protected": [
+        "Entresto 24/26",
+        "118/74"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P100",
+      "kind": "positive",
+      "text": "Uploaded my BP chart here: https://drive.google.com/file/d/1Qx7LmZ3aT9pR2vN/view?usp=sharing. Please check the night readings.",
+      "spans": [
+        {
+          "category": "URL",
+          "text": "https://drive.google.com/file/d/1Qx7LmZ3aT9pR2vN/view?usp=sharing",
+          "start": 27,
+          "end": 92
+        }
+      ],
+      "protected": [
+        "BP chart"
+      ],
+      "split": "heldout",
+      "note": "trailing full stop excluded"
+    },
+    {
+      "id": "B2P101",
+      "kind": "positive",
+      "text": "see my readings at www.bpdiary-share.com/u/ravi1962 (I log twice daily)",
+      "spans": [
+        {
+          "category": "URL",
+          "text": "www.bpdiary-share.com/u/ravi1962",
+          "start": 19,
+          "end": 51
+        }
+      ],
+      "protected": [
+        "twice daily"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P102",
+      "kind": "positive",
+      "text": "Report link https://myhealthreports.in/view/88213AX - TSH 5.9, BP 146/92",
+      "spans": [
+        {
+          "category": "URL",
+          "text": "https://myhealthreports.in/view/88213AX",
+          "start": 12,
+          "end": 51
+        }
+      ],
+      "protected": [
+        "TSH 5.9",
+        "146/92"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P103",
+      "kind": "positive",
+      "text": "My BP monitor syncs to http://192.168.0.17:8080/readings, why does it show 210/130 sometimes?",
+      "spans": [
+        {
+          "category": "URL",
+          "text": "http://192.168.0.17:8080/readings",
+          "start": 23,
+          "end": 56
+        }
+      ],
+      "protected": [
+        "210/130"
+      ],
+      "split": "heldout",
+      "note": "IP inside URL counts as URL only"
+    },
+    {
+      "id": "B2P104",
+      "kind": "positive",
+      "text": "(full readings: https://bit.ly/3Kq9Lz2) avg 147/92",
+      "spans": [
+        {
+          "category": "URL",
+          "text": "https://bit.ly/3Kq9Lz2",
+          "start": 16,
+          "end": 38
+        }
+      ],
+      "protected": [
+        "147/92"
+      ],
+      "split": "heldout",
+      "note": "trailing parenthesis excluded"
+    },
+    {
+      "id": "B2P105",
+      "kind": "positive",
+      "text": "Here is my ECG photo https://photos.app.goo.gl/Xb7Q2mZ9WkLp4. QTc 448 ms?",
+      "spans": [
+        {
+          "category": "URL",
+          "text": "https://photos.app.goo.gl/Xb7Q2mZ9WkLp4",
+          "start": 21,
+          "end": 60
+        }
+      ],
+      "protected": [
+        "QTc 448 ms"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P106",
+      "kind": "positive",
+      "text": "Track my BP on bpbuddy.app/share/k7Fq92 - last 30 days avg 144/91.",
+      "spans": [
+        {
+          "category": "URL",
+          "text": "bpbuddy.app/share/k7Fq92",
+          "start": 15,
+          "end": 39
+        }
+      ],
+      "protected": [
+        "144/91"
+      ],
+      "split": "heldout",
+      "note": "scheme-less URL"
+    },
+    {
+      "id": "B2P107",
+      "kind": "positive",
+      "text": "Lab sent the link to yogesh.patil.pune@gmail.com: https://reports.citylab-demo.in/r/YP-20261004 , creatinine 1.6, eGFR 48",
+      "spans": [
+        {
+          "category": "EMAIL",
+          "text": "yogesh.patil.pune@gmail.com",
+          "start": 21,
+          "end": 48
+        },
+        {
+          "category": "URL",
+          "text": "https://reports.citylab-demo.in/r/YP-20261004",
+          "start": 50,
+          "end": 95
+        }
+      ],
+      "protected": [
+        "creatinine 1.6",
+        "eGFR 48"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P108",
+      "kind": "positive",
+      "text": "The app login alert said 49.207.53.18 - was that you? Anyway my BP is 132/84.",
+      "spans": [
+        {
+          "category": "IP",
+          "text": "49.207.53.18",
+          "start": 25,
+          "end": 37
+        }
+      ],
+      "protected": [
+        "132/84"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P109",
+      "kind": "positive",
+      "text": "home router IP 192.168.1.104, my Omron connect app can't find the cuff",
+      "spans": [
+        {
+          "category": "IP",
+          "text": "192.168.1.104",
+          "start": 15,
+          "end": 28
+        }
+      ],
+      "protected": [
+        "Omron"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P110",
+      "kind": "positive",
+      "text": "error from server 2401:4900:1c64:9a2f::7 when uploading 7-day BP log",
+      "spans": [
+        {
+          "category": "IP",
+          "text": "2401:4900:1c64:9a2f::7",
+          "start": 18,
+          "end": 40
+        }
+      ],
+      "protected": [
+        "7-day BP log"
+      ],
+      "split": "heldout",
+      "note": "IPv6"
+    },
+    {
+      "id": "B2P111",
+      "kind": "positive",
+      "text": "the cuff shows ip fe80::1c2b:3aff:fe4d:91a0 when pairing, readings 138/86 not uploading",
+      "spans": [
+        {
+          "category": "IP",
+          "text": "fe80::1c2b:3aff:fe4d:91a0",
+          "start": 18,
+          "end": 43
+        }
+      ],
+      "protected": [
+        "138/86"
+      ],
+      "split": "heldout",
+      "note": "IPv6 link-local"
+    },
+    {
+      "id": "B2P112",
+      "kind": "positive",
+      "text": "Tele-consult from 103.21.58.7 failed twice. BP 150/98, on Telma 40.",
+      "spans": [
+        {
+          "category": "IP",
+          "text": "103.21.58.7",
+          "start": 18,
+          "end": 29
+        }
+      ],
+      "protected": [
+        "150/98",
+        "Telma 40"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P113",
+      "kind": "positive",
+      "text": "My clinic portal blocked me, it says too many logins from 122.171.44.230. Need my potassium result (was 5.5).",
+      "spans": [
+        {
+          "category": "IP",
+          "text": "122.171.44.230",
+          "start": 58,
+          "end": 72
+        }
+      ],
+      "protected": [
+        "potassium",
+        "5.5"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P114",
+      "kind": "positive",
+      "text": "Admin, the BP dashboard at 10.0.3.25 is down again; I can't enter today's 144/90.",
+      "spans": [
+        {
+          "category": "IP",
+          "text": "10.0.3.25",
+          "start": 27,
+          "end": 36
+        }
+      ],
+      "protected": [
+        "144/90"
+      ],
+      "split": "heldout",
+      "note": "private IPv4"
+    },
+    {
+      "id": "B2P115",
+      "kind": "positive",
+      "text": "DOB: 14/03/1971, BP 150/94, on Olmezest 20.",
+      "spans": [
+        {
+          "category": "AGE",
+          "text": "14/03/1971",
+          "start": 5,
+          "end": 15
+        }
+      ],
+      "protected": [
+        "150/94",
+        "Olmezest 20"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P116",
+      "kind": "positive",
+      "text": "I was born on 3rd March 1968 and my BP has been high since my 40s, now 158/100.",
+      "spans": [
+        {
+          "category": "AGE",
+          "text": "3rd March 1968",
+          "start": 14,
+          "end": 28
+        }
+      ],
+      "protected": [
+        "158/100"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P117",
+      "kind": "positive",
+      "text": "date of birth 1965-11-22, female, LDL 4.1 mmol/L, BP 139/87",
+      "spans": [
+        {
+          "category": "AGE",
+          "text": "1965-11-22",
+          "start": 14,
+          "end": 24
+        }
+      ],
+      "protected": [
+        "LDL 4.1 mmol/L",
+        "139/87"
+      ],
+      "split": "heldout",
+      "note": "ISO date"
+    },
+    {
+      "id": "B2P118",
+      "kind": "positive",
+      "text": "D.O.B 07-08-1959 | Hypertension since 2005 | Metolar XR 50",
+      "spans": [
+        {
+          "category": "AGE",
+          "text": "07-08-1959",
+          "start": 6,
+          "end": 16
+        }
+      ],
+      "protected": [
+        "2005",
+        "Metolar XR 50"
+      ],
+      "split": "heldout",
+      "note": "year-only 'since 2005' is not DOB"
+    },
+    {
+      "id": "B2P119",
+      "kind": "positive",
+      "text": "my dad (dob 12 Jan 1950) fainted after taking Arkamin, BP now 100/60",
+      "spans": [
+        {
+          "category": "AGE",
+          "text": "12 Jan 1950",
+          "start": 12,
+          "end": 23
+        }
+      ],
+      "protected": [
+        "Arkamin",
+        "100/60"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P120",
+      "kind": "positive",
+      "text": "b. 9/23/1962 - PCP wants me on chlorthalidone 12.5 mg for 152/94",
+      "spans": [
+        {
+          "category": "AGE",
+          "text": "9/23/1962",
+          "start": 3,
+          "end": 12
+        }
+      ],
+      "protected": [
+        "chlorthalidone 12.5 mg",
+        "152/94"
+      ],
+      "split": "heldout",
+      "note": "US month-first date"
+    },
+    {
+      "id": "B2P121",
+      "kind": "positive",
+      "text": "Born September 5, 1963 in Kerala, moved to Dubai, BP 144/90 on Concor 5",
+      "spans": [
+        {
+          "category": "AGE",
+          "text": "September 5, 1963",
+          "start": 5,
+          "end": 22
+        }
+      ],
+      "protected": [
+        "144/90",
+        "Concor 5"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P122",
+      "kind": "positive",
+      "text": "I was born 21st July, 1966 so I'm 60 now - BP 148/92",
+      "spans": [
+        {
+          "category": "AGE",
+          "text": "21st July, 1966",
+          "start": 11,
+          "end": 26
+        }
+      ],
+      "protected": [
+        "60",
+        "148/92"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P123",
+      "kind": "positive",
+      "text": "dob- 2/2/1970 sex- F bp- 150/90 wt- 78kg",
+      "spans": [
+        {
+          "category": "AGE",
+          "text": "2/2/1970",
+          "start": 5,
+          "end": 13
+        }
+      ],
+      "protected": [
+        "150/90",
+        "78kg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P124",
+      "kind": "positive",
+      "text": "DOB 04/17/58, on HCTZ 25 mg, BP 144/88",
+      "spans": [
+        {
+          "category": "AGE",
+          "text": "04/17/58",
+          "start": 4,
+          "end": 12
+        }
+      ],
+      "protected": [
+        "HCTZ 25 mg",
+        "144/88"
+      ],
+      "split": "heldout",
+      "note": "two-digit year"
+    },
+    {
+      "id": "B2P125",
+      "kind": "positive",
+      "text": "Born on 15.08.1961, diabetic, BP 160/94 on Telma 40.",
+      "spans": [
+        {
+          "category": "AGE",
+          "text": "15.08.1961",
+          "start": 8,
+          "end": 18
+        }
+      ],
+      "protected": [
+        "160/94",
+        "Telma 40"
+      ],
+      "split": "heldout",
+      "note": "dotted date"
+    },
+    {
+      "id": "B2P126",
+      "kind": "positive",
+      "text": "Gwen Pritchard, born 23/06/1955, NHS number 999 984 8109, on indapamide 2.5 mg.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Gwen Pritchard",
+          "start": 0,
+          "end": 14
+        },
+        {
+          "category": "AGE",
+          "text": "23/06/1955",
+          "start": 21,
+          "end": 31
+        },
+        {
+          "category": "MRN",
+          "text": "999 984 8109",
+          "start": 44,
+          "end": 56
+        }
+      ],
+      "protected": [
+        "indapamide 2.5 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P127",
+      "kind": "positive",
+      "text": "Please send the BP machine to Flat 302, Shanti Apartments, Sector 21, Kharghar, Navi Mumbai 410210.",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "Flat 302, Shanti Apartments, Sector 21, Kharghar, Navi Mumbai",
+          "start": 30,
+          "end": 91
+        },
+        {
+          "category": "PINCODE",
+          "text": "410210",
+          "start": 92,
+          "end": 98
+        }
+      ],
+      "protected": [
+        "BP machine"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P128",
+      "kind": "positive",
+      "text": "Address: H.No. 14-2-337, Gandhi Nagar, Secunderabad, Telangana 500003. Need home sample collection for lipid profile.",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "H.No. 14-2-337, Gandhi Nagar, Secunderabad, Telangana",
+          "start": 9,
+          "end": 62
+        },
+        {
+          "category": "PINCODE",
+          "text": "500003",
+          "start": 63,
+          "end": 69
+        }
+      ],
+      "protected": [
+        "lipid profile"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P129",
+      "kind": "positive",
+      "text": "I stay at House No 47, Ward 8, Shastri Nagar, Jaipur, Rajasthan - 302016, is there a BP clinic nearby?",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "House No 47, Ward 8, Shastri Nagar, Jaipur, Rajasthan",
+          "start": 10,
+          "end": 63
+        },
+        {
+          "category": "PINCODE",
+          "text": "302016",
+          "start": 66,
+          "end": 72
+        }
+      ],
+      "protected": [
+        "BP clinic"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P130",
+      "kind": "positive",
+      "text": "deliver medicines to B-12, Lajpat Nagar II, New Delhi 110024, Telma 40 x 30 tabs",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "B-12, Lajpat Nagar II, New Delhi",
+          "start": 21,
+          "end": 53
+        },
+        {
+          "category": "PINCODE",
+          "text": "110024",
+          "start": 54,
+          "end": 60
+        }
+      ],
+      "protected": [
+        "Telma 40"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P131",
+      "kind": "positive",
+      "text": "No. 23, 4th Cross, 9th Main, Jayanagar 4th Block, Bengaluru 560011 is my address, I'm 63 and on Cilacar 10",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "No. 23, 4th Cross, 9th Main, Jayanagar 4th Block, Bengaluru",
+          "start": 0,
+          "end": 59
+        },
+        {
+          "category": "PINCODE",
+          "text": "560011",
+          "start": 60,
+          "end": 66
+        }
+      ],
+      "protected": [
+        "63",
+        "Cilacar 10"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P132",
+      "kind": "positive",
+      "text": "Address 12/4 Karve Road, Erandwane, Pune 411004. BP 142/90 on Amlong 5.",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "12/4 Karve Road, Erandwane, Pune",
+          "start": 8,
+          "end": 40
+        },
+        {
+          "category": "PINCODE",
+          "text": "411004",
+          "start": 41,
+          "end": 47
+        }
+      ],
+      "protected": [
+        "142/90",
+        "Amlong 5"
+      ],
+      "split": "heldout",
+      "note": "house number 12/4 looks like a BP/date fraction"
+    },
+    {
+      "id": "B2P133",
+      "kind": "positive",
+      "text": "Courier the glucometer to flat no 7B, Green Valley Society, Baner Road, Pune 411045 pls",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "flat no 7B, Green Valley Society, Baner Road, Pune",
+          "start": 26,
+          "end": 76
+        },
+        {
+          "category": "PINCODE",
+          "text": "411045",
+          "start": 77,
+          "end": 83
+        }
+      ],
+      "protected": [
+        "glucometer"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P134",
+      "kind": "positive",
+      "text": "Door no 5/112, Anna Salai, Chennai 600002 - nurse visit for BP check, my mother is 82.",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "Door no 5/112, Anna Salai, Chennai",
+          "start": 0,
+          "end": 34
+        },
+        {
+          "category": "PINCODE",
+          "text": "600002",
+          "start": 35,
+          "end": 41
+        }
+      ],
+      "protected": [
+        "82"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P135",
+      "kind": "positive",
+      "text": "I live in Quarter No. C-45, Railway Colony, Sector 4, Bokaro Steel City, Jharkhand 827004; BP 160/100 in the camp yesterday.",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "Quarter No. C-45, Railway Colony, Sector 4, Bokaro Steel City, Jharkhand",
+          "start": 10,
+          "end": 82
+        },
+        {
+          "category": "PINCODE",
+          "text": "827004",
+          "start": 83,
+          "end": 89
+        }
+      ],
+      "protected": [
+        "160/100"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P136",
+      "kind": "positive",
+      "text": "my adress: Plot 56, Laxmi Nagar, Nagpur 440022 phn no 97654 31208 for medicine delivery (Cilacar 10, Rosuvas 10)",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "Plot 56, Laxmi Nagar, Nagpur",
+          "start": 11,
+          "end": 39
+        },
+        {
+          "category": "PINCODE",
+          "text": "440022",
+          "start": 40,
+          "end": 46
+        },
+        {
+          "category": "PHONE",
+          "text": "97654 31208",
+          "start": 54,
+          "end": 65
+        }
+      ],
+      "protected": [
+        "Cilacar 10",
+        "Rosuvas 10"
+      ],
+      "split": "heldout",
+      "note": "misspelt labels"
+    },
+    {
+      "id": "B2P137",
+      "kind": "positive",
+      "text": "ghar ka pata: Gali No. 3, Krishna Nagar, Shahdara, Delhi 110051 - BP machine wahan bhejna",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "Gali No. 3, Krishna Nagar, Shahdara, Delhi",
+          "start": 14,
+          "end": 56
+        },
+        {
+          "category": "PINCODE",
+          "text": "110051",
+          "start": 57,
+          "end": 63
+        }
+      ],
+      "protected": [
+        "BP machine"
+      ],
+      "split": "heldout",
+      "note": "Hinglish label"
+    },
+    {
+      "id": "B2P138",
+      "kind": "positive",
+      "text": "Rekha Pillai, Door No. 9, Ammankovil Street, Ernakulam, Kerala 682035, ph 0484 2356 781 - mother 80 yrs, BP 176/84.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Rekha Pillai",
+          "start": 0,
+          "end": 12
+        },
+        {
+          "category": "ADDRESS",
+          "text": "Door No. 9, Ammankovil Street, Ernakulam, Kerala",
+          "start": 14,
+          "end": 62
+        },
+        {
+          "category": "PINCODE",
+          "text": "682035",
+          "start": 63,
+          "end": 69
+        },
+        {
+          "category": "PHONE",
+          "text": "0484 2356 781",
+          "start": 74,
+          "end": 87
+        }
+      ],
+      "protected": [
+        "80",
+        "176/84"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P139",
+      "kind": "positive",
+      "text": "Ship the cuff to 1427 Maple Ridge Dr, Apt 3B, Columbus, OH 43215. My readings average 138/88.",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "1427 Maple Ridge Dr, Apt 3B, Columbus, OH",
+          "start": 17,
+          "end": 58
+        },
+        {
+          "category": "PINCODE",
+          "text": "43215",
+          "start": 59,
+          "end": 64
+        }
+      ],
+      "protected": [
+        "138/88"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P140",
+      "kind": "positive",
+      "text": "I'm at 2205 W Belmont Ave, Chicago, IL 60618 if the home health nurse needs it; on Toprol XL 50.",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "2205 W Belmont Ave, Chicago, IL",
+          "start": 7,
+          "end": 38
+        },
+        {
+          "category": "PINCODE",
+          "text": "60618",
+          "start": 39,
+          "end": 44
+        }
+      ],
+      "protected": [
+        "Toprol XL 50"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P141",
+      "kind": "positive",
+      "text": "mailing address 455 Oak Hollow Lane, Austin, Texas 78745-2210 for the Lipitor 20 mg refill",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "455 Oak Hollow Lane, Austin, Texas",
+          "start": 16,
+          "end": 50
+        },
+        {
+          "category": "PINCODE",
+          "text": "78745-2210",
+          "start": 51,
+          "end": 61
+        }
+      ],
+      "protected": [
+        "Lipitor 20 mg"
+      ],
+      "split": "heldout",
+      "note": "ZIP+4 kept whole as PINCODE"
+    },
+    {
+      "id": "B2P142",
+      "kind": "positive",
+      "text": "Raymond Ortiz, 88 Elm Street, Peoria, IL 61604, 309-555-0182. Lisinopril 20 mg, BP 150/92.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Raymond Ortiz",
+          "start": 0,
+          "end": 13
+        },
+        {
+          "category": "ADDRESS",
+          "text": "88 Elm Street, Peoria, IL",
+          "start": 15,
+          "end": 40
+        },
+        {
+          "category": "PINCODE",
+          "text": "61604",
+          "start": 41,
+          "end": 46
+        },
+        {
+          "category": "PHONE",
+          "text": "309-555-0182",
+          "start": 48,
+          "end": 60
+        }
+      ],
+      "protected": [
+        "Lisinopril 20 mg",
+        "150/92"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P143",
+      "kind": "positive",
+      "text": "My address is 14 Hawthorn Close, Leicester LE3 9QT, could the clinic post the ABPM results?",
+      "spans": [
+        {
+          "category": "ADDRESS",
+          "text": "14 Hawthorn Close, Leicester LE3 9QT",
+          "start": 14,
+          "end": 50
+        }
+      ],
+      "protected": [
+        "ABPM"
+      ],
+      "split": "heldout",
+      "note": "UK postcode is not a PIN/ZIP, so it stays inside ADDRESS"
+    },
+    {
+      "id": "B2P144",
+      "kind": "positive",
+      "text": "Siobhan Gallagher, 22 Kingsley Road, Didsbury, Manchester M20 2RS. Ramipril 5 mg, home BP 146/91.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Siobhan Gallagher",
+          "start": 0,
+          "end": 17
+        },
+        {
+          "category": "ADDRESS",
+          "text": "22 Kingsley Road, Didsbury, Manchester M20 2RS",
+          "start": 19,
+          "end": 65
+        }
+      ],
+      "protected": [
+        "Ramipril 5 mg",
+        "146/91"
+      ],
+      "split": "heldout",
+      "note": "UK postcode is not a PIN/ZIP, so it stays inside ADDRESS"
+    },
+    {
+      "id": "B2P145",
+      "kind": "positive",
+      "text": "pin code 560037, which lab nearby does kidney function test?",
+      "spans": [
+        {
+          "category": "PINCODE",
+          "text": "560037",
+          "start": 9,
+          "end": 15
+        }
+      ],
+      "protected": [
+        "kidney function test"
+      ],
+      "split": "heldout",
+      "note": "standalone PIN"
+    },
+    {
+      "id": "B2P146",
+      "kind": "positive",
+      "text": "My zip is 94110. Is there a free BP screening near me?",
+      "spans": [
+        {
+          "category": "PINCODE",
+          "text": "94110",
+          "start": 10,
+          "end": 15
+        }
+      ],
+      "protected": [
+        "BP screening"
+      ],
+      "split": "heldout",
+      "note": "standalone ZIP"
+    },
+    {
+      "id": "B2P147",
+      "kind": "positive",
+      "text": "Pt: Abhay Joglekar | DOB 02/11/1957 | Ph +91 77380 21459 | Aadhaar 7537 6137 8952 | BP 164/98 on Telma 80 + Cilacar 10",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Abhay Joglekar",
+          "start": 4,
+          "end": 18
+        },
+        {
+          "category": "AGE",
+          "text": "02/11/1957",
+          "start": 25,
+          "end": 35
+        },
+        {
+          "category": "PHONE",
+          "text": "+91 77380 21459",
+          "start": 41,
+          "end": 56
+        },
+        {
+          "category": "AADHAAR",
+          "text": "7537 6137 8952",
+          "start": 67,
+          "end": 81
+        }
+      ],
+      "protected": [
+        "164/98",
+        "Telma 80",
+        "Cilacar 10"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2P148",
+      "kind": "positive",
+      "text": "this is Linda Castellano, lcastellano58@aol.com, (415) 555-0139. I need a refill of Diovan 160 mg.",
+      "spans": [
+        {
+          "category": "NAME",
+          "text": "Linda Castellano",
+          "start": 8,
+          "end": 24
+        },
+        {
+          "category": "EMAIL",
+          "text": "lcastellano58@aol.com",
+          "start": 26,
+          "end": 47
+        },
+        {
+          "category": "PHONE",
+          "text": "(415) 555-0139",
+          "start": 49,
+          "end": 63
+        }
+      ],
+      "protected": [
+        "Diovan 160 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N001",
+      "kind": "negative",
+      "text": "BP this morning 145/92, pulse 78. Took Telma 40 at 8 am.",
+      "spans": [],
+      "protected": [
+        "145/92",
+        "78",
+        "Telma 40"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N002",
+      "kind": "negative",
+      "text": "my readings last week: 150 over 95, 148 over 92, 139 over 88. is that stage 2?",
+      "spans": [],
+      "protected": [
+        "150 over 95",
+        "148 over 92",
+        "139 over 88"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N003",
+      "kind": "negative",
+      "text": "Doctor increased amlodipine from 2.5 mg to 5 mg. Ankle swelling since then.",
+      "spans": [],
+      "protected": [
+        "2.5 mg",
+        "5 mg"
+      ],
+      "split": "heldout",
+      "note": "doctor title without a name"
+    },
+    {
+      "id": "B2N004",
+      "kind": "negative",
+      "text": "eGFR 45, creatinine 1.4 mg/dL, potassium 5.2. Can I continue Telma-H?",
+      "spans": [],
+      "protected": [
+        "eGFR 45",
+        "creatinine 1.4 mg/dL",
+        "potassium 5.2",
+        "Telma-H"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N005",
+      "kind": "negative",
+      "text": "LDL 3.2 mmol/L, HDL 1.1, triglycerides 2.4. GP wants me on atorvastatin 20 mg.",
+      "spans": [],
+      "protected": [
+        "LDL 3.2 mmol/L",
+        "HDL 1.1",
+        "atorvastatin 20 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N006",
+      "kind": "negative",
+      "text": "On 12/10 my reading was 162/101 and I had a mild headache, no chest pain.",
+      "spans": [],
+      "protected": [
+        "12/10",
+        "162/101"
+      ],
+      "split": "heldout",
+      "note": "date of a reading, not a DOB"
+    },
+    {
+      "id": "B2N007",
+      "kind": "negative",
+      "text": "I am 54, male, BMI 29.4, on Concor 2.5 and Amlong 5.",
+      "spans": [],
+      "protected": [
+        "54",
+        "29.4",
+        "Concor 2.5",
+        "Amlong 5"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N008",
+      "kind": "negative",
+      "text": "Heart rate 72 at rest, 118 after climbing stairs. On Metolar XR 25.",
+      "spans": [],
+      "protected": [
+        "72",
+        "118",
+        "Metolar XR 25"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N009",
+      "kind": "negative",
+      "text": "Sugar fasting 132, PP 198, HbA1c 7.6%. BP 138/86. Is Glycomet ok with Cilacar 10?",
+      "spans": [],
+      "protected": [
+        "132",
+        "198",
+        "HbA1c 7.6%",
+        "138/86",
+        "Glycomet",
+        "Cilacar 10"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N010",
+      "kind": "negative",
+      "text": "My cardiologist said ejection fraction 40%. on Entresto 24/26 mg bd.",
+      "spans": [],
+      "protected": [
+        "40%",
+        "Entresto 24/26 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N011",
+      "kind": "negative",
+      "text": "Readings at home: 7am 152/94, 1pm 141/90, 9pm 148/93. Omron cuff, left arm.",
+      "spans": [],
+      "protected": [
+        "152/94",
+        "141/90",
+        "148/93",
+        "Omron"
+      ],
+      "split": "heldout",
+      "note": "device brand as proper noun"
+    },
+    {
+      "id": "B2N012",
+      "kind": "negative",
+      "text": "Dr. sahab told me to cut salt below 5 g per day. Is rock salt ok?",
+      "spans": [],
+      "protected": [
+        "5 g"
+      ],
+      "split": "heldout",
+      "note": "title without a name"
+    },
+    {
+      "id": "B2N013",
+      "kind": "negative",
+      "text": "my mom is 78 and on Stamlo 5 plus Ecosprin 75. bp 170/80 today",
+      "spans": [],
+      "protected": [
+        "78",
+        "Stamlo 5",
+        "Ecosprin 75",
+        "170/80"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N014",
+      "kind": "negative",
+      "text": "Since 2019 I am on losartan 50 mg. Recently switched to Repace H.",
+      "spans": [],
+      "protected": [
+        "2019",
+        "losartan 50 mg",
+        "Repace H"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N015",
+      "kind": "negative",
+      "text": "Missed my Nebicard 5 dose yesterday night, today 156/98. Should I take double?",
+      "spans": [],
+      "protected": [
+        "Nebicard 5",
+        "156/98"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N016",
+      "kind": "negative",
+      "text": "Can I take Dolo 650 for fever while on Telma AM?",
+      "spans": [],
+      "protected": [
+        "Dolo 650",
+        "Telma AM"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N017",
+      "kind": "negative",
+      "text": "During Navratri fasting my BP dropped to 98/62 and I felt dizzy.",
+      "spans": [],
+      "protected": [
+        "Navratri",
+        "98/62"
+      ],
+      "split": "heldout",
+      "note": "festival name"
+    },
+    {
+      "id": "B2N018",
+      "kind": "negative",
+      "text": "Ramadan fasting: when should I take Amlokind 5, sehri or iftar?",
+      "spans": [],
+      "protected": [
+        "Ramadan",
+        "Amlokind 5"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N019",
+      "kind": "negative",
+      "text": "I'm Diabetic and hypertensive, BP 146/90, urine ACR 38 mg/g.",
+      "spans": [],
+      "protected": [
+        "Diabetic",
+        "146/90",
+        "ACR 38 mg/g"
+      ],
+      "split": "heldout",
+      "note": "capitalised word after I'm"
+    },
+    {
+      "id": "B2N020",
+      "kind": "negative",
+      "text": "This is about my father's BP, he is 81 and on Arkamin 0.1 mg twice daily.",
+      "spans": [],
+      "protected": [
+        "81",
+        "Arkamin 0.1 mg"
+      ],
+      "split": "heldout",
+      "note": "'This is' cue with no name"
+    },
+    {
+      "id": "B2N021",
+      "kind": "negative",
+      "text": "Patient is a 62 year old woman, BP 164/98, on chlorthalidone 12.5 mg.",
+      "spans": [],
+      "protected": [
+        "62",
+        "164/98",
+        "chlorthalidone 12.5 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N022",
+      "kind": "negative",
+      "text": "Lisinopril 10 mg gave me a dry cough so the GP switched me to losartan 25 mg.",
+      "spans": [],
+      "protected": [
+        "Lisinopril 10 mg",
+        "losartan 25 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N023",
+      "kind": "negative",
+      "text": "Home BP average 136/84 over 7 days (NICE says under 135/85?).",
+      "spans": [],
+      "protected": [
+        "136/84",
+        "135/85",
+        "NICE"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N024",
+      "kind": "negative",
+      "text": "Is 128/79 elevated as per ACC/AHA 2017? My doc says it is fine.",
+      "spans": [],
+      "protected": [
+        "128/79",
+        "ACC/AHA 2017"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N025",
+      "kind": "negative",
+      "text": "Sodium 131, potassium 3.2 after starting hydrochlorothiazide 25 mg. Feeling weak.",
+      "spans": [],
+      "protected": [
+        "131",
+        "3.2",
+        "hydrochlorothiazide 25 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N026",
+      "kind": "negative",
+      "text": "My last echo on 14 March 2025 showed LVH, septum 13 mm.",
+      "spans": [],
+      "protected": [
+        "14 March 2025",
+        "LVH",
+        "13 mm"
+      ],
+      "split": "heldout",
+      "note": "full date that is not a DOB"
+    },
+    {
+      "id": "B2N027",
+      "kind": "negative",
+      "text": "Toprol XL 50 and Norvasc 10, BP still 150/96. What next?",
+      "spans": [],
+      "protected": [
+        "Toprol XL 50",
+        "Norvasc 10",
+        "150/96"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N028",
+      "kind": "negative",
+      "text": "Took Crestor 10 at night, Eliquis 5 bd, and Bystolic 5. Pulse 58.",
+      "spans": [],
+      "protected": [
+        "Crestor 10",
+        "Eliquis 5",
+        "Bystolic 5",
+        "58"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N029",
+      "kind": "negative",
+      "text": "Readings: 3/10 - 144/92, 4/10 - 151/95, 5/10 - 139/89.",
+      "spans": [],
+      "protected": [
+        "3/10",
+        "144/92",
+        "4/10",
+        "151/95",
+        "5/10",
+        "139/89"
+      ],
+      "split": "heldout",
+      "note": "short dates next to BP values"
+    },
+    {
+      "id": "B2N030",
+      "kind": "negative",
+      "text": "Weight 82.5 kg, waist 98 cm, walking 8000 steps a day, still 140/90.",
+      "spans": [],
+      "protected": [
+        "82.5 kg",
+        "98 cm",
+        "8000",
+        "140/90"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N031",
+      "kind": "negative",
+      "text": "Is coffee ok? 2 cups a day, BP 132/84, HR 88.",
+      "spans": [],
+      "protected": [
+        "132/84",
+        "88"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N032",
+      "kind": "negative",
+      "text": "I was born in 1962 and have had high BP for 20 years.",
+      "spans": [],
+      "protected": [
+        "1962"
+      ],
+      "split": "heldout",
+      "note": "year-only birth mention is not redacted"
+    },
+    {
+      "id": "B2N033",
+      "kind": "negative",
+      "text": "Pregnant, 28 weeks, BP 142/94, on labetalol 100 mg tds. Protein 1+.",
+      "spans": [],
+      "protected": [
+        "28 weeks",
+        "142/94",
+        "labetalol 100 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N034",
+      "kind": "negative",
+      "text": "Can I eat amla and garlic with Telma 40? BP 134/86.",
+      "spans": [],
+      "protected": [
+        "Telma 40",
+        "134/86"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N035",
+      "kind": "negative",
+      "text": "Grandpa, 88, Olmezest 20, standing BP drops to 110/70 from 140/80 sitting.",
+      "spans": [],
+      "protected": [
+        "88",
+        "Olmezest 20",
+        "110/70",
+        "140/80"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N036",
+      "kind": "negative",
+      "text": "TSH 6.8, free T4 normal, BP 148/92. Could thyroid be the cause?",
+      "spans": [],
+      "protected": [
+        "TSH 6.8",
+        "148/92"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N037",
+      "kind": "negative",
+      "text": "Room temperature 34 degrees in Chennai, I sweat a lot on Dytor 10, BP 118/72.",
+      "spans": [],
+      "protected": [
+        "34",
+        "Chennai",
+        "Dytor 10",
+        "118/72"
+      ],
+      "split": "heldout",
+      "note": "city name only"
+    },
+    {
+      "id": "B2N038",
+      "kind": "negative",
+      "text": "Apollo clinic doctor said 24 hour ABPM, daytime average 141/89, night 132/82.",
+      "spans": [],
+      "protected": [
+        "Apollo",
+        "ABPM",
+        "141/89",
+        "132/82"
+      ],
+      "split": "heldout",
+      "note": "hospital name"
+    },
+    {
+      "id": "B2N039",
+      "kind": "negative",
+      "text": "I'm worried, my wife's BP was 155/100 twice this week. She is 49.",
+      "spans": [],
+      "protected": [
+        "155/100",
+        "49"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N040",
+      "kind": "negative",
+      "text": "Spironolactone 25 mg added for resistant hypertension, potassium 4.9 on day 7.",
+      "spans": [],
+      "protected": [
+        "Spironolactone 25 mg",
+        "4.9"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N041",
+      "kind": "negative",
+      "text": "Monday 146/91, Tuesday 152/93, Wednesday 139/87. Telma 80 since January.",
+      "spans": [],
+      "protected": [
+        "146/91",
+        "152/93",
+        "139/87",
+        "Telma 80"
+      ],
+      "split": "heldout",
+      "note": "weekday and month names"
+    },
+    {
+      "id": "B2N042",
+      "kind": "negative",
+      "text": "Is 2.5 mg of Concor too low? HR still 96.",
+      "spans": [],
+      "protected": [
+        "2.5 mg",
+        "Concor",
+        "96"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N043",
+      "kind": "negative",
+      "text": "Kidney doctor said CKD stage 3a, eGFR 52, avoid NSAIDs like Brufen.",
+      "spans": [],
+      "protected": [
+        "eGFR 52",
+        "Brufen"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N044",
+      "kind": "negative",
+      "text": "Started Jardiance 10 mg, BP came down from 142/90 to 134/84 in 4 weeks.",
+      "spans": [],
+      "protected": [
+        "Jardiance 10 mg",
+        "142/90",
+        "134/84"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N045",
+      "kind": "negative",
+      "text": "ok so bp 150/95 again. tried 30 min walk, 1 tsp salt only. still high.",
+      "spans": [],
+      "protected": [
+        "150/95"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N046",
+      "kind": "negative",
+      "text": "BP 2 hrs after lunch is 128/80 but in clinic it's 158/98, white coat?",
+      "spans": [],
+      "protected": [
+        "128/80",
+        "158/98"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N047",
+      "kind": "negative",
+      "text": "On 03/09/2026 started Cardace 2.5, by 01/10/2026 BP 136/88.",
+      "spans": [],
+      "protected": [
+        "03/09/2026",
+        "Cardace 2.5",
+        "01/10/2026",
+        "136/88"
+      ],
+      "split": "heldout",
+      "note": "full dates that are not a DOB"
+    },
+    {
+      "id": "B2N048",
+      "kind": "negative",
+      "text": "Hb 10.8, ferritin 18, BP 104/66, feeling tired on Prolomet XL 50.",
+      "spans": [],
+      "protected": [
+        "10.8",
+        "104/66",
+        "Prolomet XL 50"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N049",
+      "kind": "negative",
+      "text": "Cholesterol 236 mg/dL, LDL 158, TG 190. Rosuvas 10 or Atorva 20?",
+      "spans": [],
+      "protected": [
+        "236 mg/dL",
+        "LDL 158",
+        "Rosuvas 10",
+        "Atorva 20"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N050",
+      "kind": "negative",
+      "text": "Uric acid 8.2 on hydrochlorothiazide 12.5 - should I switch to Cilacar 10?",
+      "spans": [],
+      "protected": [
+        "8.2",
+        "hydrochlorothiazide 12.5",
+        "Cilacar 10"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N051",
+      "kind": "negative",
+      "text": "I'm 67 and my systolic is 160 but diastolic only 70. Isolated systolic?",
+      "spans": [],
+      "protected": [
+        "67",
+        "160",
+        "70"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N052",
+      "kind": "negative",
+      "text": "Taking 40 mg of Lasix in the morning. Weight up 2 kg in 3 days, legs swollen.",
+      "spans": [],
+      "protected": [
+        "40 mg",
+        "Lasix",
+        "2 kg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N053",
+      "kind": "negative",
+      "text": "Ward 5 nurse checked my BP 3 times: 160/100, 158/98, 150/96.",
+      "spans": [],
+      "protected": [
+        "160/100",
+        "158/98",
+        "150/96"
+      ],
+      "split": "heldout",
+      "note": "'Ward 5' is a hospital ward, not an address"
+    },
+    {
+      "id": "B2N054",
+      "kind": "negative",
+      "text": "platelet count 245000 /cumm, WBC 7800, Hb 13.2 - all normal? BP 138/84 on Telma 40",
+      "spans": [],
+      "protected": [
+        "245000",
+        "7800",
+        "13.2",
+        "138/84",
+        "Telma 40"
+      ],
+      "split": "heldout",
+      "note": "6-digit lab value that looks like a PIN"
+    },
+    {
+      "id": "B2N055",
+      "kind": "negative",
+      "text": "My watch says 284530 steps in September and resting HR 64. BP 128/82.",
+      "spans": [],
+      "protected": [
+        "284530",
+        "64",
+        "128/82"
+      ],
+      "split": "heldout",
+      "note": "6-digit count that looks like a PIN"
+    },
+    {
+      "id": "B2N056",
+      "kind": "negative",
+      "text": "today readings 140 90, 138 88, 142 92 - typed without slash sorry",
+      "spans": [],
+      "protected": [
+        "140 90",
+        "138 88",
+        "142 92"
+      ],
+      "split": "heldout",
+      "note": "space-separated readings that resemble a phone number"
+    },
+    {
+      "id": "B2N057",
+      "kind": "negative",
+      "text": "BP log: 09:15 - 146/94, 13:30 - 139/90, 21:45 - 150/96",
+      "spans": [],
+      "protected": [
+        "09:15",
+        "146/94",
+        "13:30",
+        "139/90",
+        "21:45",
+        "150/96"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N058",
+      "kind": "negative",
+      "text": "Amlodipine 2.5mg to 5mg on 14/9, ankles swollen by 28/9",
+      "spans": [],
+      "protected": [
+        "2.5mg",
+        "5mg",
+        "14/9",
+        "28/9"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N059",
+      "kind": "negative",
+      "text": "Is 120/80 normal at age 70? My father keeps asking.",
+      "spans": [],
+      "protected": [
+        "120/80",
+        "70"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N060",
+      "kind": "negative",
+      "text": "Ref range for potassium is 3.5-5.1, mine is 5.3 on Telma 80 + Aldactone 25.",
+      "spans": [],
+      "protected": [
+        "3.5-5.1",
+        "5.3",
+        "Telma 80",
+        "Aldactone 25"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N061",
+      "kind": "negative",
+      "text": "ECG: sinus rhythm 68 bpm, PR 160 ms, QRS 92 ms, QTc 452 ms",
+      "spans": [],
+      "protected": [
+        "68 bpm",
+        "160 ms",
+        "92 ms",
+        "QTc 452 ms"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N062",
+      "kind": "negative",
+      "text": "I work in the IT sector, long hours, BP 142/92 by evening.",
+      "spans": [],
+      "protected": [
+        "142/92"
+      ],
+      "split": "heldout",
+      "note": "the word 'sector' without an address"
+    },
+    {
+      "id": "B2N063",
+      "kind": "negative",
+      "text": "Road trip next week, can I skip Dytor 10 on travel days?",
+      "spans": [],
+      "protected": [
+        "Dytor 10"
+      ],
+      "split": "heldout",
+      "note": "capitalised 'Road' at message start"
+    },
+    {
+      "id": "B2N064",
+      "kind": "negative",
+      "text": "Flat feeling after taking Concor 5, HR 56, BP 108/70.",
+      "spans": [],
+      "protected": [
+        "Concor 5",
+        "56",
+        "108/70"
+      ],
+      "split": "heldout",
+      "note": "capitalised 'Flat' that is not an address cue"
+    },
+    {
+      "id": "B2N065",
+      "kind": "negative",
+      "text": "Grace period for a missed dose? I take Concor at 8 am, today forgot till 2 pm.",
+      "spans": [],
+      "protected": [
+        "Concor"
+      ],
+      "split": "heldout",
+      "note": "'Grace' is a common first name used as a common noun"
+    },
+    {
+      "id": "B2N066",
+      "kind": "negative",
+      "text": "Will Telma affect my kidneys? Creatinine 1.2, eGFR 64.",
+      "spans": [],
+      "protected": [
+        "Telma",
+        "1.2",
+        "eGFR 64"
+      ],
+      "split": "heldout",
+      "note": "'Will' at sentence start"
+    },
+    {
+      "id": "B2N067",
+      "kind": "negative",
+      "text": "Mark my readings please: 144/90, 141/88, 146/92.",
+      "spans": [],
+      "protected": [
+        "144/90",
+        "141/88",
+        "146/92"
+      ],
+      "split": "heldout",
+      "note": "'Mark' used as a verb"
+    },
+    {
+      "id": "B2N068",
+      "kind": "negative",
+      "text": "Sunny weather in Goa, BP lower 118/76 on holiday, should I halve Amlong 5?",
+      "spans": [],
+      "protected": [
+        "118/76",
+        "Amlong 5"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N069",
+      "kind": "negative",
+      "text": "Joy! BP finally 126/80 after 3 months of DASH diet.",
+      "spans": [],
+      "protected": [
+        "126/80",
+        "DASH"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N070",
+      "kind": "negative",
+      "text": "Max dose of Telma is 80 mg? currently 40.",
+      "spans": [],
+      "protected": [
+        "Telma",
+        "80 mg",
+        "40"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N071",
+      "kind": "negative",
+      "text": "Ganesh Chaturthi modaks - can I eat 2 with fasting sugar 140 and BP 136/86?",
+      "spans": [],
+      "protected": [
+        "140",
+        "136/86"
+      ],
+      "split": "heldout",
+      "note": "festival named after a deity"
+    },
+    {
+      "id": "B2N072",
+      "kind": "negative",
+      "text": "Dr. Google says 140/90 is high lol, my GP says target under 130/80.",
+      "spans": [],
+      "protected": [
+        "140/90",
+        "130/80"
+      ],
+      "split": "heldout",
+      "note": "title followed by a non-person word"
+    },
+    {
+      "id": "B2N073",
+      "kind": "negative",
+      "text": "Pharmacy gave me Amlong instead of Amlodac, are they same? Both 5 mg.",
+      "spans": [],
+      "protected": [
+        "Amlong",
+        "Amlodac",
+        "5 mg"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N074",
+      "kind": "negative",
+      "text": "Bisoprolol (Concor) vs metoprolol (Met XL) - which is better for palpitations? HR 104.",
+      "spans": [],
+      "protected": [
+        "Concor",
+        "Met XL",
+        "104"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N075",
+      "kind": "negative",
+      "text": "Vitamin B12 190 pg/mL, Vit D 14 ng/mL, BP 132/80 on Telma 20.",
+      "spans": [],
+      "protected": [
+        "190 pg/mL",
+        "14 ng/mL",
+        "132/80",
+        "Telma 20"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N076",
+      "kind": "negative",
+      "text": "Lp(a) 82 mg/dL and ApoB 118 - is that why my cardiologist added Ecosprin 75?",
+      "spans": [],
+      "protected": [
+        "82 mg/dL",
+        "118",
+        "Ecosprin 75"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N077",
+      "kind": "negative",
+      "text": "Does my insurance policy cover ABPM and a 2D echo? BP 150/94 in clinic.",
+      "spans": [],
+      "protected": [
+        "ABPM",
+        "2D echo",
+        "150/94"
+      ],
+      "split": "heldout",
+      "note": "'policy' cue with no number"
+    },
+    {
+      "id": "B2N078",
+      "kind": "negative",
+      "text": "My MRN is printed on the card but I can't read it. Anyway BP 146/90 today.",
+      "spans": [],
+      "protected": [
+        "146/90"
+      ],
+      "split": "heldout",
+      "note": "'MRN' cue with no number"
+    },
+    {
+      "id": "B2N079",
+      "kind": "negative",
+      "text": "Aadhaar is linked to my ABHA, will doctors see my BP readings like 158/96?",
+      "spans": [],
+      "protected": [
+        "158/96"
+      ],
+      "split": "heldout",
+      "note": "id-type words with no number"
+    },
+    {
+      "id": "B2N080",
+      "kind": "negative",
+      "text": "The form asks patient name, age 54, BP 150/96 - what should I write for the BP?",
+      "spans": [],
+      "protected": [
+        "54",
+        "150/96"
+      ],
+      "split": "heldout",
+      "note": "'patient name' cue with no name"
+    },
+    {
+      "id": "B2N081",
+      "kind": "negative",
+      "text": "DOB field is blank on my lab report, is that a problem? Creatinine 1.1",
+      "spans": [],
+      "protected": [
+        "Creatinine 1.1"
+      ],
+      "split": "heldout",
+      "note": "'DOB' cue with no date"
+    },
+    {
+      "id": "B2N082",
+      "kind": "negative",
+      "text": "Born in 1958, diabetic since 2001, BP 140/90 on Telma 40 and Glycomet 500.",
+      "spans": [],
+      "protected": [
+        "1958",
+        "2001",
+        "140/90",
+        "Telma 40",
+        "Glycomet 500"
+      ],
+      "split": "heldout",
+      "note": "year-only birth mention"
+    },
+    {
+      "id": "B2N083",
+      "kind": "negative",
+      "text": "Since 12/2019 on Cilacar 10, now BP 128/84 and pedal edema gone.",
+      "spans": [],
+      "protected": [
+        "12/2019",
+        "Cilacar 10",
+        "128/84"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N084",
+      "kind": "negative",
+      "text": "My Wife also has BP, she is 52, takes Amlong 2.5.",
+      "spans": [],
+      "protected": [
+        "52",
+        "Amlong 2.5"
+      ],
+      "split": "heldout",
+      "note": "relation cue with no name"
+    },
+    {
+      "id": "B2N085",
+      "kind": "negative",
+      "text": "Thanks Doctor! BP 124/78 today, first time in months. Regards.",
+      "spans": [],
+      "protected": [
+        "124/78"
+      ],
+      "split": "heldout",
+      "note": "sign-off with no name"
+    },
+    {
+      "id": "B2N086",
+      "kind": "negative",
+      "text": "Hi, this is regarding my BP 152/97 after starting Telma 40 + Concor 2.5.",
+      "spans": [],
+      "protected": [
+        "152/97",
+        "Telma 40",
+        "Concor 2.5"
+      ],
+      "split": "heldout",
+      "note": "'this is' cue with no name"
+    },
+    {
+      "id": "B2N087",
+      "kind": "negative",
+      "text": "Rose water and Brahmi for BP, any evidence? Currently 146/92 on Losar 50.",
+      "spans": [],
+      "protected": [
+        "Brahmi",
+        "146/92",
+        "Losar 50"
+      ],
+      "split": "heldout",
+      "note": "herbal names as proper nouns"
+    },
+    {
+      "id": "B2N088",
+      "kind": "negative",
+      "text": "Stage 1 per ACC/AHA means 130-139 or 80-89, right? Mine is 134/88.",
+      "spans": [],
+      "protected": [
+        "130-139",
+        "80-89",
+        "134/88"
+      ],
+      "split": "heldout"
+    },
+    {
+      "id": "B2N089",
+      "kind": "negative",
+      "text": "Telma 40 at 8 am, Amlong 5 at 8 pm, Rosuvas 10 at bedtime, Ecosprin 75 after lunch.",
+      "spans": [],
+      "protected": [
+        "Telma 40",
+        "Amlong 5",
+        "Rosuvas 10",
+        "Ecosprin 75"
+      ],
+      "split": "heldout"
+    }
+  ]
+}

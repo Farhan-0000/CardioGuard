@@ -8,14 +8,22 @@ typed placeholders and converts exact dates of birth to an age:
 ==================  =====================================================
 Placeholder          Detected from
 ==================  =====================================================
-``[NAME]``           person names, **only** after strong cues ("my name is",
-                     "I'm X Y", "this is X calling", Mr./Mrs./Dr. X,
-                     "patient X", "name: X", "my wife X", "regards, X")
-``[PHONE]``          Indian mobiles/landlines (+91/0091/0), US numbers,
-                     labelled numbers ("phone:", "WhatsApp")
+``[NAME]``           person names, **only** after strong cues: introductions
+                     ("my name is", "I'm X Y", "it's me X", "myself X",
+                     "hi, this is X", "this is X calling", "call me X"),
+                     titles (Mr./Mrs./Dr./Doctor X), "patient X",
+                     labels ("name: X", "sign: X", "signed by X"),
+                     relations ("my wife X", "her son X", "my husband's
+                     name is X", "whose name is X") and sign-offs
+                     ("regards, X", "Thanks, X" closing the message)
+``[PHONE]``          Indian mobiles/landlines (+91/0091/0, any digit
+                     grouping), US numbers, numbers after a label
+                     ("phone:", "WhatsApp") or a contact verb ("call me on")
 ``[EMAIL]``          e-mail addresses
 ``[ADDRESS]``        house/flat/plot/door numbers + street words + locality
-``[PINCODE]``        PIN/ZIP codes with an address or "pincode" context
+``[PINCODE]``        PIN/ZIP codes after an address, a "pincode" label, a
+                     place chain ("in Koramangala, Bangalore 560034") or a
+                     US state code ("Austin, TX 78701")
 ``[AADHAAR]``        12-digit Aadhaar (4-4-4 grouped or labelled)
 ``[PAN]``            Indian PAN ``AAAAA9999A``
 ``[SSN]``            US social security numbers
@@ -28,7 +36,9 @@ Placeholder          Detected from
 Clinical content is deliberately preserved: BP readings (``145/92``), lab
 values, doses (``10 mg``, ``2.5mg``), drug names (incl. brands like
 ``Telma 40``), ages stated as numbers (``I'm 54``), dates of readings and
-emergency numbers (``108``, ``112``, ``911``) never match a detector.
+emergency numbers (``108``, ``112``, ``911``) never match a detector. A
+name cue never consumes a known drug name (generic or brand, from
+:mod:`medbridge.nlp.drugs` when importable) or a lab/measurement word.
 
 The detector is regex/rule based (no ML model, no network, <1 ms per
 message) so it is deterministic, explainable and cross-platform. Precision
@@ -41,6 +51,7 @@ from collections import Counter
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import date
+from functools import lru_cache
 
 # ---------------------------------------------------------------------------
 # Public types
@@ -117,7 +128,7 @@ _DATE_ISO = r"\d{4}-\d{1,2}-\d{1,2}(?!\d)"
 _DATE_DMY_TEXT = rf"\d{{1,2}}(?:st|nd|rd|th)?\s+(?:of\s+)?{_MONTH_RE},?\s+\d{{4}}(?!\d)"
 _DATE_MDY_TEXT = rf"{_MONTH_RE}\s+\d{{1,2}}(?:st|nd|rd|th)?,?\s+\d{{4}}(?!\d)"
 _DOB_RE = re.compile(
-    rf"{_DOB_CUE}\s*(?:(?:is|was|on|:|-|–)\s*)*"
+    rf"{_DOB_CUE}\s*(?:(?:is|was|on|the|:|-|–)\s*)*"
     rf"(?P<date>{_DATE_ISO}|{_DATE_NUMERIC}|{_DATE_DMY_TEXT}|{_DATE_MDY_TEXT})",
     re.IGNORECASE,
 )
@@ -166,13 +177,28 @@ _AADHAAR_RE = re.compile(
 
 _PHONE_LABELLED_RE = re.compile(
     r"\b(?:phone|ph|mobile|mob|cell|tel|telephone|whatsapp|landline|"
-    r"contact(?:\s+(?:no\b\.?|number))?|(?:my|his|her|their)\s+number)\b"
+    r"contact(?:\s+(?:no\b\.?|number))?|(?:my|his|her|their)\s+number|"
+    # contact verbs: "call me on", "reach us at", "text my son on", "ring back on"
+    r"(?:call|ring|text|sms|message|msg|reach|contact|ping|dial|whatsapp)"
+    r"(?:\s+(?:me|us|him|her|them|back|my\s+[a-z]+))*\s+(?:on|at))\b"
     r"(?:\s+(?:no\b\.?|number))?"
     rf"{_SEP}(?P<value>\+?\(?\d[\d\s().-]{{6,}}\d)(?!\d)",
     re.IGNORECASE,
 )
 _PHONE_IN_RE = re.compile(r"(?<![\w+])(?:(?:\+|00)91[\s-]?|0)?[6-9]\d{4}[\s-]?\d{5}(?!\d)")
+# +91 / 0091 / +1 numbers: exactly 10 national digits in any grouping
+# ("+91 80 4123 4567", "+91 (80) 41234567", "+91-80-4123-4567", "+1 6465550199").
+_PHONE_INTL_RE = re.compile(
+    r"(?<![\w+])(?:\+|00)\s?(?:91|1)[\s.-]?(?:\(0\)[\s.-]?)?\(?\d(?:[\s.()-]{0,2}\d){9}(?!\d)"
+)
 _PHONE_IN_LANDLINE_RE = re.compile(r"(?<![\w-])0\d{2,4}[\s-]\d{6,8}(?![\w-])")
+# Indian landline with the STD code written in three groups ("080 4123 4567",
+# "0124-412-3456"); accepted only with exactly 0 + 10 digits (see _detect_phones).
+# Bare space-grouped mobiles ("984 501 2345") are deliberately not matched without a
+# label: they are indistinguishable from lists of readings ("650 700 8000").
+_PHONE_IN_GROUPED_RE = re.compile(
+    r"(?<![\w+./-])0\d{2,4}(?P<sep>[\s.-])\d{3,4}(?P=sep)\d{3,4}(?![\w/-]|[.,]\d)"
+)
 _PHONE_US_RE = re.compile(
     r"(?<![\w-])(?:\+1[\s.-]?)?(?:\([2-9]\d{2}\)\s?|[2-9]\d{2}[.-])\d{3}[.-]\d{4}(?![\w-])"
     r"|(?<![\w-])\+1[\s.-]?[2-9]\d{2}[\s.-]\d{3}[\s.-]\d{4}(?![\w-])"
@@ -211,32 +237,100 @@ _PIN_LABELLED_RE = re.compile(
     re.IGNORECASE,
 )
 _PIN_AFTER_ADDRESS_RE = re.compile(
-    rf"\s*[,-]?\s*(?P<value>[1-9]\d{{5}}|\d{{5}}(?:-\d{{4}})?){_NOT_MORE_DIGITS}"
+    rf"\s*[,\-–]?\s*(?P<value>[1-9]\d{{2}}\s?\d{{3}}|\d{{5}}(?:-\d{{4}})?){_NOT_MORE_DIGITS}"
 )
+# A place: one to three capitalised words, the last may be a short number
+# ("Koramangala", "Andheri East", "Sector 5", "Phase 2").
+_PLACE = r"[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|\d{1,3}[A-Z]?(?![\w/.,]\d|\d))){0,2}"
+# "in/at/near/from/to <place>[, <place>]* 560034" and "address: <place>, <city> 560034".
 _PIN_IN_CITY_RE = re.compile(
-    r"\b(?:in|at|near|from)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*[,-]?\s*"
+    r"\b(?i:in|at|near|from|to|address(?:\s+is)?\s*[:\-–]?)\s+"
+    rf"(?P<place>{_PLACE}(?:\s*,\s*{_PLACE}){{0,3}})\s*[,\-–]?\s*"
     rf"(?P<value>[1-9]\d{{2}}\s?\d{{3}}){_NOT_MORE_DIGITS}"
+    # a count, not a PIN: "in India 150000 people", "in Delhi 200 000 cases"
+    r"(?!\s*(?i:people|persons|patients|adults|children|deaths|cases|steps|units|cells|"
+    r"per\b|/|mg|mcg|ml|iu\b|rupees|rs\b|inr\b|lakh|crore|calories|kcal|times|tablets|pills))"
 )
+_US_STATES = (
+    r"(?:A[KLRZ]|C[AOT]|D[CE]|FL|GA|HI|I[ADLN]|K[SY]|LA|M[ADEINOST]|N[CDEHJMVY]|O[HKR]|PA|"
+    r"RI|S[CD]|T[NX]|UT|V[AT]|W[AIVY])"
+)
+# "<city>, <state code> 78701" (US ZIP / ZIP+4 after a city and a state code).
+_ZIP_AFTER_STATE_RE = re.compile(
+    rf"\b(?P<place>{_PLACE})\s*,\s*{_US_STATES}\s+"
+    rf"(?P<value>\d{{5}}(?:-\d{{4}})?){_NOT_MORE_DIGITS}"
+)
+# Capitalised words that start a lab/measurement phrase, never a place
+# ("a rise in Platelets 250000" must not become a PIN code).
+_NOT_PLACE_WORDS = frozenset({
+    "platelet", "platelets", "count", "counts", "total", "steps", "step", "calories",
+    "sodium", "potassium", "glucose", "sugar", "cholesterol", "triglycerides", "hemoglobin",
+    "haemoglobin", "creatinine", "urea", "vitamin", "ferritin", "troponin", "insulin",
+    "weight", "dose", "level", "levels", "reading", "readings", "value", "values",
+    "units", "unit", "lakh", "lakhs", "rupees", "rs", "inr", "cells", "cumm", "range",
+    "cash", "bill", "amount", "fee", "fees", "cost", "price", "day", "days", "week", "weeks",
+    "month", "months", "year", "years", "hour", "hours", "dec", "jan", "feb", "mar", "apr",
+    "may", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "january", "february", "march",
+    "april", "june", "july", "august", "september", "october", "november", "december",
+    "type", "stage", "grade", "class", "dosage", "tablet", "tablets", "mg",
+})
 
 # --- names --------------------------------------------------------------------
 
+# Relatives / carers / clinicians a patient names ("my husband Vinod", "her son Ravi").
+_RELATION = (
+    r"(?:(?:elder|younger|older|little|big|eldest|youngest|baby|late|step)\s+)?"
+    r"(?:wife|husband|spouse|partner|son|daughter|child|kid|mother|father|mom|mum|mummy|"
+    r"dad|daddy|brother|sister|grandmother|grandfather|grandma|grandpa|granny|grandson|"
+    r"granddaughter|uncle|aunt|aunty|auntie|niece|nephew|cousin|friend|neighbou?r|colleague|"
+    r"boss|fianc[eé]e?|(?:mother|father|brother|sister|son|daughter)[\s-]in[\s-]law|"
+    r"relative|doctor|cardiologist|physician|gp|nurse|caregiver|carer)"
+)
+_POSSESSOR = r"(?:my|our|his|her|their)"
+
+# Cues after which the name may be written in any case ("my name is arjun",
+# "my husband's name is arun pillai", "name of patient: ...", "Name - X").
 _NAME_CUES_ANY_CASE = re.compile(
-    r"\b(?:my\s+name\s+is|my\s+name's|patient(?:'s)?\s+name(?:\s+is)?|full\s+name(?:\s+is)?|"
-    r"name\s*[:\-–])\s*",
+    r"\b(?:"
+    rf"{_POSSESSOR}\s+(?:{_RELATION}(?:'s|’s|s')\s+)?"
+    r"(?:first\s+|full\s+|last\s+|sur|nick\s*|pet\s+|good\s+)?name(?:\s+(?:is|was)|'s|’s)|"
+    r"whose\s+name\s+(?:is|was)|"
+    r"name\s+of\s+(?:the\s+)?patient(?:\s+is)?|"
+    r"patient(?:'s|’s)?\s+name(?:\s+is)?|"
+    r"full\s+name(?:\s+is)?"
+    r")(?:\s*[:\-–])?\s*"
+    r"|\bname\s*[:\-–]\s*",
     re.IGNORECASE,
 )
+# Cues after which the name must be capitalised.
 _NAME_CUES_CAPITALISED = re.compile(
-    r"(?:\b(?:Mr|Mrs|Ms|Mx|Dr|Prof|Smt)\.?\s+|\b(?:Miss|Shri|Sri|Kumari)\s+|"
-    r"\b(?i:i\s+am|i'm|i’m|im)\s+|"
+    r"(?:\b(?:Mr|Mrs|Ms|Mx|Dr|Prof|Smt)\.?\s+|\b(?:Miss|Shri|Sri|Kumari|Mister|Madam)\s+|"
+    r"\b(?i:doctor)\s+|"
+    r"\b(?i:i\s+am|i'm|i’m|im)\s+(?i:called\s+)?|"
+    r"\b(?i:it'?s|it’s|it\s+is)\s+(?i:(?:just|only)\s+)?(?i:me)\s*[,\-–]?\s+|"
+    r"\b(?i:myself)\s*[,\-–:]?\s+|"
     r"\b(?i:patient)\s+|"
-    r"\b(?i:call\s+me)\s+|"
-    r"\b(?i:regards|sincerely|warm\s+regards)\s*,?\s*|"
-    r"\b(?i:my|our)\s+(?i:wife|husband|son|daughter|mother|father|mom|mum|dad|brother|sister|"
-    r"grandmother|grandfather|grandma|grandpa|uncle|aunt|friend|neighbou?r|doctor|"
-    r"cardiologist|physician|gp|nurse|caregiver)\s*,?\s+)"
+    r"\b(?i:calls?\s+me)\s+|"
+    r"\b(?i:(?:warm|best|kind|thanks\s+(?:and|&))\s+)?(?i:regards|sincerely)\s*,?\s*|"
+    r"\b(?i:yours\s+(?:truly|faithfully|sincerely))\s*,?\s*|"
+    r"\b(?i:sign(?:ature)?)\s*[:\-–]\s*|\b(?i:signed)(?:\s+(?i:by))?\s*[:,\-–]?\s*|"
+    rf"\b(?i:{_POSSESSOR})\s+(?i:{_RELATION})\s*,?\s+(?:(?i:named|called)\s+)?|"
+    rf"\b(?i:a)\s+(?i:{_RELATION})\s+(?i:named|called)\s+"
+    r")"
 )
 _NAME_CUE_THIS_IS = re.compile(r"\b(?i:this\s+is)\s+")
 _THIS_IS_TRAILER = re.compile(r"\s*,?\s+(?:calling|speaking|here|from|writing)\b", re.IGNORECASE)
+# "Hi, this is Ravi" / "Hello, it's Ravi": a greeting makes "this is X" an introduction.
+_NAME_CUE_GREETING = re.compile(
+    r"\b(?i:hi+|hello|hey|dear\s+(?:doctor|doc|sir|madam|team)|"
+    r"good\s+(?:morning|afternoon|evening))"
+    r"\s*[,!.]*\s*(?i:this\s+is|it'?s|it’s|it\s+is)\s+"
+)
+# "Thanks, Anjali" / "Cheers - Ravi" — only when the name closes the message.
+_NAME_CUE_SIGNOFF = re.compile(
+    r"\b(?i:thanks|thank\s+you|thx|cheers|best|warmly|take\s+care|bye)\b\s*[,!.\-–—]*\s*"
+)
+_MESSAGE_END = re.compile(r"[\s.!]*\Z")
 
 # A token may end in a possessive ("Sharma's") but not continue as a word.
 _TOKEN_END = r"(?!\w)(?!['’][A-Za-z]{2})"
@@ -263,7 +357,36 @@ married active smoker nonsmoker alcoholic not
 january february march april may june july august september october november december
 monday tuesday wednesday thursday friday saturday sunday
 bp blood pressure pulse heart sugar age aged years year education history report reports name
+only all everyone everybody team god bye goodbye wishes alot lot up down back daily every once
+twice urgent regarding related normal high low same different wrong correct missing mentioned
+written spelled listed printed registered consent form
 """.split())
+
+# Brand names seen in patient messages that are not in the cardiovascular lexicon.
+_EXTRA_DRUG_WORDS = frozenset({
+    "telma", "telmikind", "telsartan", "arbitel", "amlong", "amlokind", "amlopres", "stamlo",
+    "concor", "cilacar", "atorva", "rosuvas", "ecosprin", "nebicard", "cardace", "losar",
+    "dolo", "crocin", "calpol", "combiflam", "metsmall",
+})
+
+
+@lru_cache(maxsize=1)
+def _drug_words() -> frozenset[str]:
+    """Lower-cased first words of known drug names; a name cue never consumes one."""
+    names: list[str] = []
+    try:
+        from medbridge.nlp import drugs as lexicon
+
+        names = [*lexicon.BRAND_TO_GENERIC, *lexicon.GENERIC_CLASS, *lexicon.GENERIC_ALIASES]
+    except (ImportError, AttributeError, SyntaxError):  # redaction must never fail
+        names = []
+    words = set(_EXTRA_DRUG_WORDS)
+    for name in names:
+        first = re.split(r"[\s/+-]", str(name).strip().lower(), maxsplit=1)[0]
+        if len(first) >= 4:
+            words.add(first)
+    return frozenset(words)
+
 
 _MAX_NAME_TOKENS = 4
 
@@ -344,14 +467,19 @@ def _detect_aadhaar(text: str, today: date) -> Iterator[Span]:
     yield from _simple(_AADHAAR_RE, "AADHAAR")(text, today)
 
 
+def _digit_count(value: str) -> int:
+    return sum(ch.isdigit() for ch in value)
+
+
 def _detect_phones(text: str, today: date) -> Iterator[Span]:
     for m in _PHONE_LABELLED_RE.finditer(text):
-        value = m.group("value")
-        digits = sum(ch.isdigit() for ch in value)
-        if 8 <= digits <= 13:
+        if 8 <= _digit_count(m.group("value")) <= 13:
             yield m.start("value"), m.end("value"), "PHONE", "[PHONE]"
-    for pattern in (_PHONE_IN_RE, _PHONE_US_RE, _PHONE_IN_LANDLINE_RE):
+    for pattern in (_PHONE_INTL_RE, _PHONE_IN_RE, _PHONE_US_RE, _PHONE_IN_LANDLINE_RE):
         yield from _simple(pattern, "PHONE")(text, today)
+    for m in _PHONE_IN_GROUPED_RE.finditer(text):
+        if _digit_count(m.group(0)) == 11:  # trunk 0 + 10 national digits
+            yield m.start(), m.end(), "PHONE", "[PHONE]"
 
 
 def _extend_address(text: str, end: int) -> int:
@@ -378,9 +506,16 @@ def _detect_addresses(text: str, _today: date) -> Iterator[Span]:
         yield m.start(), _extend_address(text, m.end()), "ADDRESS", "[ADDRESS]"
 
 
+def _is_place(place: str) -> bool:
+    return not any(w.lower() in _NOT_PLACE_WORDS for w in re.findall(r"[A-Za-z]+", place))
+
+
 def _detect_pincodes(text: str, today: date) -> Iterator[Span]:
     yield from _simple(_PIN_LABELLED_RE, "PINCODE", "value")(text, today)
-    yield from _simple(_PIN_IN_CITY_RE, "PINCODE", "value")(text, today)
+    for pattern in (_PIN_IN_CITY_RE, _ZIP_AFTER_STATE_RE):
+        for m in pattern.finditer(text):
+            if _is_place(m.group("place")):
+                yield m.start("value"), m.end("value"), "PINCODE", "[PINCODE]"
 
 
 def _is_initial(token: str) -> bool:
@@ -397,7 +532,11 @@ def _consume_name(text: str, pos: int, any_case: bool) -> tuple[int, int] | None
         if not m:
             break
         token = m.group(0)
-        if not _is_initial(token) and token.lower() in _NAME_STOPWORDS:
+        lowered = token.lower()
+        if not _is_initial(token) and (lowered in _NAME_STOPWORDS or lowered in _drug_words()):
+            break
+        # A capitalised name does not continue into a lower-case word ("Prakash takes").
+        if tokens and tokens[0][0][0].isupper() and not token[0].isupper():
             break
         tokens.append((token, m.start(), m.end()))
         if text[m.end():m.end() + 1] != " ":
@@ -419,6 +558,14 @@ def _detect_names(text: str, _today: date) -> Iterator[Span]:
     for m in _NAME_CUE_THIS_IS.finditer(text):
         span = _consume_name(text, m.end(), any_case=False)
         if span and _THIS_IS_TRAILER.match(text, span[1]):
+            yield span[0], span[1], "NAME", "[NAME]"
+    for m in _NAME_CUE_GREETING.finditer(text):
+        span = _consume_name(text, m.end(), any_case=False)
+        if span:
+            yield span[0], span[1], "NAME", "[NAME]"
+    for m in _NAME_CUE_SIGNOFF.finditer(text):
+        span = _consume_name(text, m.end(), any_case=False)
+        if span and _MESSAGE_END.match(text, span[1]):
             yield span[0], span[1], "NAME", "[NAME]"
 
 
