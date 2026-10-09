@@ -1,0 +1,123 @@
+[
+ {
+  "key": "shah2024hippocraticconstellation",
+  "type": "patent",
+  "authors": [
+   "Munjal Shah",
+   "Vishal Parikh",
+   "Meenesh Bhimani",
+   "Subhabrata Mukherjee",
+   "Alex Miller",
+   "Saad Godil",
+   "et al."
+  ],
+  "title": "Low-latency conversational artificial intelligence (AI) architecture with a parallelized in-depth analysis feedback loop",
+  "venue": "U.S. Patent and Trademark Office (assignee: Healthgpt Inc dba Hippocratic AI)",
+  "year": 2024,
+  "doi": "",
+  "identifier": "US 12,142,371 B1 (Appl. No. US18/592,441; filed 2024-02-29; priority 2023-05-15; granted 2024-11-12). Full inventor list: Munjal Shah, Vishal Parikh, Meenesh Bhimani, Subhabrata Mukherjee, Alex Miller, Saad Godil, Debajyoti Datta, Paul Gamble, Rae Lasko",
+  "url": "https://patents.google.com/patent/US12142371B1/en",
+  "area": "PATENTS",
+  "use_in_report": "Related Work / Prior-art (patents) section and the Emergency Fast-Path design chapter. It is the closest patented healthcare LLM system with safety guardrails and a hand-off to human clinicians. Cite it when stating that escalating to a human is known prior art, and when explaining why MedBridge uses a deterministic emergency path instead of an LLM classifier.",
+  "summary": "The claims cover a multi-turn patient conversation system in which a primary LLM talks with the user while control logic evaluates earlier turns and sends control signals that shape later ones: trigger detection, insertion of follow-up questions, and classification of the patient's answers. In described embodiments these control functions use their own, separate LLMs running in parallel with the main one. An answer that falls into a 'kickout' category can end the conversation or pass it to a human healthcare professional. MedBridge differs because its emergency fast-path is deterministic and runs before any generation, and because its Dual Answerability Gate (a context check before retrieval, an evidence check after it) is not claimed here.",
+  "source_checked": "https://patents.google.com/patent/US12142371B1/en",
+  "_area_group": "patents"
+ },
+ {
+  "key": "paul2025glasshealthrag",
+  "type": "patent",
+  "authors": [
+   "Dereck William Paul, Jr.",
+   "Graham Ramsey"
+  ],
+  "title": "Systems and methods for improving retrieval-augmented generation in clinical decision support",
+  "venue": "U.S. Patent and Trademark Office (assignee: Glass Health Inc)",
+  "year": 2025,
+  "doi": "",
+  "identifier": "US 12,243,646 B1 (Appl. No. US18/659,846; filed 2024-05-09; priority 2024-02-16; granted 2025-03-04)",
+  "url": "https://patents.google.com/patent/US12243646B1/en",
+  "area": "PATENTS",
+  "use_in_report": "Related Work / Prior-art (patents) section. Cite it as patented prior art for LLM clinical decision support built on RAG over a curated guideline library. Contrast it with MedBridge's explicit ANSWER/GENERALIZE/ABSTAIN/ESCALATE gating.",
+  "summary": "The patent claims a clinician-facing decision-support platform. A first LLM matches a clinical problem representation to context topics. A RAG module then draws on a physician-validated library of schemas and guidelines and feeds that context to a second LLM, which writes a differential diagnosis, assessment or treatment plan, with feedback loops to refine the result. No claim covers refusing, abstaining or escalating when the retrieved evidence is weak. MedBridge adds those outcomes through a Context Gate before retrieval and an Evidence Gate after it, and it is patient-facing and runs on a local model.",
+  "source_checked": "https://patents.google.com/patent/US12243646B1/en",
+  "_area_group": "patents"
+ },
+ {
+  "key": "bhagwat2017ibmnoanswer",
+  "type": "patent",
+  "authors": [
+   "Anand B. Bhagwat",
+   "John P. Bufe, III",
+   "Timothy P. Winkler"
+  ],
+  "title": "Interpreting and distinguishing lack of an answer in a question answering system",
+  "venue": "U.S. Patent and Trademark Office (assignee: International Business Machines Corporation)",
+  "year": 2017,
+  "doi": "",
+  "identifier": "US 9,740,769 B2 (Appl. No. US14/334,493; filed 2014-07-17; granted 2017-08-22)",
+  "url": "https://patents.google.com/patent/US9740769B2/en",
+  "area": "PATENTS",
+  "use_in_report": "Related Work: answerability and abstention. Cite it as early patented prior art showing that a QA system can return 'no answer' when the evidence is insufficient. This sets up the novelty argument for MedBridge's graded Evidence Gate.",
+  "summary": "In a Watson-style QA pipeline, the patent adds an explicit 'no-answer' response to the candidate answers. It is ranked using the same evidence and confidence scoring as the other candidates, and it is shown to the user only when it comes out on top. The description sorts non-answers into four kinds: incoherent 'bail' questions, unanswerable questions, questions whose answer is not in the corpus, and questions where the evidence falls below the confidence threshold. MedBridge's Evidence Gate works in a similar spirit but acts on reranked hybrid-retrieval evidence for an LLM, gives four graded outcomes (ANSWER, GENERALIZE, ABSTAIN, ESCALATE) instead of one no-answer candidate, and adds a separate Context Gate before retrieval.",
+  "source_checked": "https://patents.google.com/patent/US9740769B2/en",
+  "_area_group": "patents"
+ },
+ {
+  "key": "delevie2025casetextverification",
+  "type": "patent",
+  "authors": [
+   "Alan deLevie"
+  ],
+  "title": "Hallucination detection and remediation in text generation interface systems",
+  "venue": "U.S. Patent and Trademark Office (assignee: Casetext Inc)",
+  "year": 2025,
+  "doi": "",
+  "identifier": "US 12,505,299 B2 (granted 2025-12-23); pre-grant publication US 2025/0061279 A1 (published 2025-02-20); Appl. No. US18/450,776; filed 2023-08-16",
+  "url": "https://patents.google.com/patent/US12505299B2/en",
+  "area": "PATENTS",
+  "use_in_report": "Related Work: verifying generated claims in RAG and detecting hallucinations. Cite it as patented prior art for checking LLM output against cited source passages. Contrast it with MedBridge, which gates before generation and evaluates faithfulness with LLM-as-judge and NLI.",
+  "summary": "The patent gives each relevant source passage a unique identifier, has an LLM write new text that cites those identifiers, and then sends each generated portion back to an LLM with its cited passages to check whether they support it. The resulting verification information, which flags unsupported portions, can be included in the response sent to the client. This is a post-generation check built for legal research. MedBridge instead decides before generation whether the evidence is enough to answer at all, can abstain or escalate, and measures claim-level faithfulness offline with an LLM judge and an NLI judge.",
+  "source_checked": "https://patents.google.com/patent/US12505299B2/en",
+  "_area_group": "patents"
+ },
+ {
+  "key": "zhang2025intuithallucination",
+  "type": "patent",
+  "authors": [
+   "Jiaxin Zhang",
+   "Kamalika Das",
+   "Sricharan Kallur Palli Kumar"
+  ],
+  "title": "Semantic aware hallucination detection for large language models",
+  "venue": "U.S. Patent and Trademark Office (assignee: Intuit Inc)",
+  "year": 2025,
+  "doi": "",
+  "identifier": "US 12,387,049 B2 (granted 2025-08-12); pre-grant publication US 2025/0077777 A1 (published 2025-03-06); Appl. No. US18/240,247; filed 2023-08-30",
+  "url": "https://patents.google.com/patent/US12387049B2/en",
+  "area": "PATENTS",
+  "use_in_report": "Related Work: hallucination detection. Cite it as a patented reference-free, consistency-based detector, in contrast with MedBridge's evidence-grounded checks (an NLI judge against retrieved passages) in the hallucination evaluation chapter.",
+  "summary": "The patent detects hallucinations without a reference answer. It creates semantically equivalent rewrites of the user prompt, collects several responses to each rewrite from the target LLM and from a second, different LLM, computes a semantic consistency score across all of them, and labels the original response a hallucination or not by comparing that score with a threshold. The method needs many extra LLM calls and never consults external evidence. MedBridge grounds its decisions in retrieved guideline passages, through the Evidence Gate at runtime and NLI plus LLM-judge scoring in evaluation, and is designed to run on a single local model.",
+  "source_checked": "https://patents.google.com/patent/US12387049B2/en",
+  "_area_group": "patents"
+ },
+ {
+  "key": "zhang2024intuitdisambiguity",
+  "type": "patent",
+  "authors": [
+   "Jiaxin Zhang",
+   "Kamalika Das",
+   "Sricharan Kumar"
+  ],
+  "title": "Disambiguity in large language models",
+  "venue": "U.S. Patent and Trademark Office (assignee: Intuit Inc)",
+  "year": 2024,
+  "doi": "",
+  "identifier": "US 12,038,918 B1 (Appl. No. US18/225,086; filed 2023-07-21; granted 2024-07-16)",
+  "url": "https://patents.google.com/patent/US12038918B1/en",
+  "area": "PATENTS",
+  "use_in_report": "Related Work and design of the Context Gate. Cite it as patented prior art for having an LLM decide, before answering, whether a query needs clarification and then ask a clarifying question. This is the closest analogue to MedBridge's pre-retrieval SOFT-ASK vs PROCEED decision.",
+  "summary": "The patent sends an LLM a few-shot 'ambiguity query' containing labelled example queries and gets back a yes/no answer on whether the user's query is ambiguous. If it is, perturbed versions of the query are used to find where the ambiguity lies. The LLM then helps phrase a clarifying question, and the user's reply is turned into a revised query. The trigger is linguistic ambiguity in a general-purpose query. MedBridge's Context Gate makes a pre-retrieval SOFT-ASK vs PROCEED decision based on whether the patient context is sufficient, and it works alongside a post-retrieval Evidence Gate and an emergency fast-path, neither of which this patent claims.",
+  "source_checked": "https://patents.google.com/patent/US12038918B1/en",
+  "_area_group": "patents"
+ }
+]
