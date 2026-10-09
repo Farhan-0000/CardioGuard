@@ -3,15 +3,28 @@ Unit tests for TASK-15: Deterministic Emergency Classifier.
 
 Covers true positives (crisis BP, symptom keywords), true negatives
 (routine queries), case insensitivity, whitespace variations, and
-sub-5ms latency verification.
+sub-5ms latency verification; plus the detailed result API,
+normalisation and typo tolerance, BP parsing, negation scope, context
+filters, determinism, import purity and the < 10 ms budget on a
+2,000-character message. Labelled NL cases live in
+``test_emergency_nl_patterns.py``.
 """
+import ast
+import statistics
 import time
+from pathlib import Path
 
 import pytest
 
 from medbridge.api.schemas.enums import ActionEnum
-from medbridge.core.emergency_classifier import classify
-
+from medbridge.core import emergency_classifier as ec
+from medbridge.core.emergency_classifier import (
+    RULE_IDS,
+    EmergencyResult,
+    classify,
+    classify_detailed,
+    normalize_text,
+)
 
 # ---------------------------------------------------------------------------
 # True Positive Suite — Hypertensive Crisis BP Values
@@ -215,3 +228,316 @@ class TestLatency:
             classify(msg)
         elapsed_ms = (time.perf_counter() - start) / 100 * 1000
         assert elapsed_ms < 5, f"Average latency {elapsed_ms:.2f}ms exceeds 5ms"
+
+
+# ---------------------------------------------------------------------------
+# Detailed result API (classify_detailed)
+# ---------------------------------------------------------------------------
+
+class TestDetailedResult:
+    """``classify_detailed`` explains every decision with stable rule ids."""
+
+    def test_classify_is_detailed_action(self) -> None:
+        for message in ("bp 190/125", "no chest pain", "", "my chest feels tight"):
+            assert classify(message) == classify_detailed(message).action
+
+    @pytest.mark.parametrize("message", ["", "   ", "\n\t"])
+    def test_empty_message_returns_empty_result(self, message: str) -> None:
+        assert classify_detailed(message) == EmergencyResult(action=None)
+
+    def test_fields_on_escalation(self) -> None:
+        result = classify_detailed("No chest pain but my bp is 190/125")
+        assert result.action == ActionEnum.ESCALATE
+        assert result.matched_rules == ["bp_crisis"]
+        assert result.negated == ["chest_pain"]
+        assert result.bp == (190, 125)
+        assert result.evidence_spans == ["190/125"]
+        assert result.suppressed == []
+
+    def test_matched_rules_follow_rule_id_order(self) -> None:
+        result = classify_detailed("I fainted, my chest hurts and my bp is 200/130")
+        assert result.matched_rules == ["bp_crisis", "chest_pain", "syncope"]
+        assert all(rule_id in RULE_IDS for rule_id in result.matched_rules)
+
+    def test_suppressed_rules_are_reported(self) -> None:
+        result = classify_detailed("I had chest pain last year, it was acid reflux")
+        assert result.action is None
+        assert result.suppressed == ["chest_pain"]
+        assert result.negated == []
+
+    def test_negated_rule_not_listed_when_it_also_fired(self) -> None:
+        result = classify_detailed("No chest pain earlier but now my chest feels tight")
+        assert result.matched_rules == ["chest_pain"]
+        assert result.negated == []
+
+    def test_rule_ids_are_unique(self) -> None:
+        assert len(RULE_IDS) == len(set(RULE_IDS))
+
+
+# ---------------------------------------------------------------------------
+# Normalisation and typo tolerance
+# ---------------------------------------------------------------------------
+
+class TestNormalisation:
+    """Deterministic normalisation applied before every rule."""
+
+    @pytest.mark.parametrize(("raw", "normalised"), [
+        ("CHSET  PAIN!!!", "chest pain!!!"),
+        ("I’m dizzzzy", "i'm dizzy"),
+        ("b.p. 200/130", "bp 200/130"),
+        ("blood presure", "blood pressure"),
+        ("cant breathe", "can't breath"),
+        ("palpitaions", "palpitations"),
+        ("unconscous", "unconscious"),
+        ("painting", "painting"),
+        ("blurred", "blurred"),
+        ("arm", "arm"),
+        ("line one\n  line two", "line one\n line two"),
+    ])
+    def test_normalize_text(self, raw: str, normalised: str) -> None:
+        assert normalize_text(raw) == normalised
+
+    def test_stopwords_are_real_variants_of_keywords(self) -> None:
+        variants: set[str] = set()
+        for keyword in ec._FUZZY_KEYWORDS:
+            variants |= ec._edit1_variants(keyword)
+        assert ec._FUZZY_STOPWORDS <= variants
+
+    def test_fuzzy_keywords_have_minimum_length(self) -> None:
+        assert all(len(keyword) >= 6 for keyword in ec._FUZZY_KEYWORDS)
+
+    def test_fuzzy_index_never_maps_protected_words(self) -> None:
+        protected = set(ec._FUZZY_KEYWORDS) | ec._FUZZY_STOPWORDS
+        assert not protected & set(ec._FUZZY_INDEX)
+
+    def test_edit1_variants_are_exactly_one_edit(self) -> None:
+        variants = ec._edit1_variants("chest")
+        assert {"chst", "hcest", "chesx", "cheest"} <= variants
+        assert "chest" not in variants
+
+
+# ---------------------------------------------------------------------------
+# Blood-pressure parsing
+# ---------------------------------------------------------------------------
+
+class TestBloodPressureParsing:
+    """BP formats, the reported reading and the sanity checks."""
+
+    @pytest.mark.parametrize(("message", "bp"), [
+        ("my bp is over 180", (181, 0)),
+        ("systolic 190", (190, 0)),
+        ("the bottom number is 125", (0, 125)),
+        ("my systolic is 225 and diastolic 130", (225, 130)),
+        ("bottom number 125 and top number 150", (150, 125)),
+        ("my systolic is 190. Yesterday it was 120/80", (190, 0)),
+        ("bp 180/120/88 on the monitor", (180, 120)),
+        ("bp 200+", (200, 0)),
+        ("pressure is like 200 something", (200, 0)),
+        ("bp in the 190s", (190, 0)),
+    ])
+    def test_crisis_reading_reported(self, message: str, bp: tuple[int, int]) -> None:
+        result = classify_detailed(message)
+        assert result.matched_rules == ["bp_crisis"]
+        assert result.bp == bp
+
+    def test_normal_reading_reported_without_escalation(self) -> None:
+        result = classify_detailed("bp 120/80")
+        assert result.action is None
+        assert result.bp == (120, 80)
+
+    def test_low_reading_without_symptoms_does_not_escalate(self) -> None:
+        result = classify_detailed("bp 75/50 yesterday, feeling fine today")
+        assert result.action is None
+        assert result.bp == (75, 50)
+
+    def test_low_reading_with_symptoms_escalates(self) -> None:
+        result = classify_detailed("I'm dizzy and my bp is 70/40")
+        assert result.matched_rules == ["bp_low_symptomatic"]
+        assert result.bp == (70, 40)
+        assert result.evidence_spans == ["dizzy", "70/40"]
+
+    @pytest.mark.parametrize("message", [
+        "Next appointment 12/10/2024",       # date
+        "take 1/2 tablet",                   # fraction
+        "my visual acuity is 20/200",        # implausible (systolic < 50)
+        "120/190",                           # systolic must exceed diastolic
+        "bp ratio 1.5/2",                    # decimals
+        "cholesterol 190/130",               # nearest label is a lab value
+        "aim for 130/80",                    # target, not a reading
+        "it's 200 mg",                       # dose
+        "bp is 400",                         # implausible single systolic
+        "diastolic 15",                      # implausible single diastolic
+    ])
+    def test_non_readings_are_ignored(self, message: str) -> None:
+        result = classify_detailed(message)
+        assert result.bp is None
+        assert result.action is None
+
+    def test_swapped_pair_with_bp_wording_is_read_in_order(self) -> None:
+        result = classify_detailed("bp 120/190")
+        assert result.matched_rules == ["bp_crisis"]
+        assert result.bp == (190, 120)
+        assert classify_detailed("my vision is 20/200 and my bp is fine").bp is None
+
+    def test_bare_pair_needs_both_thresholds_without_bp_wording(self) -> None:
+        assert classify_detailed("I got 185/100 today").action is None
+        assert classify_detailed("I got 185/125 today").matched_rules == ["bp_crisis"]
+
+    def test_contextual_single_value_needs_bp_wording(self) -> None:
+        assert classify("today it's 192") is None
+        assert classify("my bp was fine yesterday but today it's 192") == ActionEnum.ESCALATE
+
+    def test_historical_reading_is_ignored(self) -> None:
+        result = classify_detailed("In 2019 my bp was 210/130. Now it's 125/80.")
+        assert result.action is None
+        assert result.bp == (125, 80)
+
+
+# ---------------------------------------------------------------------------
+# Negation scope
+# ---------------------------------------------------------------------------
+
+class TestNegationScope:
+    """Explicit negation suppresses only the symptom it scopes over."""
+
+    @pytest.mark.parametrize("message", [
+        "no chest pain",
+        "denies chest pain",
+        "without any chest pain",
+        "not having trouble breathing",
+        "never fainted",
+        "no longer have chest pain",
+        "haven't fainted since Monday",
+        "chest pain? no",
+        "chest pain: none",
+        "no chest pain, shortness of breath or fainting",
+        "I don't want to die",
+    ])
+    def test_negated(self, message: str) -> None:
+        result = classify_detailed(message)
+        assert result.action is None
+        assert result.negated
+
+    @pytest.mark.parametrize("message", [
+        "no chest pain but my bp is 190/125",          # BP is never negated
+        "no fever, chest pain since morning",           # first object is not a red flag
+        "No, I have chest pain",                        # affirmation ends the scope
+        "chest pain, no fever",                         # cue after the symptom
+        "I'm not sure if it's chest pain",              # pseudo-negation
+        "I've never had chest pain like this",          # 'like this' voids negation
+        "Chest pain? No. Fainting? Yes.",               # post-negation is per clause
+        "no fever over the weekend despite long hours of hard manual labour outdoors "
+        "under the hot summer sun followed by chest pain",  # beyond the 80-char window
+    ])
+    def test_not_negated(self, message: str) -> None:
+        assert classify(message) == ActionEnum.ESCALATE
+
+    def test_negation_word_never_absorbed_by_filler(self) -> None:
+        for message in ("my speech is not slurred", "I'm not having a stroke",
+                        "one side of my face is not drooping", "pain is not in my chest"):
+            assert classify(message) is None, message
+
+
+# ---------------------------------------------------------------------------
+# Context filters: informational, historical, exertion
+# ---------------------------------------------------------------------------
+
+class TestContextFilters:
+    """Clearly informational / historical mentions do not escalate."""
+
+    @pytest.mark.parametrize("message", [
+        "What are the symptoms of a stroke like face drooping or slurred speech?",
+        "How can you tell if someone is having a stroke, like slurred speech?",
+        "If I ever get chest pain, should I take aspirin?",
+        "My grandmother had slurred speech after her stroke years ago",
+        "I used to faint when I saw blood",
+        "I get out of breath when I go jogging",
+    ])
+    def test_suppressed(self, message: str) -> None:
+        result = classify_detailed(message)
+        assert result.action is None
+        assert result.suppressed
+
+    @pytest.mark.parametrize("message", [
+        "What are the signs of a stroke? My face feels numb",
+        "how do I know if I'm having a stroke",
+        "I had chest pain last year and now it's back",
+        "I get short of breath walking, even at the gym",
+        "Is chest pain a side effect of amlodipine?",
+    ])
+    def test_kept(self, message: str) -> None:
+        assert classify(message) == ActionEnum.ESCALATE
+
+
+# ---------------------------------------------------------------------------
+# Determinism and purity (NON-NEGOTIABLE 1)
+# ---------------------------------------------------------------------------
+
+class TestDeterminismAndPurity:
+    """Same input, same output; no LLM, network or model dependency."""
+
+    def test_repeated_calls_identical(self) -> None:
+        message = "No chest pain but my bp is 190/125 and my face is drooping"
+        first = classify_detailed(message)
+        assert all(classify_detailed(message) == first for _ in range(50))
+
+    def test_order_independent(self) -> None:
+        a, b = "my chest feels tight", "no chest pain"
+        before = (classify_detailed(a), classify_detailed(b))
+        assert (classify_detailed(a), classify_detailed(b)) == before
+
+    def test_module_imports_only_stdlib_and_enums(self) -> None:
+        tree = ast.parse(Path(ec.__file__).read_text(encoding="utf-8"))
+        imported: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                imported.add(node.module or "")
+        assert imported == {
+            "__future__", "bisect", "dataclasses", "functools", "re", "unicodedata",
+            "medbridge.api.schemas.enums",
+        }
+
+
+# ---------------------------------------------------------------------------
+# Latency on the API maximum message length (< 10 ms budget)
+# ---------------------------------------------------------------------------
+
+class TestLongMessageLatency:
+    """Median of 200 runs on a 2,000-character message stays far below 10 ms."""
+
+    _BASE = (
+        "My blood pressure has been around 150/95 this week. I take amlodipine 5 mg and "
+        "telmisartan 40 mg. No chest pain, no shortness of breath. What are the warning signs "
+        "of a stroke? My father had a stroke in 2015. My cholesterol is 190 and my next "
+        "appointment is on 12/10/2024. "
+    )
+
+    @pytest.mark.parametrize("tail", ["", " my chest feels tight"])
+    def test_median_under_10ms_for_2000_chars(self, tail: str) -> None:
+        message = ((self._BASE * 20)[: 2000 - len(tail)] + tail)[:2000]
+        assert len(message) == 2000
+        timings = []
+        for _ in range(200):
+            start = time.perf_counter()
+            classify(message)
+            timings.append((time.perf_counter() - start) * 1000)
+        median = statistics.median(timings)
+        print(f"\n2,000-char message (tail={tail!r}): median {median:.3f} ms over 200 runs")
+        assert median < 10, f"median latency {median:.2f} ms exceeds 10 ms"
+        assert (classify(message) == ActionEnum.ESCALATE) == bool(tail)
+
+    @pytest.mark.parametrize("unit", [
+        "120/80 ", "pregnant ", "no fainted ", "i'm ", "bp 120 ", "no chest pain, ",
+        "chest " + "very " * 5, "1/", "a, ",
+    ])
+    def test_pathological_repetition_stays_fast(self, unit: str) -> None:
+        """Hundreds of matches / cues in one clause must not blow the budget."""
+        message = (unit * (2000 // len(unit) + 1))[:2000]
+        timings = []
+        for _ in range(20):
+            start = time.perf_counter()
+            classify(message)
+            timings.append((time.perf_counter() - start) * 1000)
+        assert statistics.median(timings) < 10, f"{unit!r}: {statistics.median(timings):.2f} ms"
