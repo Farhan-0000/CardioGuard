@@ -62,6 +62,31 @@ Processing steps
    ESCALATE). BP readings are only filtered by historical anchors, targets and
    conditional thresholds.
 
+5. **Hinglish / Indian-English lexicon** (ADL: Hinglish red-flag lexicon). Roman-
+   script Hindi spelling variants are canonicalised token by token
+   (:data:`_HINGLISH_VARIANTS`: ``sine/seeney`` → ``seene``, ``nhi/nai/nahin`` →
+   ``nahi``, ``sans/swas`` → ``saans``, ``hogayi`` → ``ho gayi`` …), then 14
+   rules with ``_hi`` ids (:data:`HINGLISH_RULE_IDS`) match chest pain
+   (``seene mein dard``, ``chhati mein jalan``), heart attack (``dil ka daura
+   pada``), breathlessness (``saans nahi aa rahi``, ``dam ghut raha``), syncope
+   (``behosh ho gayi``, ``chakkar aake gir gaya``), stroke signs (``lakwa maar
+   gaya``, ``muh tedha``, ``haath nahi hil raha``, ``zubaan ladkhada rahi``),
+   severe headache (``bahut tez sar dard``, ``sar phat raha``), blood in cough
+   or vomit, seizure and suicidal ideation (``marna chahta hoon``). Hindi
+   negation follows the symptom (``seene mein dard nahi hai``), so a
+   post-position scope is added: ``nahi`` within a short allow-listed gap after
+   the match, closing the statement (``nahi ja raha`` / ``kam nahi ho raha`` —
+   not going away / not easing — do not negate), extended over ``aur`` / ``ya``
+   lists of red flags, voided by ``pehle kabhi nahi`` (never before) and
+   cancelled by a later ``aaj ho raha hai``. ``na to X na Y``, ``lekin`` /
+   ``magar`` clause boundaries, Hindi informational frames (``... ke lakshan kya
+   hain``, ``agar kisi ko ...``), historical anchors (``pichle saal``, ``2 saal
+   pehle``, ``... hua tha``), Hindi BP wording (``bp bahut high hai 200``,
+   ``upar wala``, ``180 se upar`` thresholds) and exertion words are handled by
+   the same filters. Every Hinglish pattern needs a Hindi token or an
+   Indian-English idiom (``chest is paining``), so English messages behave
+   exactly as before.
+
 Context-handling decisions (safety first: when ambiguous, keep recall)
 ----------------------------------------------------------------------
 =======================================  =========================================  ========
@@ -98,6 +123,7 @@ from medbridge.api.schemas.enums import ActionEnum
 
 __all__ = [
     "DIASTOLIC_CRISIS",
+    "HINGLISH_RULE_IDS",
     "RULE_IDS",
     "SYSTOLIC_CRISIS",
     "SYSTOLIC_LOW",
@@ -140,9 +166,9 @@ class EmergencyResult:
 #: absorbs "not"/"no"/"never", so "my speech is not slurred" or "I'm not having a
 #: stroke" cannot match a symptom pattern that skips one or more words.
 _GUARDED_FILLERS: tuple[tuple[str, str], ...] = (
-    (r"(?:\w+\s+)", r"(?:(?!(?:not|no|never)\b)\w+\s+)"),
-    (r"(?:\s+\w+)", r"(?:\s+(?!(?:not|no|never)\b)\w+)"),
-    (r"(?:[\s,]+\w+)", r"(?:[\s,]+(?!(?:not|no|never)\b)\w+)"),
+    (r"(?:\w+\s+)", r"(?:(?!(?:not|no|never|nahi)\b)\w+\s+)"),
+    (r"(?:\s+\w+)", r"(?:\s+(?!(?:not|no|never|nahi)\b)\w+)"),
+    (r"(?:[\s,]+\w+)", r"(?:[\s,]+(?!(?:not|no|never|nahi)\b)\w+)"),
 )
 
 
@@ -265,10 +291,114 @@ def _build_fuzzy_index(keywords: tuple[str, ...], stopwords: frozenset[str]) -> 
 
 _FUZZY_INDEX: dict[str, str] = _build_fuzzy_index(_FUZZY_KEYWORDS, _FUZZY_STOPWORDS)
 
+#: Roman-script Hindi (Hinglish) spelling variants → one canonical spelling, so the
+#: Hinglish rules below match a single form. Canonical forms map to themselves,
+#: which also protects them from the English edit-distance corrector. Variants
+#: that are also English dictionary entries were reviewed at development time and
+#: kept only when they are rare in patient English (``sine``, ``sans``, ``hath``,
+#: ``dora``, ``khasi`` …). Ambiguous short words (``me``, ``main``, ``sir``, ``fat``,
+#: ``pair``) are never rewritten; the patterns list them as alternatives instead.
+_HINGLISH_VARIANTS: dict[str, tuple[str, ...]] = {
+    "nahi": ("nahin", "nahee", "nahii", "nahiin", "nhi", "nhin", "nai", "ni", "nehi", "nahe",
+             "nhai"),
+    "seene": ("sine", "seenay", "seeney", "siney", "sinay", "seenai", "sene"),
+    "seena": ("sina", "seenaa", "sinaa"),
+    "chhati": ("chati", "chhaati", "chaati", "chhathi", "chathi", "chhatee", "chatee", "chhatii",
+               "chhatti", "chatti", "chhaatee", "chaatee"),
+    "dard": ("dardh", "darad", "durd", "drd"),
+    "jalan": ("jalun", "jalaan", "jlan"),
+    "bharipan": ("bhaaripan", "bharipun", "bharippan", "bhaaripun"),
+    "bhaari": ("bhari", "bharee", "bhaaree", "bhary", "bhaary"),
+    "dabav": ("dabaav", "dabaw", "dabaaw", "dabao", "dabaao", "dbav"),
+    "takleef": ("taklif", "takleeph", "taqleef", "takleif", "taklef", "takliif", "taklip"),
+    "dikkat": ("dikat", "diqqat", "dikkt", "dikkath", "diqat", "dikkatt"),
+    "pareshani": ("preshani", "pareshaani", "pershani", "pareshanee", "prashani", "pareshanii"),
+    "saans": ("sans", "saas", "saanse", "sanse", "saanso", "sanso", "swas", "swaas", "shwas",
+              "shwaas", "shvas", "svas", "saanss"),
+    "dam": ("dum", "dumm"),
+    "ghutan": ("ghuttan", "ghootan", "ghutaan"),
+    "behosh": ("behos", "behoosh", "beyhosh", "behoss", "behush", "beohosh"),
+    "behoshi": ("behosi", "behoshee", "beyhoshi", "behooshi", "behushi"),
+    "chakkar": ("chakar", "chakker", "chakkr", "chakr", "chhakar", "chakkur"),
+    "hosh": ("hos", "hoss"),
+    "lakwa": ("lakva", "lakhwa", "lakhva", "laqwa", "lakwaa", "lakvaa", "lakuva", "lakawa",
+              "lakuwa", "lakhwaa"),
+    "lakwe": ("lakve", "lakhwe", "lakhve", "laqwe"),
+    "tedha": ("terha", "teda", "tedhaa", "terdha", "tedhi", "terhi", "tedi", "tedhe", "terhe",
+              "teddha", "tedda"),
+    "haath": ("hath", "haat", "haathh", "hathh"),
+    "baazu": ("bazu", "baju", "baaju", "baazoo", "bajoo", "bazoo", "baanh", "banh", "baahu"),
+    "kamzori": ("kamjori", "kamzoori", "kamjoori", "kamzory", "kamzri"),
+    "kamzor": ("kamjor", "kamzoor", "kamjoor"),
+    "chehra": ("chehera", "chera", "cehra", "chahra", "chehraa", "chehara"),
+    "chehre": ("chere", "chehray", "cehre", "chehere", "chahre"),
+    "muh": ("munh", "muhh", "moonh", "mooh", "muhn"),
+    "honth": ("hont", "hoth", "hoont"),
+    "aawaz": ("awaaz", "awaz", "aawaaz", "avaaz", "awaj", "aawaj", "avaz", "aavaz", "awaaj"),
+    "zubaan": ("zuban", "jubaan", "juban", "zaban", "zabaan", "jabaan", "jaban"),
+    "jeebh": ("jeeb", "jibh"),
+    "tez": ("tej", "tezz", "taiz", "tejj", "teez"),
+    "bahut": ("bohot", "bahot", "bhot", "bht", "bohat", "bhut", "bhaut", "boht", "bahuth", "bohut",
+              "bahoot"),
+    "khoon": ("khun", "khuun", "khoonn"),
+    "ulti": ("ulty", "ultee", "ulati", "oolti", "ultii"),
+    "ultiyan": ("ultiyaan", "ultiya", "ultiyon", "ultian"),
+    "khansi": ("khaansi", "khasi", "khaasi", "khaansee", "khansee", "khanshi", "khaasee"),
+    "balgam": ("balgham", "balgum", "bulgum", "balgaam"),
+    "jeena": ("jina", "jeenaa", "jiina", "jinaa"),
+    "jeene": ("jine", "jiine", "jeeney"),
+    "mujhe": ("muje", "mujhay", "mjhe", "mujhey", "muze"),
+    "abhi": ("abi", "abhee", "abhie", "abhii"),
+    "achanak": ("achaanak", "acchanak", "achnak", "achank", "achaank"),
+    "dhadkan": ("dhadkun", "dharkan", "dhadhkan", "dhadkane"),
+    "mirgi": ("mirgee", "mirgii"),
+    "jhatke": ("jhatka", "jhatkey", "jatke", "jhatkay", "jhatkaa"),
+    "daura": ("dauraa", "dora", "daure"),
+    "lakshan": ("laxan", "lakshn", "lachhan", "laxshan", "lakshanon", "lakshano", "lakshaan"),
+    "pichle": ("pichhle", "pichley", "pichhley", "pichli", "pichhli"),
+    "pehle": ("pahle", "pehele", "phle", "pehley", "pahley", "pehlay", "pahele", "pehale"),
+    "lekin": ("lekn", "lkn", "laikin", "lakin"),
+    "kya": ("kyaa", "kia"),
+    "kaise": ("kese", "kaisey", "kaese", "kaisay"),
+    "theek": ("thik", "teek", "thiik"),
+    "bilkul": ("bilkol", "bikul"),
+    "koi": ("koii", "koee"),
+    "raha": ("rha", "rahaa", "rhaa"),
+    "rahi": ("rhi", "rahee", "rhee", "rahii"),
+    "rahe": ("rhe", "rahey"),
+    "gaya": ("gya", "gayaa", "gyaa"),
+    "gayi": ("gyi", "gai", "gayee", "gayii", "gaee"),
+    "gaye": ("gye", "gayey"),
+    "hoon": ("hu", "hun", "huun"),
+    "chahta": ("chahata", "chahtaa", "chahtha"),
+    "chahti": ("chahati", "chahtii"),
+    "khudkushi": ("khudkhushi", "khudkhusi", "khudkusi"),
+    "aatmhatya": ("atmhatya", "aatmahatya", "atmahatya"),
+    "khatam": ("khatm", "khtm", "khattam"),
+    "aankh": ("ankh", "aakh"),
+    "aankhon": ("ankhon", "aankho", "ankho"),
+    "andhera": ("andhra", "andheraa", "andhere"),
+    # chat-style fused auxiliaries ("hogaya", "horahi") are split into two words
+    "ho gaya": ("hogaya", "hogya", "hogayaa"),
+    "ho gayi": ("hogayi", "hogyi", "hogai", "hogayee"),
+    "ho gaye": ("hogaye", "hogye"),
+    "ho raha": ("horaha", "horha"),
+    "ho rahi": ("horahi", "horhi"),
+    "ho rahe": ("horahe", "horhe"),
+    "aa raha": ("araha", "aaraha", "aarha"),
+    "aa rahi": ("arahi", "aarahi", "aarhi"),
+}
+_HINGLISH_MAP: dict[str, str] = {
+    variant: canonical
+    for canonical, variants in _HINGLISH_VARIANTS.items()
+    for variant in (canonical, *variants)
+    if " " not in variant
+}
+
 
 def _correct_token(match: re.Match[str]) -> str:
     token = match.group(0)
-    mapped = _TYPO_MAP.get(token)
+    mapped = _TYPO_MAP.get(token) or _HINGLISH_MAP.get(token)
     if mapped is not None:
         return mapped
     if len(token) < 5:
@@ -299,12 +429,14 @@ def normalize_text(text: str) -> str:
 # ======================================================================
 
 _CLAUSE_BOUNDARY_RE = re.compile(
-    r"[.;?!\n]+(?!\d)|\b(?:but|however|although|though|whereas)\b"
+    r"[.;?!\n]+(?!\d)|\b(?:but|however|although|though|whereas|lekin|magar|parantu|kintu"
+    r"|balki)\b"
 )
 
 _NEG_CUE_RE = _rx(
     r"\b(?:no longer|no|not|never|without|w/o|denies|deny|denied|denying|none|nor|neither"
     r"|free of|absence of|negative for|ruled out|rules out|rule out)\b",
+    r"\bna\s+(?:to|toh|hi)\b",
     r"\b(?:do|does|did|have|has|had|is|are|was|were|could|would|should|ca|wo|ai)n't\s+"
     r"(?:(?:really|ever|even|actually|currently|now)\s+)?(?:have|has|had|having|get|got|getting"
     r"|feel|feeling|felt|experienc\w*|notic\w*|suffer\w*|want|think|faint\w*|pass\w*|black\w*"
@@ -319,20 +451,60 @@ _PSEUDO_NEG_RE = _rx(
 )
 _NEG_VOID_RE = _rx(
     r"\b(?:like this|this bad|this severe|this strong|this intense|this painful|as bad as this"
-    r"|before now|until now|until today|first time)\b"
+    r"|before now|until now|until today|first time)\b",
+    r"\b(?:pehle\s+kabhi|kabhi\s+aisa|aisa\s+(?:\w+\s+)?(?:pehle|kabhi)|pehli\s+baar"
+    r"|is\s+tarah\s+ka)\b",
 )
 _NEG_HARD_TERM_RE = _rx(
     r"\b(?:but|however|although|though|yet|except|apart from|other than|aside from|besides"
     r"|now|still|suddenly|today|tonight|currently|instead|which|who|whereas)\b",
     r"\b(?:i|we|you|my|his|her|their|it|it's|its|there's|he|she|he's|she's|they|they're|this"
     r"|that)\b",
+    r"\b(?:hai|hain|tha|thi|raha|rahi|rahe|lekin|magar|mujhe|mera|meri|mere|abhi|achanak"
+    r"|aaj)\b",
 )
-_NEG_SOFT_TERM_RE = _rx(r",|&|\b(?:and|with|plus|also|then)\b")
-_POST_NEG_INLINE_RE = re.compile(r"\s*[:=\-]+\s*(?:no|none|nope|negative|denied|absent|nil)\b")
+_NEG_SOFT_TERM_RE = _rx(r",|&|\b(?:and|with|plus|also|then|aur|ya|tatha)\b")
+_POST_NEG_INLINE_RE = re.compile(
+    r"\s*[:=\-]+\s*(?:no|none|nope|negative|denied|absent|nil|nahi)\b"
+)
 _POST_NEG_CLAUSE_RE = re.compile(
-    r"^\W*(?:no|nope|none|nah|negative|not really|not at all|never|denied|denies|absent|nil)\W*$"
+    r"^\W*(?:no|nope|none|nah|negative|not really|not at all|never|denied|denies|absent|nil"
+    r"|nahi|nahi ji|bilkul nahi)\W*$"
 )
 _NEG_WINDOW_CHARS = 80
+
+# --- Hinglish negation: the cue ("nahi") FOLLOWS the symptom ---------------------
+#: "na to X na Y": after a "na to / na hi" cue a bare "na" is a cue too.
+_HI_NEITHER_RE = re.compile(r"\bna\s+(?:to|toh|hi)\b")
+_HI_NA_RE = re.compile(r"\bna\b")
+_HI_POST_GAP = (
+    r"(?:(?:koi|bilkul|bhi|to|toh|hi|ab|abhi|kabhi|ekdam|zara|jara|kuch|waisa|aisa|wala|wali"
+    r"|ka|ki|ke|filhaal|aajkal|shikayat|samasya|problem|pareshani|takleef|dikkat|issue"
+    r"|complaint)\s+){0,4}"
+)
+#: "nahi" must close the statement ("dard nahi hai", "dard nahi.") — "dard nahi ja
+#: raha" (not going away) and "kam nahi ho raha" (not easing) are not negations.
+_HI_POST_CUE = (
+    r"nahi\b(?=\s*(?:$|[^\w\s]|(?:hai|hain|h|he|tha|thi|the|hua|hui|hue|hota|hoti|hote|ho|hoon"
+    r"|raha|rahi|rahe|lag\w*|mehsoos|feel|aa|aaya|aayi|aata|aati|aate|pada|padi|pade|ab|abhi"
+    r"|aaj|bilkul|ji|sir|doctor|lekin|magar|aur|or|and|to|toh|kuch|bas|yaar|na|mujhe|par|pe)\b))"
+)
+_HI_POST_NEG_RE = re.compile(r"\s+" + _HI_POST_GAP + _HI_POST_CUE)
+#: List separators for "X aur/ya Y nahi" (the negation scopes over the list).
+_HI_LIST_SEP_RE = re.compile(
+    r"\s*(?:,|&|/|\b(?:aur|ya|or|and|tatha|na)\b)\s*(?:(?:na|koi|ki|ka|ke|bhi|phir)\s+)*"
+)
+#: The last list item may be a non-red-flag word or two ("... ya chakkar nahi").
+_HI_TAIL_ITEM_NEG_RE = re.compile(
+    r"(?:(?!(?:hai|hain|h|tha|thi|ho|hota|hoti|hua|hui|raha|rahi|rahe|aa|gaya|gayi|lekin"
+    r"|magar|mujhe|mera|meri|mere|abhi)\b)[a-z']+\s+){1,3}" + _HI_POST_GAP + _HI_POST_CUE
+)
+#: "... kabhi nahi hua tha, aaj ho raha hai": a later present affirmation cancels it.
+_HI_REAFFIRM_RE = re.compile(
+    r"\b(?:ab|abhi|aaj)\b(?:\s+\w+){0,2}?\s+(?:ho\s+(?:raha|rahi|rahe)|aa\s+(?:raha|rahi|rahe)"
+    r"|shuru)\b"
+)
+_HI_LIST_MAX = 4
 
 #: Educational question frames only — broad topical words ("exam", "in women")
 #: are deliberately not cues, so they can never hide a personal statement.
@@ -357,6 +529,18 @@ _INFO_CUE_RE = _rx(
     r"|shows?|faints?|collapses?|passes|goes)\b",
     r"^\s*what(?:'s| is| are| does)\s+(?:(?:a|an|the)\s+)?(?:\w+\s+){0,3}?\w+(?:\s+mean)?\s*$",
     r"\bif\s+i\s+(?:ever|were to)\b|\bin case i\b|\bin the future\b",
+    # Hinglish: "... ke lakshan kya hain", "kaise pehchane", "ke baare mein",
+    # "agar kisi ko ...", "... kya hota hai", "behosh hone par kya karein"
+    r"\b(?:kya|kaun\s+se|kaunse|konse|kon\s+se|kaun\s+si|kaunsi|kis|kin)\s+(?:\w+\s+){0,2}?"
+    r"(?:lakshan|symptoms?|signs?|nishaan|nishan|sanket)\b",
+    r"\b(?:lakshan|symptoms?|signs?|sanket)\s+(?:\w+\s+){0,2}?(?:kya|kaun|kaunse|konse|batao"
+    r"|bataiye|bataye|bataen|btao|samjhao|samjhaiye|hote|hoti)\b",
+    r"\bkaise\s+(?:\w+\s+){0,2}?(?:pata|pehchan|pehchaan|pahchan|pahchaan|pehchane|jaane"
+    r"|jaanein|jaanen|samjhe|samjhein|maloom|malum|bachein|bachaye|bachayein|roke|rokein)\w*",
+    r"\b(?:ke|ki|ka)\s+(?:baare|bare|barey|baarey)\s+(?:mein|me|main|mai)\b",
+    r"\bagar\s+(?:kabhi|kisi|kisiko|koi|ghar\s+mein\s+kisi|mujhe\s+kabhi)\b",
+    r"\b(?:kya|kyun|kyon)\s+(?:hota|hoti|hote)\s+(?:hai|hain|h)\b",
+    r"\b(?:hone|ho\s+jaane|ho\s+jane|aane|padne)\s+(?:par|pe|pr)\s+(?:kya|kaise)\b",
 )
 #: First-person / present-tense experience markers; any of them in the message
 #: cancels informational suppression (the question may be about a live event).
@@ -372,6 +556,25 @@ _PERSONAL_RE = _rx(
     r"|numb\w*|weak\w*|droop\w*|slurr\w*|dizz\w*|faint\w*|headache|symptoms?|signs?)\b",
     r"\bi\s+(?:(?:just|suddenly|also|then|again|really|nearly|almost)\s+)?(?:fainted"
     r"|passed out|blacked out|collapsed|can't|cannot|couldn't|keep|woke|started|noticed)\b",
+    # Hinglish first-person / present markers
+    r"\b(?:abhi|is\s+waqt|isi\s+waqt|is\s+samay|filhaal|aaj\s+subah|aaj\s+raat|subah\s+se"
+    r"|raat\s+se|ghante\s+se|ghanton\s+se|der\s+se)\b",
+    r"\bmujhe\s+(?:\w+\s+){0,4}?(?:ho\s+(?:raha|rahi|rahe|gaya|gayi)|lag\s+(?:raha|rahi)"
+    r"|mehsoos|feel\s+ho|aa\s+(?:raha|rahi|rahe))\b",
+    r"\bmujhe\s+(?:\w+\s+){0,3}?(?:dard|pain|takleef|dikkat|pareshani|jalan|chakkar|behoshi"
+    r"|ghabrahat|bharipan|dabav)\s+(?:\w+\s+)?(?:hai|h)\b",
+    r"\b(?:mera|meri|mere)\s+(?:\w+\s+)?(?:seena|seene|chhati|chehra|chehre|muh|haath|baazu"
+    r"|pair|sar|dil|aawaz|zubaan|saans)\b",
+    r"\b(?:ye|yeh|yah|yahi)\s+(?:sab\s+)?(?:\w+\s+){0,3}?(?:lakshan|symptoms?|signs?"
+    r"|heart\s+attack|lakwa|stroke)\b",
+)
+#: Present progressive with no subject ("dard ho raha hai") is a live report unless
+#: the clause is about somebody generic ("agar kisi ko ... ho raha hai").
+_HI_PROGRESSIVE_RE = re.compile(
+    r"\b(?:ho|aa|uth|lag)\s+(?:raha|rahi|rahe)\s+(?:hai|hain|h|hoon)\b"
+)
+_HI_GENERIC_PERSON_RE = re.compile(
+    r"\b(?:kisi|kisiko|koi|someone|somebody|vyakti|insaan|logon|log|mareez|aadmi)\b"
 )
 _HISTORICAL_RE = _rx(
     r"\b(?:\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|several"
@@ -390,6 +593,16 @@ _HISTORICAL_RE = _rx(
     r"|reflux|heartburn|gas|indigestion|anxiety|a panic attack|panic|muscular|a pulled muscle"
     r"|muscle strain)\b",
     r"\b(?:well[- ]controlled|under control|seizure[- ]free)\b",
+    # Hinglish anchors: "2 saal pehle", "pichle saal", "2019 mein", "bachpan mein",
+    # "... ki history", "pehle 200 rehta tha", "gas nikla", "control mein hai"
+    r"\b(?:\d+|ek|do|teen|char|chaar|paanch|panch|chhe|saat|aath|nau|das|kai|kuch|bahut)\s+"
+    r"(?:saal|saalon|baras|varsh|mahine|mahino|mahinon)\s+(?:pehle|se\s+pehle|purani|purana)\b",
+    r"\bpichle\s+(?:saal|baras|varsh|mahine|dashak)\b|\b(?:saalon|bahut|kaafi)\s+pehle\b",
+    r"\b(?:19|20)\d\d\s+(?:mein|main|mai)\b|\bbachpan\s+(?:mein|me|main|se)\b|\bpurani\s+baat\b",
+    r"\b(?:ki|ka|ke)\s+history\b|\bhistory\s+(?:hai|rahi|thi|h)\b",
+    r"\b(?:rehta|rehti|rahta|rahti|hota|hoti)\s+(?:tha|thi|the)\b",
+    r"\b(?:gas|acidity|badhazmi)\s+(?:ki\s+wajah\s+se\s+)?(?:tha|thi|nikla|nikli|nikle)\b",
+    r"\bcontrol\s+(?:mein|me|main)\s+(?:hai|h|rehta|rahta)\b",
 )
 _RECENT_RE = _rx(
     r"\b(?:now|right now|currently|today|tonight|just|again|still|ongoing|at the moment|since"
@@ -397,6 +610,8 @@ _RECENT_RE = _rx(
     r"\bthis (?:morning|afternoon|evening|week)\b",
     r"\b(?:\d+|a|an|one|two|few|couple of|a few|several)\s+(?:minutes?|mins?|hours?|hrs?"
     r"|days?)\s+ago\b",
+    r"\b(?:abhi|aaj|kal|subah\s+se|raat\s+se|phir\s+se|fir\s+se|dobara|dubara|ab\s+bhi"
+    r"|ab\s+tak|ab\s+phir|ab\s+fir|wapas|vapas|ghante|ghanton)\b",
 )
 _RESOLVED_RE = _rx(
     r"\bnow\s+(?:it's\s+|it is\s+|i'm\s+|i am\s+|everything(?:'s| is)\s+|all\s+|things are\s+"
@@ -404,6 +619,7 @@ _RESOLVED_RE = _rx(
     r"|gone|stable)\b",
     r"\b(?:is|are|it's|i'm|am|all|everything's)\s+(?:\w+\s+)?(?:fine|normal|ok|okay|better|good"
     r"|controlled|resolved|gone|stable)\s+now\b",
+    r"\b(?:ab|abhi)\s+(?:sab\s+|bilkul\s+|ekdam\s+|to\s+|toh\s+)?(?:theek|normal|sahi|control)\b",
 )
 _HEAVY_EXERTION_RE = _rx(
     r"\b(?:when|while|after|during|if|whenever|with)\s+(?:(?:i|i'm|doing|heavy|intense|hard"
@@ -411,11 +627,15 @@ _HEAVY_EXERTION_RE = _rx(
     r"\b(?:jogging|jog|(?<!breathing )exercis\w*|working out|work out|workouts?|gym|sports?"
     r"|sprint\w*|weightlifting|lifting weights|swimming|hiking|cycling|biking|marathons?"
     r"|cardio|hiit|football|soccer|basketball|tennis|badminton|cricket|dancing)\b",
+    r"\b(?:daud\w*|bhaag(?:ne|te|na|kar)|bhag(?:ne|te|na|kar)|kasrat|vyayam|khel(?:ne|te|ta"
+    r"|ti|kar))\b",
 )
 _MINIMAL_EXERTION_RE = _rx(
     r"\b(?:at rest|resting|rest|sitting|lying|laying|lie down|lay down|sleep\w*|talking"
     r"|walking|walk|bathroom|toilet|getting dressed|dressing|shower\w*|even|minimal|light"
-    r"|few steps|across the room|stairs|doing nothing|in bed|bed)\b"
+    r"|few steps|across the room|stairs|doing nothing|in bed|bed)\b",
+    r"\b(?:seedhi\w*|sidhi\w*|chalne|chalte|baithe|baith\w*|lete|leta|leti|letne|aaram|sote"
+    r"|soye|bistar)\b",
 )
 
 
@@ -428,16 +648,25 @@ class _Clause:
         self.next_text = next_text
 
     @cached_property
+    def voided(self) -> bool:
+        """``never had chest pain like this`` — the negation affirms a new symptom."""
+        return bool(_NEG_VOID_RE.search(self.text))
+
+    @cached_property
     def negation_cues(self) -> list[tuple[int, int]]:
         """Valid negation cue spans (clause-relative); empty when voided."""
-        if _NEG_VOID_RE.search(self.text):
+        if self.voided:
             return []
         pseudo = [m.span() for m in _PSEUDO_NEG_RE.finditer(self.text)]
-        return [
+        cues = [
             m.span()
             for m in _NEG_CUE_RE.finditer(self.text)
             if not any(ps <= m.start() < pe for ps, pe in pseudo)
         ]
+        neither = _HI_NEITHER_RE.search(self.text)
+        if neither is not None:  # "na to X na Y": the later bare "na" is a cue too
+            cues += [m.span() for m in _HI_NA_RE.finditer(self.text, neither.end())]
+        return cues
 
     @cached_property
     def post_negated(self) -> bool:
@@ -482,15 +711,55 @@ class _Analysis:
             )
             for i, (s, e) in enumerate(spans)
         ]
-        self.personal = bool(_PERSONAL_RE.search(text))
+        self.personal = bool(_PERSONAL_RE.search(text)) or any(
+            _HI_PROGRESSIVE_RE.search(c.text) and not _HI_GENERIC_PERSON_RE.search(c.text)
+            for c in self._clauses
+        )
+        self.rule_starts: list[int] = []
+        self._rule_ends: dict[int, int] = {}
+
+    def set_rule_spans(self, spans: list[tuple[int, int]]) -> None:
+        """Register every red-flag match span (needed for list-scoped negation)."""
+        self.rule_starts = sorted(start for start, _ in spans)
+        for start, end in spans:
+            self._rule_ends[start] = max(end, self._rule_ends.get(start, end))
 
     def clause_at(self, pos: int) -> _Clause:
         return self._clauses[bisect.bisect_right(self._starts, pos) - 1]
 
-    def is_negated(self, start: int, end: int, rule_starts: list[int]) -> bool:
+    def _hi_post_negated(self, end: int, clause: _Clause) -> bool:
+        """Hinglish post-position negation: ``seene mein dard nahi hai``.
+
+        Walks a short list (``dard aur saans ki takleef nahi``) whose items are
+        other red-flag matches, bounded by :data:`_HI_LIST_MAX` items.
+        """
+        if clause.voided:
+            return False
+        clause_end = clause.start + len(clause.text)
+        pos = end
+        for _ in range(_HI_LIST_MAX):
+            cue = _HI_POST_NEG_RE.match(self.text, pos, clause_end)
+            if cue is not None:
+                return not _HI_REAFFIRM_RE.search(self.text, cue.end(), clause_end)
+            sep = _HI_LIST_SEP_RE.match(self.text, pos, clause_end)
+            if sep is None:
+                return False
+            next_end = self._rule_ends.get(sep.end())
+            if next_end is None:
+                tail = _HI_TAIL_ITEM_NEG_RE.match(self.text, sep.end(), clause_end)
+                return tail is not None and not _HI_REAFFIRM_RE.search(
+                    self.text, tail.end(), clause_end
+                )
+            pos = next_end
+        return False
+
+    def is_negated(self, start: int, end: int) -> bool:
         """Whether the match ``[start, end)`` lies in the scope of a negation cue."""
+        rule_starts = self.rule_starts
         clause = self.clause_at(start)
         if clause.post_negated or _POST_NEG_INLINE_RE.match(self.text, end):
+            return True
+        if self._hi_post_negated(end, clause):
             return True
         rel = start - clause.start
         for cue_start, cue_end in clause.negation_cues:
@@ -510,9 +779,9 @@ class _Analysis:
                 return True
         return False
 
-    def status(self, start: int, end: int, rule_starts: list[int], *, exertion: bool) -> str:
+    def status(self, start: int, end: int, *, exertion: bool) -> str:
         """Classify one rule match as affirmed / negated / suppressed."""
-        if self.is_negated(start, end, rule_starts):
+        if self.is_negated(start, end):
             return "negated"
         clause = self.clause_at(start)
         if clause.historical:
@@ -533,7 +802,8 @@ _UNIT_GUARD = (
     r"(?!\s*(?:%|percent|mg|mcg|ug|ml|mmol|kg|kgs|lbs?|pounds|units?|iu|bpm|beats|steps"
     r"|calories|cal|kcal|days?|weeks?|months?|years?|yrs?|hours?|hrs?|minutes?|mins?|times"
     r"|rs|rupees|dollars|pills?|tablets?|tabs?|cm|mm(?!\s*hg)|meters?|metres?|km|miles?|ft"
-    r"|feet|degrees?)\b)"
+    r"|feet|degrees?|saal|sal|mahine|mahina|din|ghante|ghanta|rupaye|rupaiye|rupay|goli"
+    r"|goliyan|kilo|baar|dafa|umar)\b)"
 )
 _CMP = (
     r"(?:(?P<strict>over|above|more than|greater than|higher than|past|beyond|crossed"
@@ -547,7 +817,8 @@ _FILLER = (
     r"|have|been|got|gets|getting|keeps?|kept|stays?|stayed|hit|hits|reached|touched"
     r"|touching|spiked|jumped|shot|rose|climbed|dropped|fell|down|measured|measures|showing"
     r"|registered|it|it's|me|my|only|consistently|constantly|always|very|really|so|high|too"
-    r"|to)){0,5}"
+    r"|to|hai|hain|tha|thi|hua|hui|gaya|gayi|raha|rahi|aaya|aayi|aa|abhi|aaj|bahut|kaafi|zyada"
+    r"|jyada|ka|ki|mera|meri|bhi|toh|chala|chali|badh|badhkar|lagbhag|kareeb|upar|naapa)){0,5}"
 )
 _SINGLE_TAIL = r"\s*[:=-]?\s*" + _CMP + r"(?P<num>\d{2,3})" + _NUM_GUARD + _SUFFIX + _UNIT_GUARD
 
@@ -557,11 +828,15 @@ _BP_PAIR_RE = re.compile(
 )
 _SYS_SINGLE_RE = re.compile(
     r"\b(?:systolic(?:\s+(?:bp|blood pressure|pressure|reading|number|value|level))?"
-    r"|(?:top|upper|first)\s+(?:number|reading|value))" + _FILLER + _SINGLE_TAIL
+    r"|(?:top|upper|first)\s+(?:number|reading|value)"
+    r"|(?:upar|uppar|ooper)\s+(?:wala|wali|vala|ka)(?:\s+(?:number|reading))?)"
+    + _FILLER + _SINGLE_TAIL
 )
 _DIA_SINGLE_RE = re.compile(
     r"\b(?:diastolic(?:\s+(?:bp|blood pressure|pressure|reading|number|value|level))?"
-    r"|(?:bottom|lower|second)\s+(?:number|reading|value))" + _FILLER + _SINGLE_TAIL
+    r"|(?:bottom|lower|second)\s+(?:number|reading|value)"
+    r"|(?:neeche|niche|nichla|nichala)\s+(?:wala|wali|vala|ka)(?:\s+(?:number|reading))?)"
+    + _FILLER + _SINGLE_TAIL
 )
 _BP_SINGLE_RE = re.compile(
     r"\b(?:bp|blood pressure|pressure|cuff)(?:\s+(?:reading|readings|monitor|machine|cuff"
@@ -577,13 +852,14 @@ _CTX_SINGLE_RE = re.compile(
 _BP_CONTEXT_RE = re.compile(
     r"\b(?:bp|blood pressure|pressure|systolic|diastolic|mm ?hg|hypertension|hypertensive"
     r"|cuff|readings?|monitor|machine|top number|bottom number|numbers|measured|measuring"
-    r"|checked|checking|rechecked)\b"
+    r"|checked|checking|rechecked|raktchap|raktchaap|rakt chaap|rakt chap)\b"
 )
 _MEASUREMENT_LABEL_RE = re.compile(
     r"\b(?:(?P<bp>bp|blood pressure|pressure|systolic|diastolic|cuff)|sugar|glucose|cholesterol"
     r"|ldl|hdl|triglycerides?|a1c|hba1c|heart rate|pulse|hr|weight|weigh|temp|temperature"
     r"|fever|oxygen|o2|spo2|sats?|saturation|potassium|sodium|creatinine|egfr|platelets?"
-    r"|h[a]?emoglobin|uric acid|tsh|vitamin|calories|steps|score|iq)\b"
+    r"|h[a]?emoglobin|uric acid|tsh|vitamin|calories|steps|score|iq|dhadkan|nabz|nabj|wazan"
+    r"|vajan|bukhar|taapmaan|tapman)\b"
 )
 _TARGET_RE = re.compile(
     r"(?:under|below|less than|lower than|<|target|goal|aim(?:ing)? for|keep (?:it|my bp|bp)?)"
@@ -591,10 +867,22 @@ _TARGET_RE = re.compile(
 )
 #: "if / unless / in case / whenever ..." — a conditional threshold, not a measurement
 #: ("call if BP is over 180/110"). "when" is excluded: it is often temporal.
-_CONDITIONAL_RE = re.compile(r"\b(?:if|unless|in case|whenever)\b[^.;?!\n]{0,30}$")
+_CONDITIONAL_RE = re.compile(
+    r"\b(?:if|unless|in case|whenever|agar|yadi|jab\s+bhi)\b[^.;?!\n]{0,30}$"
+)
 _THRESHOLD_TAIL_RE = re.compile(
     r"(?:over|above|higher than|more than|greater than|exceeds|exceeding|>=?|crosses|past"
     r"|beyond)\s*$"
+)
+#: Hindi postpositions follow the number: "180 se upar" (above 180) is a threshold,
+#: "130/80 se neeche rakhna" (keep below) and "130/80 hona chahiye" are targets.
+_HI_THRESHOLD_AFTER_RE = re.compile(
+    r"^\s*(?:mm ?hg\s+)?(?:se|ke)\s+(?:upar|ooper|uppar|zyada|jyada|adhik|paar)\b"
+)
+_HI_TARGET_AFTER_RE = re.compile(
+    r"^\s*(?:mm ?hg\s+)?(?:(?:se|ke)\s+(?:neeche|niche|kam|andar)\s+(?:\w+\s+)?(?:rakh\w*"
+    r"|hona\s+chahiye|rehna\s+chahiye|rahna\s+chahiye)|(?:hona|rehna|rahna)\s+chahiye"
+    r"|tak\s+(?:rakh\w*|lana|laana))"
 )
 
 
@@ -619,18 +907,20 @@ def _plausible(sys_value: int, dia_value: int) -> bool:
     return 50 <= sys_value <= 300 and 20 <= dia_value <= 200 and sys_value > dia_value
 
 
-def _not_a_reading(before: str, personal: bool) -> bool:
+def _not_a_reading(before: str, after: str, personal: bool) -> bool:
     """Target ("below 130/80") or conditional threshold ("if it is over 180/110").
 
-    A conditional threshold still counts as a reading when the message carries a
-    present-tense / first-person marker ("what if it's over 200/120 right now?").
+    ``before`` / ``after`` are the 40 / 30 characters around the number; Hinglish
+    puts the comparison after it ("agar bp 180 se upar jaaye"). A conditional
+    threshold still counts as a reading when the message carries a present-tense /
+    first-person marker ("what if it's over 200/120 right now?").
     """
-    if _TARGET_RE.search(before):
+    if _TARGET_RE.search(before) or _HI_TARGET_AFTER_RE.match(after):
         return True
     return (
         not personal
         and bool(_CONDITIONAL_RE.search(before))
-        and bool(_THRESHOLD_TAIL_RE.search(before))
+        and bool(_THRESHOLD_TAIL_RE.search(before) or _HI_THRESHOLD_AFTER_RE.match(after))
     )
 
 
@@ -652,7 +942,7 @@ def _extract_readings(text: str, has_context: bool, personal: bool) -> list[_Rea
         if (
             _plausible(sys_value, dia_value)
             and not _other_measurement(before)
-            and not _not_a_reading(before, personal)
+            and not _not_a_reading(before, text[m.end():m.end() + 30], personal)
         ):
             readings.append(_Reading(sys_value, dia_value, m.start(), m.end(), False))
             claimed.update((m.start("sys"), m.start("dia")))
@@ -669,7 +959,8 @@ def _extract_readings(text: str, has_context: bool, personal: bool) -> list[_Rea
             if m.start("num") in claimed:
                 continue
             before = text[max(0, m.start("num") - 40):m.start("num")]
-            if _other_measurement(before) or _not_a_reading(before, personal):
+            after = text[m.end():m.end() + 30]
+            if _other_measurement(before) or _not_a_reading(before, after, personal):
                 continue
             value = _single_value(m)
             if not (50 <= value <= 300 if component == "sys" else 20 <= value <= 200):
@@ -1048,12 +1339,281 @@ _RED_FLAG_RULES: tuple[tuple[str, re.Pattern[str], bool], ...] = (
     ),
 )
 
+# ----------------------------------------------------------------------
+# 4b. Hinglish / Indian-English red flags (Roman-script Hindi, after normalisation)
+# ----------------------------------------------------------------------
+# Each pattern needs at least one Hindi token (or an Indian-English idiom such as
+# "chest is paining"), so purely English messages keep exactly the behaviour of
+# the English rules above. Negation, informational, historical and exertion
+# filters are shared; Hinglish post-position negation ("... nahi hai") is handled
+# by :meth:`_Analysis._hi_post_negated`.
+
+_HI_IN = r"(?:mein|me|main|mai|mei|mey|men|par|pe)"
+_HI_PROG = r"(?:raha|rahi|rahe)"
+_HI_INTENS = r"(?:bahut|kaafi|thodi|thoda|bhi|badi|zyada|jyada|koi)"
+_HI_CHEST_FILL = (
+    r"(?:bahut|ekdam|thoda|thodi|halka|halki|tez|zor|zyada|jyada|kaafi|ajeeb|ajib|aisa|aisi"
+    r"|alag|bhayankar|bhayanak|sa|si|ek|kuch|koi|bhi|hi|to|toh|left|right|baayi|baayen|baaye"
+    r"|daayi|daayen|daaye|beech|bich|taraf|side|hisse|hissa|wala|wali|achanak|lagatar|very"
+    r"|severe|sharp|mild|ka|ki|ke|mein|me|main|andar)"
+)
+_HI_PAIN_HI = r"(?:dard|jalan|bharipan|dabav|jakdan|jakdahat|chubhan|khinchav|bojh)"
+_HI_PAIN_ALL = (
+    r"(?:dard|jalan|bharipan|dabav|jakdan|jakdahat|chubhan|khinchav|bojh|pain|tightness"
+    r"|pressure|heaviness|discomfort|ache|aching)"
+)
+#: "struck by" verb group: "aa gaya", "pad raha", "ho gayi", "maar gaya", "hua hai" …
+_HI_STRUCK = (
+    r"(?:(?:aa|pad|par|ho|lag)\s+(?:raha|rahi|rahe|gaya|gayi|gaye|chuka|chuki)|aaya|aayi|aya"
+    r"|ayi|pada|padi|pade|maar\s+(?:gaya|gayi|diya|di)|mar\s+(?:gaya|gayi)|maara|mara"
+    r"|(?:hua|hui)\s+(?:hai|h|hain))"
+)
+#: "... aaya tha" (had, pluperfect) is history, not a current event.
+_HI_NOT_PAST = r"(?!\s+(?:tha|thi|the)\b)"
+_HI_HEART_ATTACK = (
+    r"(?:heart\s+attack|hart\s+attack|dil\s+ka\s+daura|dil\s+ka\s+attack|heart\s+ka\s+attack"
+    r"|cardiac\s+arrest)"
+)
+_HI_STROKE = (
+    r"(?:lakwa|lakwe|paralysis|brain\s+stroke|stroke|brain\s+attack|brain\s+hemorrhage"
+    r"|brain\s+haemorrhage)"
+)
+_HI_HEAD = r"(?:sar|sir|sarr|sirr)"
+_HI_HEADACHE = rf"(?:{_HI_HEAD}\s*(?:(?:{_HI_IN}|ka)\s+)?dard|headache|head\s*ache)"
+_HI_STAMMER = r"la[dr]h?kh?a?[dr]h?a\w*"
+_HI_LIMB = r"(?:haath|baazu|pair|pairon|paon|paanv|taang|arm|leg|hand)"
+_HI_SIDE = (
+    r"(?:ek|aadhe|aadha|left|right|baayi|baayin|baayen|baaye|baaya|daayi|daayen|daaye|daaya"
+    r"|ulti|ulta|seedhi|seedha)"
+)
+_HI_WANT = r"(?:chahta|chahti|chahte|chahiye|chahu|chahun|chahoon)"
+
+_HINGLISH_RULES: tuple[tuple[str, re.Pattern[str], bool], ...] = (
+    (
+        "chest_pain_hi",
+        _rx(
+            rf"\b(?:seene|seena|chhati)\s+(?:(?:{_HI_IN}|ka|ki|ke)\s+)?(?:{_HI_CHEST_FILL}\s+){{0,4}}"
+            rf"{_HI_PAIN_ALL}\b",
+            rf"\b(?:chest|heart)\s+(?:{_HI_IN}|ka|ki|ke)\s+(?:{_HI_CHEST_FILL}\s+){{0,4}}"
+            rf"{_HI_PAIN_ALL}\b",
+            rf"\b(?:chest|heart)\s+(?:{_HI_CHEST_FILL}\s+){{0,3}}{_HI_PAIN_HI}\b",
+            rf"\bdil\s+(?:(?:{_HI_IN}|ka|ki|ke)\s+)?(?:{_HI_CHEST_FILL}\s+){{0,3}}(?:dard|pain)\b",
+            rf"\b(?:seene|seena|chhati|chest)\s+(?:{_HI_IN}\s+)?(?:{_HI_CHEST_FILL}\s+){{0,3}}"
+            rf"(?:bhaari|jakad\w*|jakd\w*|dab\s+(?:{_HI_PROG}|gaya|gayi)|daba\s+hua|dabi\s+hui"
+            rf"|dukh\w*|jal\s+{_HI_PROG}|jalta|jalti|bhinch\w*|ainth\w*)",
+            rf"\b(?:dard|pain|jalan|dabav|bharipan|jakdan)\s+(?:(?:ho|uth|raha|rahi|rahe|hai|h|sa"
+            rf"|si|bhi|ek|bahut|tez|hota|hoti)\s+){{0,4}}(?:seene|chhati|chest|heart|dil)\s+"
+            rf"{_HI_IN}\b",
+            r"\b(?:seene|chhati|chest)\s+se\s+(?:\w+\s+){0,3}?(?:tak|mein|me)\s+(?:\w+\s+)?"
+            r"(?:dard|pain)\b",
+            # Indian English
+            r"\bchest\s+(?:is\s+)?paining\b|\buneasiness\s+(?:in|on|of)\s+(?:my\s+|the\s+)?chest\b"
+            r"|\bchest\s+uneasiness\b",
+        ),
+        False,
+    ),
+    (
+        "heart_attack_hi",
+        _rx(
+            rf"\b{_HI_HEART_ATTACK}\s+(?:(?:sa|jaisa|shayad|to|toh|abhi)\s+)?{_HI_STRUCK}"
+            rf"{_HI_NOT_PAST}",
+            rf"\b{_HI_HEART_ATTACK}\s+(?:jaisa|jaisi|jaise|sa|si)\s+(?:\w+\s+)?(?:lag|mehsoos"
+            r"|feel)\w*",
+            rf"\b(?:lagta|lag\s+raha|lag\s+rahi|shayad)\s+(?:hai\s+)?(?:\w+\s+){{0,3}}?"
+            rf"{_HI_HEART_ATTACK}\s+(?:hai|h|ho\s+(?:raha|rahi|gaya|gayi)|aa\s+(?:raha|rahi|gaya"
+            r"|gayi))\b",
+            rf"\bkahin\s+(?:\w+\s+){{0,3}}?{_HI_HEART_ATTACK}\s+(?:(?:to|toh)\s+)?nahi\b",
+        ),
+        False,
+    ),
+    (
+        "breathlessness_hi",
+        _rx(
+            r"\bsaans\s+(?:(?:theek|sahi|achhe|acche|properly|bilkul|puri|poori|thodi|zara|se"
+            r"|bhi|ekdam)\s+){0,3}nahi\s+(?:aa|a|aati|aata|le|li|lee|ho|ban)\b",
+            r"\bsaans\s+(?:le|lena|lene|lete|li)\s+nahi\s+(?:pa|paa|sak|ho)\w*",
+            rf"\bsaans\s+(?:le|lena|lene|lete)\s+(?:(?:{_HI_IN}|se|waqt|samay)\s+)?"
+            rf"(?:{_HI_INTENS}\s+){{0,2}}(?:takleef|dikkat|pareshani|problem|mushkil|trouble"
+            r"|difficulty|issue|kathinai)\b",
+            rf"\bsaans\s+(?:ki|ka|ke|{_HI_IN})\s+(?:{_HI_INTENS}\s+){{0,2}}(?:takleef|dikkat"
+            r"|pareshani|problem|mushkil|trouble|kami|tangi|ghutan)\b",
+            r"\bsaans\s+(?:(?:bahut|kaafi|thodi|thoda|bhi|ekdam|jaldi|zor\s+se|tez)\s+){0,2}"
+            r"(?:phool|phul|fool|ful|chadh|chad|charh|ukhad|ukhar|atak|ruk|band|ghut|bhaari)\w*",
+            r"\bdam\s+(?:\w+\s+)?(?:ghut|ghutan|nikal|ukhad|ukhar|phool|phul|fool)\w*",
+            r"\b(?:haanf|hanf|haamf|hamf|haanph|hanph)\w*",
+            rf"\bbreath(?:ing)?\s+(?:(?:{_HI_IN}|ki|ka|ke)\s+)?(?:{_HI_INTENS}\s+){{0,2}}"
+            r"(?:takleef|dikkat|pareshani)\b",
+            rf"\bbreath(?:ing)?\s+{_HI_IN}\s+(?:{_HI_INTENS}\s+){{0,2}}(?:problem|issue|trouble"
+            r"|difficulty)\b|\bbreath\s+nahi\s+(?:aa|a|le|ho)\b",
+            # Indian English
+            r"\bbreathing\s+(?:difficulty|trouble)\b",
+            r"\b(?:feel\w*|getting|having|get|got)\s+(?:(?:some|a|lot of|very|so|bit of)\s+)?"
+            r"suffocat\w*|\bsuffocation\s+(?:ho|lag|feel)\w*",
+        ),
+        True,
+    ),
+    (
+        "syncope_hi",
+        _rx(
+            r"\bbehosh\b(?!\s+(?:kar|karke|karne|karna|karte|kiya|kiye))",
+            r"\bbehoshi\s+(?:(?:si|jaisi|ka|ki|bahut|thodi|thoda)\s+){0,2}(?:aa|aayi|aati|chha"
+            rf"|chhaa|ho|hui|daura|lag|mehsoos)\w*{_HI_NOT_PAST}",
+            rf"\bhosh\s+(?:(?:{_HI_IN}|bhi|hi|to|toh|bilkul)\s+){{0,2}}nahi\b",
+            rf"\bhosh\s+(?:{_HI_IN}\s+)?(?:kho\w*|chala\s+gaya|chali\s+gayi)",
+            r"\bchakkar\s+(?:\w+\s+){0,3}?(?:gir|gira|giri|gire|girna|girne|girte|girti|girta"
+            r"|behosh)\b",
+            r"\baankh\w*\s+(?:ke|ki)\s+(?:aage|samne|saamne)\s+(?:\w+\s+)?andhera\b",
+        ),
+        False,
+    ),
+    (
+        "stroke_face_hi",
+        _rx(
+            r"\b(?:muh|chehra|chehre|honth)\s+(?:(?:ka|ki|ke|ek|aadha|aadhe|left|right|baaya"
+            r"|baayan|daaya|daayan|hissa|hisse|taraf|side|thoda|thodi|bilkul|ekdam|achanak|bhi)"
+            r"\s+){0,3}(?:tedha|latak\w*|latk\w*|tirchha|tircha|jhuk\w*|sunn|ek\s+taraf\s+(?:ho"
+            r"|khinch|mud|jhuk)\w*|khinch\w*|bigad\w*)"
+            # "muh tedha karna" (pulling a face) is deliberate, not a stroke sign
+            r"(?!\s+(?:kar|kiya|kiye|karke|karna|karta|karti|karte|banaya|bana)\b)",
+            r"\b(?:tedha|tirchha|tircha)\s+(?:muh|chehra|chehre)\b",
+        ),
+        False,
+    ),
+    (
+        "stroke_limb_hi",
+        _rx(
+            rf"\b{_HI_LIMB}\s+(?:(?:{_HI_LIMB}|{_HI_SIDE}|bhi|bilkul|ekdam|achanak|ka|ki|ke|wala"
+            rf"|thoda|thodi|poora|pura)\s+){{0,3}}(?:nahi\s+(?:hil|uth|utha|chal|mud)\w*|sunn\w*"
+            r"|sun\s+(?:ho|pad|par)\w*|bejaan|be\s+jaan|kaam\s+nahi|latak\w*|lakwa)",
+            rf"\b{_HI_SIDE}\s+(?:taraf|side|hissa|hisse|ang|part)\s+(?:\w+\s+){{0,3}}?(?:sunn\w*"
+            r"|lakwa|kamzori|kamzor\w*|nahi\s+(?:hil|chal|uth)\w*|kaam\s+nahi|bejaan|be\s+jaan"
+            r"|latak\w*)",
+            rf"\b(?:haath|baazu|pair)\s+{_HI_IN}\s+(?:\w+\s+)?(?:kamzori|sunnpan|jaan\s+nahi"
+            r"|taakat\s+nahi|takat\s+nahi)\b",
+        ),
+        False,
+    ),
+    (
+        "stroke_speech_hi",
+        _rx(
+            rf"\b(?:aawaz|zubaan|jeebh|boli|bolna|bolne|bolte|baat|baatein|speech|words|bol)\s+"
+            rf"(?:(?:bhi|thodi|thoda|bahut|achanak|ekdam|bilkul|se|mein|me|ki|ka)\s+){{0,2}}"
+            rf"{_HI_STAMMER}",
+            r"\b(?:zubaan|jeebh)\s+(?:(?:bhi|thodi|thoda|bahut|achanak|ekdam)\s+){0,2}(?:atak"
+            r"|ulajh|bhaari|sunn|tedhi)\w*",
+            r"\b(?:bol|bolne|(?<!se )(?<!ko )baat)\s+(?:(?:hi|bhi|theek\s+se|sahi\s+se|saaf"
+            r"|kuch|properly|ekdam|bilkul)\s+){0,2}nahi\s+(?:kar\s+)?(?:pa|paa|sak|paya|payi)\w*",
+            rf"\b(?:bolne|bolte|baat\s+karne|baat\s+karte)\s+(?:{_HI_IN}|waqt|samay)\s+"
+            rf"(?:{_HI_INTENS}\s+){{0,2}}(?:takleef|dikkat|pareshani|problem|mushkil)\b",
+            r"\b(?:shabd|alfaaz|words)\s+(?:\w+\s+)?(?:nahi\s+(?:nikal|mil|aa)|atak)\w*",
+        ),
+        False,
+    ),
+    (
+        "stroke_vision_hi",
+        _rx(
+            r"\bachanak\s+(?:(?:se|hi)\s+)?(?:\w+\s+){0,2}?(?:dikhna|dikhai|dikhayi|nazar)\s+"
+            r"(?:\w+\s+)?(?:band|kam|chala)\w*",
+            r"\b(?:ek|left|right|baayi|daayi)\s+aankh\w*\s+(?:se|mein|me|main)\s+(?:\w+\s+){0,2}?"
+            r"(?:dikhna\s+band|dikhai\s+nahi|dikhayi\s+nahi|dikh\s+nahi|kuch\s+nahi\s+dikh"
+            r"|nahi\s+dikh|andhera|dhundhla)\w*",
+            r"\b(?:sab|sabkuch|cheezein|chizein|har\s+cheez)\s+(?:\w+\s+)?do\s+do\s+(?:dikh"
+            r"|nazar)\w*",
+        ),
+        False,
+    ),
+    (
+        "stroke_self_report_hi",
+        _rx(
+            rf"\b{_HI_STROKE}\s+(?:(?:ka|ki)\s+(?:attack|daura|asar)\s+)?(?:(?:sa|jaisa|shayad|to"
+            rf"|toh)\s+)?{_HI_STRUCK}{_HI_NOT_PAST}",
+            rf"\bkahin\s+(?:\w+\s+){{0,3}}?{_HI_STROKE}\s+(?:(?:to|toh)\s+)?nahi\b",
+            rf"\b(?:lagta|lag\s+raha|lag\s+rahi|shayad)\s+(?:hai\s+)?(?:\w+\s+){{0,3}}?"
+            rf"{_HI_STROKE}\s+(?:hai|h|ho\s+(?:raha|rahi|gaya|gayi)|aa\s+(?:raha|rahi|gaya|gayi))\b",
+        ),
+        False,
+    ),
+    (
+        "severe_headache_hi",
+        _rx(
+            r"\b(?:(?:bahut|ekdam|itna|itni|aisa|bahut\s+hi)\s+(?:tez|zor\s+ka|zordar)"
+            r"|bhayankar|bhayanak|asahniya|asehniya|jaanleva|jaan\s+leva|zabardast"
+            r"|bardasht\s+se\s+bahar|sabse\s+(?:bura|tez|zyada|kharab|bhayankar))\s+"
+            rf"(?:(?:sa|wala|vala)\s+)?{_HI_HEADACHE}\b",
+            rf"\b{_HI_HEAD}\s+(?:{_HI_IN}|ka)\s+(?:(?:bahut|ekdam|itna|achanak|se|hi)\s+){{0,2}}"
+            r"(?:tez|bhayankar|bhayanak|asahniya|jaanleva|zabardast|zordar)\s+(?:sa\s+)?dard\b",
+            rf"\b{_HI_HEAD}\s+(?:(?:dard|{_HI_IN}|bhi|se|mano|jaise|aisa|lag\s+raha)\s+){{0,3}}"
+            r"(?:phat|fat|phatt|fatt)\w*\s+(?:raha|rahi|rahe|ja|jaa|jayega|jaega|jaaega|gaya"
+            r"|jata|jaata|sa)\b",
+            r"\bachanak\s+(?:(?:se|hi|bahut|ekdam|tez|zordar|bhayankar)\s+){0,3}"
+            rf"(?:{_HI_HEAD}\s+(?:(?:{_HI_IN}|ka)\s+)?(?:(?:bahut|tez)\s+){{0,2}}dard"
+            r"|headache)\b",
+        ),
+        False,
+    ),
+    (
+        "hemoptysis_hi",
+        _rx(
+            rf"\b(?:khansi|khaans\w*|khans\w*|cough\w*)\s+(?:(?:{_HI_IN}|ke\s+saath|ke\s+sath|se"
+            r"|ke\s+baad|karte\s+waqt|karne\s+par|waqt)\s+)?(?:(?:bhi|thoda|thodi|bahut|kaafi)"
+            r"\s+)?khoon\b",
+            r"\bkhoon\s+(?:wali|vali|wala|vala|ki|ka|bhari)\s+(?:khansi|balgam|thook|kaff)\b",
+            rf"\b(?:balgam|thook|thuk|kaff|phlegm|sputum)\s+(?:{_HI_IN}|ke\s+saath|ke\s+sath|se)"
+            r"\s+(?:(?:bhi|thoda|thodi|bahut|kaafi)\s+)?khoon\b",
+        ),
+        False,
+    ),
+    (
+        "hematemesis_hi",
+        _rx(
+            r"\bkhoon\s+(?:ki|wali|vali|ka)\s+(?:ulti|ultiyan)\b",
+            rf"\b(?:ulti|ultiyan|vomit\w*)\s+(?:{_HI_IN}|ke\s+saath|ke\s+sath|se)\s+"
+            r"(?:(?:bhi|thoda|thodi|bahut|kaafi)\s+)?khoon\b",
+        ),
+        False,
+    ),
+    (
+        "self_harm_hi",
+        _rx(
+            r"\b(?:marna|marne|mar\s+(?:jaana|jana|jaun|jaaun|jaane))\s+(?:(?:hi|bhi)\s+)?"
+            rf"(?:{_HI_WANT}|ka\s+(?:mann|man|dil)|ki\s+(?:soch|ichha|iccha|khwahish))\w*",
+            rf"\b(?:jeena|jeene|zinda|zindagi|jeevan)\s+(?:(?:bhi|ab|aur|hi)\s+)?(?:nahi|na)\s+"
+            rf"(?:{_HI_WANT}|rehna|rahna)\w*",
+            r"\bjeene\s+(?:ka|ki|ke)\s+(?:koi\s+)?(?:mann|man|dil|ichha|iccha|wajah|matlab|maksad"
+            r"|irada)\s+(?:nahi|khatam|na)\b",
+            r"\b(?:khudkushi|aatmhatya)\w*|\bmujhe\s+(?:bas\s+)?marna\s+(?:hai|h)\b",
+            r"\b(?:khud\s+ko|khudko|apne\s+aap\s+ko|apneaap\s+ko|apne\s+ko)\s+(?:\w+\s+)?(?:khatam"
+            r"|maar|nuksaan|nuksan|chot|hurt|kaat|harm)\w*",
+            r"\b(?:zindagi|jeevan)\s+(?:\w+\s+)?khatam\s+(?:kar|karna|karne|karke)\w*",
+        ),
+        False,
+    ),
+    (
+        "seizure_hi",
+        _rx(
+            r"\bmirgi\s+(?:(?:ka|ke|ki)\s+)?(?:(?:daura|attack|fit|jhatke)\s+)?(?:(?:aa|pad)\s+"
+            rf"(?:{_HI_PROG}|gaya|gayi|gaye)|aaya|aayi|aaye|pada|padi|pade|ho\s+(?:{_HI_PROG}"
+            rf"|gaya|gayi)|hua|hui)\b{_HI_NOT_PAST}",
+            r"(?<!dil ka )(?<!heart ka )(?<!behoshi ka )(?<!lakwe ka )\b(?:daura|jhatke|fits?)\s+"
+            rf"(?:(?:ka|ke|sa|jaisa)\s+)?(?:(?:aa|pad)\s+(?:{_HI_PROG}|gaya|gayi|gaye)|aaya|aayi"
+            rf"|aaye|pada|padi|pade)\b{_HI_NOT_PAST}",
+            r"\b(?:haath\s+pair|sharir|shareer|body)\s+(?:\w+\s+)?(?:akad|ainth)\w*\s+(?:gaya|gayi"
+            rf"|gaye|{_HI_PROG})\b",
+            r"\bmuh\s+se\s+(?:jhaag|jhag|fen|phen)\b",
+        ),
+        False,
+    ),
+)
+
 #: Helper patterns that only escalate in combination (composite rules).
 _PALPITATIONS_RE = _rx(
     r"\bpalpitations?\b|\bracing heart\b",
     r"\b(?:heart|heartbeat|pulse)\s+(?:(?:is|was|keeps|started)\s+)?(?:\w+\s+)?(?:racing"
     r"|pounding|fluttering|flutters|skipping|irregular|beating (?:really |very |so )?(?:fast"
     r"|hard|irregularly|out of rhythm))\b",
+    r"\b(?:dil|heart)\s+(?:ki\s+)?(?:dhadkan\s+)?(?:(?:bahut|ekdam|itna|itni)\s+)?(?:tez|zor\s+se"
+    r"|zor\s+zor\s+se)\s+(?:dhadak|chal|bhaag|ho\s+(?:gayi|rahi))\w*",
+    r"\bdhadkan\s+(?:(?:bahut|ekdam|bhi)\s+)?(?:tez|badh|bekaabu|irregular|aniyamit)\w*",
 )
 _PREGNANCY_RE = _rx(
     r"\bpregnant\b(?<!get pregnant)(?<!become pregnant)(?<!getting pregnant)"
@@ -1061,6 +1621,7 @@ _PREGNANCY_RE = _rx(
     r"\b(?:my|this|current)\s+pregnancy\b|\b\d{1,2}\s*(?:weeks?|wks?)\s+(?:along|gestation)\b",
     r"\bpost[- ]?partum\b|\b(?:just|recently)\s+(?:gave birth|had (?:a|my) baby|delivered)\b",
     r"\b(?:first|second|third|1st|2nd|3rd)\s+trimester\b",
+    r"\b(?:garbhvati|garbhwati|garbhavati)\b|\bpet\s+se\s+(?:hoon|hai|h)\b",
 )
 _PREECLAMPSIA_SYMPTOM_RE = _rx(
     r"\b(?:severe|bad|terrible|awful|horrible|pounding|throbbing|really bad|very bad"
@@ -1077,17 +1638,26 @@ _PREECLAMPSIA_SYMPTOM_RE = _rx(
     r"(?:(?:suddenly|really|very)\s+)?(?:swollen|puffy|swelling|swelled)\b",
     r"\bupper\s+(?:abdominal|belly|stomach|tummy)\s+pain\b|\bepigastric\b"
     r"|\bpain\s+(?:under|below)\s+(?:my\s+)?(?:right\s+)?ribs?\b",
+    rf"\b(?:bahut|tez|bhayankar)\s+(?:\w+\s+)?{_HI_HEADACHE}\b|\bdhundhla\s+(?:dikh|nazar)\w*",
+    r"\b(?:chehre|chehra|haath|pair|pairon|aankh\w*)\s+(?:\w+\s+){0,2}?(?:sujan|soojan|sooj|sujh)\w*",
 )
 _LOW_BP_SYMPTOM_RE = _rx(
     r"\b(?:dizz\w*|light[- ]?headed\w*|faint\w*|woozy|weak\w*|confus\w*|clammy|cold sweats?"
-    r"|drows\w*|pale)\b"
+    r"|drows\w*|pale|giddy|giddiness|chakkar|kamzori|ghabrahat|behosh\w*|pasina|pasine)\b"
 )
+
+_ALL_RULES = _RED_FLAG_RULES + _HINGLISH_RULES
+#: Rules after which racing / pounding palpitations are reported as severe.
+_PALPITATION_TRIGGERS = ("syncope", "chest_pain", "syncope_hi", "chest_pain_hi")
+#: Rule ids of the Hinglish / Indian-English lexicon (subset of :data:`RULE_IDS`).
+HINGLISH_RULE_IDS: tuple[str, ...] = tuple(rule_id for rule_id, _, _ in _HINGLISH_RULES)
 
 #: Every rule id this module can report, in reporting order.
 RULE_IDS: tuple[str, ...] = (
     "bp_crisis",
     "bp_low_symptomatic",
     *(rule_id for rule_id, _, _ in _RED_FLAG_RULES),
+    *(rule_id for rule_id, _, _ in _HINGLISH_RULES),
     "palpitations_severe",
     "preeclampsia",
 )
@@ -1098,14 +1668,12 @@ RULE_IDS: tuple[str, ...] = (
 # ======================================================================
 
 
-def _affirmed_spans(
-    pattern: re.Pattern[str], analysis: _Analysis, rule_starts: list[int]
-) -> list[tuple[int, int]]:
+def _affirmed_spans(pattern: re.Pattern[str], analysis: _Analysis) -> list[tuple[int, int]]:
     """Affirmed (non-negated, non-suppressed) match spans of a helper pattern."""
     return [
         m.span()
         for m in pattern.finditer(analysis.text)
-        if analysis.status(m.start(), m.end(), rule_starts, exertion=False) == "affirmed"
+        if analysis.status(m.start(), m.end(), exertion=False) == "affirmed"
     ]
 
 
@@ -1148,12 +1716,12 @@ def classify_detailed(message: str) -> EmergencyResult:
     # --- red-flag symptoms -------------------------------------------------
     raw_matches = [
         (rule_id, m.start(), m.end(), exertion)
-        for rule_id, pattern, exertion in _RED_FLAG_RULES
+        for rule_id, pattern, exertion in _ALL_RULES
         for m in pattern.finditer(text)
     ]
-    rule_starts = sorted(start for _, start, _, _ in raw_matches)
+    analysis.set_rule_spans([(start, end) for _, start, end, _ in raw_matches])
     for rule_id, start, end, exertion in raw_matches:
-        verdict = analysis.status(start, end, rule_starts, exertion=exertion)
+        verdict = analysis.status(start, end, exertion=exertion)
         if verdict == "affirmed":
             fired.setdefault(rule_id, []).append((start, end))
         elif verdict == "negated":
@@ -1163,16 +1731,16 @@ def classify_detailed(message: str) -> EmergencyResult:
 
     # --- composite rules ---------------------------------------------------
     if low is not None:
-        symptoms = _affirmed_spans(_LOW_BP_SYMPTOM_RE, analysis, rule_starts)
+        symptoms = _affirmed_spans(_LOW_BP_SYMPTOM_RE, analysis)
         if symptoms:
             fired["bp_low_symptomatic"] = [(low.start, low.end), *symptoms]
-    if "syncope" in fired or "chest_pain" in fired:
-        palpitations = _affirmed_spans(_PALPITATIONS_RE, analysis, rule_starts)
+    if any(rule_id in fired for rule_id in _PALPITATION_TRIGGERS):
+        palpitations = _affirmed_spans(_PALPITATIONS_RE, analysis)
         if palpitations:
             fired["palpitations_severe"] = palpitations
-    pregnancy = _affirmed_spans(_PREGNANCY_RE, analysis, rule_starts)
+    pregnancy = _affirmed_spans(_PREGNANCY_RE, analysis)
     if pregnancy:
-        warning_signs = _affirmed_spans(_PREECLAMPSIA_SYMPTOM_RE, analysis, rule_starts)
+        warning_signs = _affirmed_spans(_PREECLAMPSIA_SYMPTOM_RE, analysis)
         if warning_signs:
             fired["preeclampsia"] = pregnancy + warning_signs
 

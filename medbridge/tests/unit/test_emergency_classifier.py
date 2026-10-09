@@ -19,6 +19,7 @@ import pytest
 from medbridge.api.schemas.enums import ActionEnum
 from medbridge.core import emergency_classifier as ec
 from medbridge.core.emergency_classifier import (
+    HINGLISH_RULE_IDS,
     RULE_IDS,
     EmergencyResult,
     classify,
@@ -534,6 +535,240 @@ class TestLongMessageLatency:
     ])
     def test_pathological_repetition_stays_fast(self, unit: str) -> None:
         """Hundreds of matches / cues in one clause must not blow the budget."""
+        message = (unit * (2000 // len(unit) + 1))[:2000]
+        timings = []
+        for _ in range(20):
+            start = time.perf_counter()
+            classify(message)
+            timings.append((time.perf_counter() - start) * 1000)
+        assert statistics.median(timings) < 10, f"{unit!r}: {statistics.median(timings):.2f} ms"
+
+
+# ---------------------------------------------------------------------------
+# Hinglish / Indian-English lexicon (Roman-script Hindi)
+# ---------------------------------------------------------------------------
+
+class TestHinglishNormalisation:
+    """Spelling variants collapse to one canonical form; English is untouched."""
+
+    @pytest.mark.parametrize(("raw", "normalised"), [
+        ("Seeney MEIN dard nhi hai", "seene mein dard nahi hai"),
+        ("sans nai aa rhi", "saans nahi aa rahi"),
+        ("mummy behosh hogayi", "mummy behosh ho gayi"),
+        ("chaati me jalan horahi", "chhati me jalan ho rahi"),
+        ("bohot tej sir dard", "bahut tez sir dard"),
+        ("nahiiiii", "nahi"),
+        ("main me sir", "main me sir"),           # ambiguous words are never rewritten
+    ])
+    def test_variants(self, raw: str, normalised: str) -> None:
+        assert normalize_text(raw) == normalised
+
+    def test_maps_are_disjoint_and_protected(self) -> None:
+        assert not set(ec._HINGLISH_MAP) & set(ec._TYPO_MAP)
+        assert not set(ec._HINGLISH_MAP) & set(ec._FUZZY_KEYWORDS)
+        # every canonical single-word form maps to itself (protects it from fuzzy matching)
+        for canonical in ec._HINGLISH_VARIANTS:
+            if " " not in canonical:
+                assert ec._HINGLISH_MAP[canonical] == canonical
+
+    def test_variants_never_reach_the_fuzzy_corrector(self) -> None:
+        for token in ec._HINGLISH_MAP:
+            assert normalize_text(token) == ec._HINGLISH_MAP[token]
+
+    def test_rule_ids(self) -> None:
+        assert set(HINGLISH_RULE_IDS) <= set(RULE_IDS)
+        assert all(rule_id.endswith("_hi") for rule_id in HINGLISH_RULE_IDS)
+        assert len(HINGLISH_RULE_IDS) == 14
+
+    @pytest.mark.parametrize("message", [
+        "I'm having chest pain right now", "my chest feels tight", "I fainted at work today",
+        "short of breath walking to the bathroom", "face drooping and slurred speech",
+        "worst headache of my life", "coughing up blood", "I want to kill myself",
+        "no chest pain but my bp is 190/125", "heart pain", "breathing problem",
+    ])
+    def test_english_messages_fire_no_hinglish_rule(self, message: str) -> None:
+        result = classify_detailed(message)
+        assert not set(result.matched_rules) & set(HINGLISH_RULE_IDS)
+
+
+class TestHinglishNegation:
+    """Post-position negation ('... nahi hai'), lists, neither-nor and voiding."""
+
+    @pytest.mark.parametrize(("message", "rule_id"), [
+        ("seene mein dard nahi hai", "chest_pain_hi"),
+        ("seene mein dard bilkul bhi nahi", "chest_pain_hi"),     # gap words
+        ("seene mein dard ki koi shikayat nahi hai", "chest_pain_hi"),
+        ("seene mein dard nahi.", "chest_pain_hi"),               # punctuation follows
+        ("chest pain nahi hai", "chest_pain"),                    # English symptom
+        ("chest pain: nahi", "chest_pain"),                       # inline answer
+        ("seene mein dard? nahi", "chest_pain_hi"),               # answer clause
+        ("na to seene mein dard hai na saans ki takleef", "breathlessness_hi"),
+        ("seene mein dard aur saans ki takleef nahi hai", "chest_pain_hi"),  # list
+        ("seene mein dard ya chakkar nahi", "chest_pain_hi"),     # non-red-flag tail item
+    ])
+    def test_negated(self, message: str, rule_id: str) -> None:
+        result = classify_detailed(message)
+        assert result.action is None, result
+        assert rule_id in result.negated
+
+    @pytest.mark.parametrize("message", [
+        "seene me dard nahi ja raha",              # not going away
+        "chest pain kam nahi ho raha",             # not easing
+        "seene mein dard hai aur saans nahi aa rahi",   # 'nahi' belongs to the 2nd symptom
+        "seene mein aisa dard pehle kabhi nahi hua",    # voided: a new symptom
+        "seene mein dard kabhi nahi hua tha, aaj ho raha hai",  # re-affirmed
+        "seene mein dard ya chakkar nahi tha, abhi ho raha hai",  # re-affirmed after a tail
+        "seene mein dard hai, nahi pata kyun",     # comma: not a post-negation
+        "seene mein dard hai aur chakkar nahi",    # 'hai' affirms the first item
+    ])
+    def test_not_negated(self, message: str) -> None:
+        assert classify(message) == ActionEnum.ESCALATE
+
+    def test_list_longer_than_the_bound_keeps_recall(self) -> None:
+        """More than four list items: the walk stops and the first item stays affirmed."""
+        message = "seene mein dard, saans ki takleef, muh tedha, haath sunn, behosh nahi"
+        result = classify_detailed(message)
+        assert result.matched_rules == ["chest_pain_hi"]
+        assert "syncope_hi" in result.negated
+
+    def test_negated_symptom_never_hides_bp_crisis(self) -> None:
+        result = classify_detailed("seene mein dard nahi hai lekin bp 200/120 hai")
+        assert result.matched_rules == ["bp_crisis"]
+        assert result.negated == ["chest_pain_hi"]
+        assert result.bp == (200, 120)
+
+    def test_lekin_and_magar_are_clause_boundaries(self) -> None:
+        assert classify("seene mein dard bilkul nahi lekin saans phool rahi hai")
+        assert classify("seene mein dard nahi magar haath nahi hil raha")
+
+
+class TestHinglishContext:
+    """Informational, personal, historical and exertion filters in Hinglish."""
+
+    @pytest.mark.parametrize(("message", "rule_id"), [
+        ("lakwa ke lakshan kya hote hain, jaise muh tedha hona?", "stroke_face_hi"),
+        ("agar kisi ko seene mein dard ho to kya karein?", "chest_pain_hi"),
+        ("behosh hone par kya karna chahiye?", "syncope_hi"),
+        ("seene mein jalan kyun hoti hai?", "chest_pain_hi"),
+        ("muh tedha hona kis bimari ka lakshan hai", "stroke_face_hi"),
+        ("kaise pehchane ki kisi ko lakwa ho raha hai", "stroke_self_report_hi"),
+        ("saans phoolne ke baare mein batao", "breathlessness_hi"),
+        ("pichle mahine chakkar aake gir gaya tha, ab sab theek hai", "syncope_hi"),
+        ("2 saal pehle seene mein dard hua tha", "chest_pain_hi"),
+        ("bachpan mein mirgi ka daura pada", "seizure_hi"),
+        ("daudne par saans phool jaati hai", "breathlessness_hi"),
+    ])
+    def test_suppressed(self, message: str, rule_id: str) -> None:
+        result = classify_detailed(message)
+        assert result.action is None, result
+        assert rule_id in result.suppressed
+
+    @pytest.mark.parametrize("message", [
+        "seene mein dard ho raha hai, kya ye heart attack ke lakshan hain?",
+        "seene mein dard ho raha hai, heart attack ke kya lakshan hote hain?",
+        "mujhe seene mein dard hai, heart attack ke kya lakshan hote hain?",
+        "meri saans phool rahi hai, iske kya lakshan hain",
+        "abhi muh tedha ho gaya, lakwa ke lakshan kya hote hain",
+        "kaise pata karun ki mujhe heart attack aa raha hai",
+        "pichle saal lakwa hua tha, ab phir se muh tedha ho gaya",
+        "seedhiyan chadhne par bhi saans phool jaati hai, gym nahi jaata",
+    ])
+    def test_kept(self, message: str) -> None:
+        assert classify(message) == ActionEnum.ESCALATE
+
+    @pytest.mark.parametrize("message", [
+        "papa ko pichle saal lakwa hua tha",
+        "mujhe 2 saal pehle heart attack aaya tha",
+        "dil ka daura pada tha 2015 mein",
+        "mirgi ki dawai leta hoon",
+        "behoshi ka injection laga tha surgery mein",
+        "usne muh tedha kar liya",
+        "papa se baat nahi kar pa raha",
+    ])
+    def test_no_rule_matches(self, message: str) -> None:
+        result = classify_detailed(message)
+        assert result.action is None
+        assert result.matched_rules == result.negated == result.suppressed == []
+
+
+class TestHinglishBloodPressure:
+    """Hinglish BP wording, labels, units and post-positional thresholds."""
+
+    @pytest.mark.parametrize(("message", "bp"), [
+        ("bp bahut high hai 200", (200, 0)),
+        ("mera bp abhi 210 aaya hai", (210, 0)),
+        ("bp ka upar wala 195 aa raha hai", (195, 0)),
+        ("neeche wala 125 hai", (0, 125)),
+        ("raktchap 185/100 hai", (185, 100)),
+        ("bp 180 se upar hai kya karun", (180, 0)),
+        ("agar abhi bp 200/120 hai to kya karun", (200, 120)),
+    ])
+    def test_crisis(self, message: str, bp: tuple[int, int]) -> None:
+        result = classify_detailed(message)
+        assert result.matched_rules == ["bp_crisis"]
+        assert result.bp == bp
+
+    @pytest.mark.parametrize("message", [
+        "agar bp 180 se upar jaaye to hospital jaana",     # conditional, postfix threshold
+        "doctor ne bola systolic 180 se neeche rakhna hai",  # target with "rakhna"
+        "bp 130/80 hona chahiye",                          # target
+        "bp ki goli 180 rupaye ki hai",                    # price
+        "bp 200 baar check kiya",                          # count
+        "dhadkan 190 hai aur bp normal",                   # heart rate label
+        "papa ka bp pehle 200/120 rehta tha, ab 130/80 hai",  # habitual past
+    ])
+    def test_not_a_crisis_reading(self, message: str) -> None:
+        assert classify(message) is None
+
+    def test_low_bp_with_hinglish_symptom(self) -> None:
+        result = classify_detailed("bp 70/40 hai aur chakkar aa rahe hain")
+        assert result.matched_rules == ["bp_low_symptomatic"]
+
+
+class TestHinglishComposites:
+    """Composite rules triggered by Hinglish wording."""
+
+    def test_palpitations_after_hinglish_chest_pain(self) -> None:
+        result = classify_detailed("seene mein dard hai aur dil ki dhadkan bahut tez chal rahi hai")
+        assert result.matched_rules == ["chest_pain_hi", "palpitations_severe"]
+
+    def test_palpitations_alone_do_not_escalate(self) -> None:
+        assert classify("dil ki dhadkan tez hai") is None
+
+    def test_preeclampsia_in_hinglish(self) -> None:
+        result = classify_detailed("main garbhvati hoon aur chehre par sujan aa gayi hai")
+        assert result.matched_rules == ["preeclampsia"]
+        assert classify("main garbhvati hoon, sab theek hai") is None
+
+
+class TestHinglishLatency:
+    """The lexicon keeps the fast path far below the 10 ms budget."""
+
+    _BASE = (
+        "Mera bp 150/95 rehta hai, amlodipine 5 mg leta hoon. Seene mein dard nahi hai, "
+        "saans lene mein koi takleef nahi. Lakwa ke lakshan kya hote hain? Papa ko pichle "
+        "saal lakwa hua tha. Sugar 140 hai aur agla appointment 12/10/2024 ko hai. "
+    )
+
+    @pytest.mark.parametrize("tail", ["", " abhi saans nahi aa rahi"])
+    def test_median_under_10ms_for_2000_chars(self, tail: str) -> None:
+        message = ((self._BASE * 20)[: 2000 - len(tail)] + tail)[:2000]
+        assert len(message) == 2000
+        timings = []
+        for _ in range(200):
+            start = time.perf_counter()
+            classify(message)
+            timings.append((time.perf_counter() - start) * 1000)
+        median = statistics.median(timings)
+        print(f"\n2,000-char Hinglish message (tail={tail!r}): median {median:.3f} ms")
+        assert median < 10, f"median latency {median:.2f} ms exceeds 10 ms"
+        assert (classify(message) == ActionEnum.ESCALATE) == bool(tail)
+
+    @pytest.mark.parametrize("unit", [
+        "nahi ", "seene mein dard nahi, ", "dard aur ", "saans ", "na to ", "bahut tez ",
+        "seene mein dard aur ", "haath ", "bp 200 se upar ",
+    ])
+    def test_pathological_repetition_stays_fast(self, unit: str) -> None:
         message = (unit * (2000 // len(unit) + 1))[:2000]
         timings = []
         for _ in range(20):
