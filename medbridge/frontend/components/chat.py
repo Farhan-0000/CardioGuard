@@ -4,7 +4,8 @@ Chat Presentation Components (TASK-26, Module M-20).
 Renders chat messages, clinical triage routing badges (ANSWER, SOFT-ASK, etc.),
 and integrates inline citation accordions in accordance with Technical Specification Part I §3.2, §3.3.
 """
-from typing import Any, Optional, Union
+from typing import Any
+
 import streamlit as st
 
 from medbridge.api.schemas.enums import ActionEnum
@@ -17,7 +18,7 @@ ACTION_BADGE_CONFIG = {
         "color": "#065F46",
         "bg": "#D1FAE5",
         "border": "#A7F3D0",
-        "desc": "Evidence-grounded guideline response",
+        "desc": "Answered from guideline evidence that matches your situation",
     },
     "SOFT-ASK": {
         "label": "SOFT-ASK",
@@ -25,7 +26,7 @@ ACTION_BADGE_CONFIG = {
         "color": "#92400E",
         "bg": "#FEF3C7",
         "border": "#FDE68A",
-        "desc": "Requesting clarifying clinical context",
+        "desc": "I need a bit more information to answer safely",
     },
     "GENERALIZE": {
         "label": "GENERALIZE",
@@ -33,7 +34,7 @@ ACTION_BADGE_CONFIG = {
         "color": "#1E40AF",
         "bg": "#DBEAFE",
         "border": "#BFDBFE",
-        "desc": "General population-level guidance",
+        "desc": "General guideline information — not personalised",
     },
     "ABSTAIN": {
         "label": "ABSTAIN",
@@ -41,7 +42,7 @@ ACTION_BADGE_CONFIG = {
         "color": "#374151",
         "bg": "#F3F4F6",
         "border": "#E5E7EB",
-        "desc": "Insufficient clinical evidence to advise",
+        "desc": "Outside what my guidelines can safely answer",
     },
     "ESCALATE": {
         "label": "ESCALATE",
@@ -49,18 +50,18 @@ ACTION_BADGE_CONFIG = {
         "color": "#991B1B",
         "bg": "#FEE2E2",
         "border": "#FECACA",
-        "desc": "Immediate physician / emergency referral",
+        "desc": "Possible emergency — seek care now",
     },
 }
 
 
-def get_action_badge_html(action: Union[ActionEnum, str]) -> str:
+def get_action_badge_html(action: ActionEnum | str) -> str:
     """
     Generate styled HTML markup for a clinical routing action badge.
-    
+
     Args:
         action: ActionEnum or string ('ANSWER', 'SOFT-ASK', 'GENERALIZE', 'ABSTAIN', 'ESCALATE').
-        
+
     Returns:
         Safe inline HTML span element with custom styling.
     """
@@ -91,7 +92,7 @@ def get_action_badge_html(action: Union[ActionEnum, str]) -> str:
     )
 
 
-def render_action_badge(action: Union[ActionEnum, str]) -> None:
+def render_action_badge(action: ActionEnum | str) -> None:
     """Render a styled clinical routing action badge in Streamlit."""
     badge_html = get_action_badge_html(action)
     st.markdown(badge_html, unsafe_allow_html=True)
@@ -100,12 +101,12 @@ def render_action_badge(action: Union[ActionEnum, str]) -> None:
 def render_chat_message(
     role: str,
     content: str,
-    action: Optional[Union[ActionEnum, str]] = None,
-    citations: Optional[list[Any]] = None,
+    action: ActionEnum | str | None = None,
+    citations: list[Any] | None = None,
 ) -> None:
     """
     Render a single conversational turn in the chat interface.
-    
+
     Args:
         role: "user" | "patient" or "assistant" | "medbridge".
         content: Markdown message text with inline citation markers.

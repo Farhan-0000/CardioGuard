@@ -4,16 +4,17 @@ Citations Presentation Component (TASK-26, Module M-20).
 Renders a collapsible citations accordion panel linking inline citation markers
 to guideline sources, sections, and excerpts in accordance with Technical Specification Part I §3.2, §3.3.
 """
-from typing import Any, Union
+from typing import Any
+
 import streamlit as st
 
 from medbridge.api.schemas.responses import CitationResponse
 
 
-def render_citations_panel(citations: list[Union[CitationResponse, dict[str, Any], Any]]) -> None:
+def render_citations_panel(citations: list[CitationResponse | dict[str, Any] | Any]) -> None:
     """
     Render a collapsible citations panel for guideline evidence.
-    
+
     Args:
         citations: List of CitationResponse models, dicts, or dataclasses.
     """

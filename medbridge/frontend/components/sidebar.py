@@ -6,8 +6,8 @@ guideline knowledge base sources, and the 'New Chat' reset trigger.
 
 Technical Specification Part I §3.2, §3.3.
 """
-from typing import Callable, Optional
 import uuid
+from collections.abc import Callable
 
 import streamlit as st
 
@@ -15,19 +15,19 @@ from medbridge.frontend.services.session import SessionManager
 
 
 def render_sidebar(
-    session_id: Optional[uuid.UUID] = None,
-    on_new_chat: Optional[Callable[[], None]] = None,
+    session_id: uuid.UUID | None = None,
+    on_new_chat: Callable[[], None] | None = None,
 ) -> None:
     """
     Render sidebar navigation and session management controls.
-    
+
     Args:
         session_id: Active conversation session UUID.
         on_new_chat: Optional callback executed when user clicks 'New Conversation'.
     """
     with st.sidebar:
         st.title("🩺 MedBridge")
-        st.caption("Hypertension Clinical Guidance Assistant")
+        st.caption("Blood pressure & heart health guidance (legacy UI)")
         st.divider()
 
         # Session Status
@@ -48,11 +48,10 @@ def render_sidebar(
         st.divider()
 
         # Clinical Knowledge Base Sources
-        st.subheader("📚 Guideline Index")
+        st.subheader("📚 Knowledge Base")
         st.markdown(
-            "• **AHA/ACC 2025** Hypertension  \n"
-            "• **ESC 2024** Guidelines  \n"
-            "• **NICE NG136** Management"
+            "Curated cardiology and hypertension guidelines "
+            "(e.g., **AHA/ACC**, **ESC**, **NICE**, **WHO**)."
         )
 
         st.divider()

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
+  <title>MedBridge — Admin dashboard</title>
+  <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <script type="module" src="/static/js/dashboard.js"></script>
+</head>
+<body>
+  <header class="dash-bar">
+    <a class="brand" href="/" aria-label="Back to MedBridge chat">
+      <img src="/static/img/logo.svg" alt="" width="28" height="28">
+      <span class="brand__name">MedBridge</span>
+      <span class="dash-bar__sub">Admin &amp; evaluation dashboard</span>
+    </a>
+    <div class="dash-bar__actions">
+      <span class="dash-bar__updated" id="updated" aria-live="polite"></span>
+      <button type="button" class="btn btn--ghost btn--sm" id="refresh" hidden><span data-icon="refresh" data-icon-size="15"></span>Refresh</button>
+      <button type="button" class="btn btn--ghost btn--sm" id="logout" hidden><span data-icon="logout" data-icon-size="15"></span>Sign out</button>
+      <button type="button" class="icon-btn tip-right" id="theme-toggle" aria-label="Switch theme" data-icon="moon"></button>
+    </div>
+  </header>
+
+  <main class="dash" id="dash">
+    <section class="login" id="login-view" aria-labelledby="login-title">
+      <form class="login__card" id="login-form" novalidate>
+        <span class="login__icon" data-icon="lock" data-icon-size="22"></span>
+        <h1 class="login__title" id="login-title">Sign in to the dashboard</h1>
+        <p class="login__sub">Aggregate metrics and redacted audit entries. Admin access only.</p>
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <p class="notice notice--error" id="login-error" role="alert" hidden></p>
+        <button type="submit" class="btn btn--primary btn--block" id="login-submit">Sign in</button>
+      </form>
+    </section>
+
+    <section class="metrics" id="metrics-view" aria-label="Metrics" hidden>
+      <div class="kpis" id="kpis"></div>
+      <div class="grid">
+        <article class="card">
+          <h2 class="card__title">Action distribution</h2>
+          <p class="card__sub">Final routing action per turn</p>
+          <div id="chart-actions"></div>
+        </article>
+        <article class="card">
+          <h2 class="card__title">Feedback</h2>
+          <p class="card__sub">Patient ratings of answers (👍 / 👎)</p>
+          <div id="feedback"></div>
+        </article>
+        <article class="card">
+          <h2 class="card__title">Gate 1 · Context Gate</h2>
+          <p class="card__sub">SOFT-ASK vs PROCEED decisions</p>
+          <div id="chart-gate1"></div>
+          <p class="card__foot" id="sources-gate1"></p>
+        </article>
+        <article class="card">
+          <h2 class="card__title">Gate 2 · Evidence Gate</h2>
+          <p class="card__sub">ANSWER / GENERALIZE / ABSTAIN / ESCALATE decisions</p>
+          <div id="chart-gate2"></div>
+          <p class="card__foot" id="sources-gate2"></p>
+        </article>
+        <article class="card">
+          <h2 class="card__title">Latency by action</h2>
+          <p class="card__sub"><span class="key key--p50"></span>p50 <span class="key key--p95"></span>p95</p>
+          <div id="chart-latency-action"></div>
+        </article>
+        <article class="card">
+          <h2 class="card__title">Latency by stage</h2>
+          <p class="card__sub"><span class="key key--p50"></span>p50 <span class="key key--p95"></span>p95</p>
+          <div id="chart-latency-stage"></div>
+        </article>
+        <article class="card card--full">
+          <h2 class="card__title">Safety mechanisms</h2>
+          <p class="card__sub">Loop-breaker, fast-path, spec fallbacks, citation downgrades, speculative retrieval, Gate 3, redaction</p>
+          <div class="safety" id="safety"></div>
+        </article>
+        <article class="card card--full">
+          <h2 class="card__title">Recent audit entries</h2>
+          <p class="card__sub">Latest 50 turns · text is PII-redacted; erased sessions show “[erased]”</p>
+          <div class="table-wrap audit-wrap"><table class="data-table audit" id="audit"></table></div>
+        </article>
+      </div>
+    </section>
+  </main>
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+</body>
+</html>

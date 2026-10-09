@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="MedBridge: evidence-grounded, guideline-based answers about blood pressure and heart health.">
+  <title>MedBridge — guideline-based heart health assistant</title>
+  <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/print.css" media="print">
+  <script type="module" src="/static/js/app.js"></script>
+</head>
+<body data-mode="patient">
+  <a class="skip-link" href="#composer-input">Skip to message box</a>
+
+  <div class="app is-booting" id="app" data-sidebar="open">
+    <aside class="sidebar" id="sidebar" aria-label="Conversations">
+      <div class="sidebar__head">
+        <a class="brand" href="/" aria-label="MedBridge home">
+          <img src="/static/img/logo.svg" alt="" width="28" height="28">
+          <span class="brand__name" data-bind="appName">MedBridge</span>
+        </a>
+        <button type="button" class="icon-btn" id="sidebar-close" aria-label="Close sidebar" data-tooltip="Close sidebar" data-icon="sidebar"></button>
+      </div>
+
+      <button type="button" class="btn btn--new" id="new-chat">
+        <span data-icon="compose" data-icon-size="17"></span>
+        <span>New chat</span>
+      </button>
+
+      <div class="search">
+        <span class="search__icon" data-icon="search" data-icon-size="16"></span>
+        <input type="search" id="conv-search" placeholder="Search conversations" aria-label="Search conversations" autocomplete="off">
+      </div>
+
+      <nav class="conv-list" id="conv-list" aria-label="Conversation history"></nav>
+
+      <div class="sidebar__foot">
+        <button type="button" class="foot-link" id="open-privacy">
+          <span data-icon="shield" data-icon-size="16"></span><span>Privacy &amp; your data</span>
+        </button>
+        <a class="foot-link" href="/dashboard">
+          <span data-icon="chart" data-icon-size="16"></span><span>Admin dashboard</span>
+        </a>
+      </div>
+    </aside>
+
+    <div class="scrim" id="scrim" hidden></div>
+
+    <main class="main" id="main">
+      <header class="topbar">
+        <button type="button" class="icon-btn" id="sidebar-toggle" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="true" data-tooltip="Conversations" data-icon="sidebar"></button>
+        <h1 class="topbar__title" id="chat-title">New conversation</h1>
+        <div class="topbar__actions">
+          <span class="local-badge" id="local-badge" tabindex="0" hidden data-tooltip="AI runs on this computer. Messages are not sent to external AI services.">
+            <span data-icon="shield" data-icon-size="14"></span>Local-only
+          </span>
+          <div class="segmented" role="radiogroup" aria-label="View mode">
+            <button type="button" role="radio" aria-checked="true" data-mode-option="patient" data-tooltip="Plain answers; explanations on request">Patient</button>
+            <button type="button" role="radio" aria-checked="false" data-mode-option="clinician" data-tooltip="Show the full decision trace">Clinician</button>
+          </div>
+          <button type="button" class="icon-btn" id="context-toggle" aria-label="My health context" aria-controls="context-panel" aria-expanded="false" data-tooltip="My health context" data-icon="pulse"></button>
+          <button type="button" class="icon-btn" id="theme-toggle" aria-label="Switch theme" data-icon="moon"></button>
+        </div>
+      </header>
+
+      <section class="chat" aria-label="Conversation">
+        <div class="chat__scroll" id="chat-scroll">
+          <div class="welcome" id="welcome">
+            <img class="welcome__logo" src="/static/img/logo.svg" alt="" width="56" height="56">
+            <h2 class="welcome__title" data-bind="appName">MedBridge</h2>
+            <p class="welcome__tagline" id="welcome-tagline">Evidence-grounded answers about blood pressure and heart health, from curated clinical guidelines.</p>
+            <div class="suggestions" id="suggestions" role="list" aria-label="Suggested questions"></div>
+            <p class="welcome__note" id="welcome-note">Answers are grounded in curated cardiology and hypertension guidelines (e.g., AHA/ACC, ESC, NICE, WHO) and always show their sources.</p>
+          </div>
+          <div class="thread" id="thread" role="log" aria-live="polite" aria-relevant="additions" hidden></div>
+        </div>
+        <button type="button" class="jump" id="jump-bottom" aria-label="Scroll to the latest message" hidden data-icon="chevronDown"></button>
+      </section>
+
+      <footer class="composer-wrap">
+        <form class="composer" id="composer" autocomplete="off">
+          <label for="composer-input" class="visually-hidden">Message MedBridge</label>
+          <textarea id="composer-input" rows="1" maxlength="2000" placeholder="Ask about blood pressure, medicines or heart health…" aria-describedby="char-count disclaimer"></textarea>
+          <div class="composer__bar">
+            <span class="char-count" id="char-count" aria-live="polite">0 / 2,000</span>
+            <button type="submit" class="send-btn" id="send-btn" aria-label="Send message" data-icon="send" data-icon-size="18"></button>
+            <button type="button" class="send-btn send-btn--stop" id="stop-btn" aria-label="Stop generating" hidden data-icon="stop" data-icon-size="18"></button>
+          </div>
+        </form>
+        <p class="disclaimer" id="disclaimer">MedBridge gives general, guideline-based information — not a diagnosis or prescription. In an emergency call 112.</p>
+      </footer>
+    </main>
+
+    <aside class="context-panel" id="context-panel" aria-labelledby="context-title" hidden>
+      <div class="panel__head">
+        <h2 class="panel__title" id="context-title">My health context</h2>
+        <button type="button" class="icon-btn" id="context-close" aria-label="Close health context" data-icon="close"></button>
+      </div>
+      <div class="panel__body" id="context-body"></div>
+    </aside>
+
+    <aside class="drawer" id="source-drawer" role="dialog" aria-modal="false" aria-labelledby="drawer-title" hidden>
+      <div class="panel__head">
+        <h2 class="panel__title" id="drawer-title">Source</h2>
+        <button type="button" class="icon-btn" id="drawer-close" aria-label="Close source" data-icon="close"></button>
+      </div>
+      <div class="panel__body" id="drawer-content"></div>
+    </aside>
+  </div>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -7,9 +7,10 @@ Tests:
 - Fail-safe fallback shielding for connection errors, timeouts, and HTTP errors.
 - Main page component assembly and input box validation.
 """
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
 import uuid
+from datetime import UTC, datetime, timezone
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from medbridge.api.schemas.enums import ActionEnum
@@ -24,6 +25,7 @@ from medbridge.frontend.app import (
     main,
     process_user_query,
     restore_history,
+    send_with_session_recovery,
 )
 from medbridge.frontend.services.api_client import (
     DEFAULT_SAFE_FALLBACK,
@@ -59,7 +61,7 @@ def test_restore_history_skips_if_messages_already_present() -> None:
 def test_restore_history_populates_empty_state() -> None:
     """If state is empty, backend history messages are restored into state."""
     sid = uuid.uuid4()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     mock_history = HistoryResponse(
         session_id=sid,
         messages=[
@@ -142,7 +144,7 @@ def test_process_user_query_successful_response() -> None:
                 excerpt="Target is <130/80.",
             )
         ],
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
 
     with patch("streamlit.spinner"):
@@ -230,6 +232,50 @@ def test_process_user_query_handles_unhandled_exception() -> None:
     assert messages[1]["action"] == "ABSTAIN"
 
 
+def test_rejected_session_token_starts_new_session_and_retries() -> None:
+    """A 401 for the stored session creates a new session (with token) and resends once."""
+    old_sid, new_sid = uuid.uuid4(), uuid.uuid4()
+    ok = MessageResponse(
+        session_id=new_sid,
+        action=ActionEnum.GENERALIZE,
+        response_text="General guidance.",
+        timestamp=datetime.now(UTC),
+    )
+    client = MagicMock(spec=APIClient)
+    client.send_message.side_effect = [
+        APIStatusError(status_code=401, error_code="UNAUTHORIZED", message="bad token", safe_fallback="x"),
+        ok,
+    ]
+    client.create_session.return_value = new_sid
+    client.get_session_token.return_value = "fresh-token"
+
+    result = send_with_session_recovery(client, old_sid, "hello")
+
+    assert result is ok
+    assert client.send_message.call_args_list[1].kwargs == {"session_id": new_sid, "message": "hello"}
+    assert SessionManager.get_session_id() == new_sid
+    assert SessionManager.get_session_token() == "fresh-token"
+
+
+def test_non_session_errors_are_not_retried() -> None:
+    """Errors other than 401/403/404 propagate unchanged (no new session)."""
+    client = MagicMock(spec=APIClient)
+    client.send_message.side_effect = APIStatusError(
+        status_code=429, error_code="RATE_LIMITED", message="slow down", safe_fallback="Please wait."
+    )
+    with pytest.raises(APIStatusError):
+        send_with_session_recovery(client, uuid.uuid4(), "hello")
+    client.create_session.assert_not_called()
+
+
+def test_welcome_message_matches_indexed_corpus() -> None:
+    """Welcome text names the curated corpus generically and no unindexed sources."""
+    assert "curated cardiology and hypertension guidelines" in WELCOME_MESSAGE
+    assert "AHA/ACC, ESC, NICE, WHO" in WELCOME_MESSAGE
+    for absent in ("ADA 2025", "KDIGO"):
+        assert absent not in WELCOME_MESSAGE
+
+
 # ===========================================================================
 # 3. Main Application Assembly Tests
 # ===========================================================================
@@ -256,6 +302,7 @@ def test_main_initial_render_flow() -> None:
 
         mock_cfg.assert_called_once()
         mock_init_session.assert_called_once()
+        mock_client_cls.return_value.set_session_token.assert_called_once()
         mock_restore.assert_called_once()
         mock_sidebar.assert_called_once_with(session_id=sid)
         mock_disclaimer.assert_called_once()

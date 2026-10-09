@@ -7,9 +7,10 @@ Tests:
 3. APIClient HTTP error parsing and safe fallback mapping.
 4. SessionManager state management and query parameter synchronization.
 """
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
 import uuid
+from datetime import UTC, datetime, timezone
+from unittest.mock import MagicMock, patch
+
 import httpx
 import pytest
 import streamlit as st
@@ -58,18 +59,40 @@ class TestAPIClient:
         mock_resp.json.return_value = {
             "session_id": str(expected_uuid),
             "created_at": "2026-08-15T02:00:00Z",
+            "session_token": "tok-123",
         }
 
         with patch("httpx.Client.post", return_value=mock_resp) as mock_post:
             res_uuid = client.create_session()
             assert res_uuid == expected_uuid
             mock_post.assert_called_once_with("http://testserver/api/sessions")
+        assert client.get_session_token(expected_uuid) == "tok-123"
+
+    def test_create_session_without_token_keeps_working(self) -> None:
+        """Backends with AUTH_REQUIRED=false return no token; no header is sent then."""
+        client = APIClient(base_url="http://testserver")
+        sid = uuid.uuid4()
+        mock_resp = MagicMock(is_error=False, status_code=201)
+        mock_resp.json.return_value = {"session_id": str(sid)}
+        with patch("httpx.Client.post", return_value=mock_resp):
+            assert client.create_session() == sid
+        assert client.get_session_token(sid) is None
+        assert client._auth_headers(sid) == {}
+
+    def test_session_token_set_and_clear(self) -> None:
+        """set_session_token() stores per-session tokens; a falsy token removes it."""
+        client = APIClient(base_url="http://testserver")
+        sid = uuid.uuid4()
+        client.set_session_token(sid, "abc")
+        assert client._auth_headers(str(sid)) == {"Authorization": "Bearer abc"}
+        client.set_session_token(sid, None)
+        assert client.get_session_token(sid) is None
 
     def test_send_message_success(self) -> None:
         """send_message() calls POST /api/sessions/{id}/messages and returns MessageResponse."""
         client = APIClient(base_url="http://testserver")
         sid = uuid.uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         mock_resp = MagicMock()
         mock_resp.is_error = False
@@ -91,6 +114,7 @@ class TestAPIClient:
             "timestamp": now.isoformat(),
         }
 
+        client.set_session_token(sid, "tok-xyz")
         with patch("httpx.Client.post", return_value=mock_resp) as mock_post:
             resp = client.send_message(sid, "What is my target BP?")
             assert isinstance(resp, MessageResponse)
@@ -100,13 +124,14 @@ class TestAPIClient:
             mock_post.assert_called_once_with(
                 f"http://testserver/api/sessions/{sid}/messages",
                 json={"message": "What is my target BP?"},
+                headers={"Authorization": "Bearer tok-xyz"},
             )
 
     def test_get_history_success(self) -> None:
         """get_history() calls GET /api/sessions/{id}/history and returns HistoryResponse."""
         client = APIClient(base_url="http://testserver")
         sid = uuid.uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         mock_resp = MagicMock()
         mock_resp.is_error = False
@@ -124,6 +149,7 @@ class TestAPIClient:
             ],
         }
 
+        client.set_session_token(sid, "tok-h")
         with patch("httpx.Client.get", return_value=mock_resp) as mock_get:
             resp = client.get_history(sid)
             assert isinstance(resp, HistoryResponse)
@@ -131,13 +157,14 @@ class TestAPIClient:
             assert len(resp.messages) == 1
             assert resp.messages[0].role == "user"
             mock_get.assert_called_once_with(
-                f"http://testserver/api/sessions/{sid}/history"
+                f"http://testserver/api/sessions/{sid}/history",
+                headers={"Authorization": "Bearer tok-h"},
             )
 
     def test_health_check_success(self) -> None:
         """health_check() calls GET /health and returns HealthResponse."""
         client = APIClient(base_url="http://testserver")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         mock_resp = MagicMock()
         mock_resp.is_error = False
@@ -219,11 +246,32 @@ class TestAPIClient:
         mock_resp = MagicMock()
         mock_resp.is_error = False
         mock_resp.status_code = 201
-        mock_resp.json.return_value = {"session_id": str(expected_uuid)}
+        mock_resp.json.return_value = {"session_id": str(expected_uuid), "session_token": "atok"}
 
         with patch("httpx.AsyncClient.post", return_value=mock_resp):
             res_uuid = await client.acreate_session()
             assert res_uuid == expected_uuid
+        assert client.get_session_token(expected_uuid) == "atok"
+
+    @pytest.mark.asyncio
+    async def test_async_session_calls_send_bearer_token(self) -> None:
+        """asend_message() and aget_history() send the captured bearer token."""
+        client = APIClient(base_url="http://testserver")
+        sid = uuid.uuid4()
+        client.set_session_token(sid, "atok")
+        now = datetime.now(UTC).isoformat()
+        msg_resp = MagicMock(is_error=False, status_code=200)
+        msg_resp.json.return_value = {
+            "session_id": str(sid), "response_text": "ok", "action": "GENERALIZE", "timestamp": now,
+        }
+        hist_resp = MagicMock(is_error=False, status_code=200)
+        hist_resp.json.return_value = {"session_id": str(sid), "messages": []}
+        with patch("httpx.AsyncClient.post", return_value=msg_resp) as mock_post, \
+             patch("httpx.AsyncClient.get", return_value=hist_resp) as mock_get:
+            await client.asend_message(sid, "hi")
+            await client.aget_history(sid)
+        assert mock_post.call_args.kwargs["headers"] == {"Authorization": "Bearer atok"}
+        assert mock_get.call_args.kwargs["headers"] == {"Authorization": "Bearer atok"}
 
     def test_http_error_truncation_with_ellipsis(self) -> None:
         """Non-JSON errors exceeding 200 characters should be truncated with ellipsis."""
@@ -318,17 +366,27 @@ class TestSessionManager:
         assert st.query_params["session_id"] == str(test_uuid)
 
     def test_clear_session(self) -> None:
-        """clear_session() removes session_id and messages from state and URL."""
+        """clear_session() removes session_id, token and messages from state and URL."""
         test_uuid = uuid.uuid4()
         st.session_state["session_id"] = test_uuid
+        st.session_state["session_token"] = "secret"
         st.session_state["messages"] = [{"content": "hello"}]
         st.query_params["session_id"] = str(test_uuid)
 
         SessionManager.clear_session()
 
         assert "session_id" not in st.session_state
+        assert "session_token" not in st.session_state
         assert "messages" not in st.session_state
         assert "session_id" not in st.query_params
+
+    def test_session_token_is_kept_out_of_the_url(self) -> None:
+        """set_session_token() stores the token in session state only."""
+        SessionManager.set_session_token("tok")
+        assert SessionManager.get_session_token() == "tok"
+        assert "session_token" not in st.query_params
+        SessionManager.set_session_token(None)
+        assert SessionManager.get_session_token() is None
 
     def test_init_session_with_existing(self) -> None:
         """init_session() returns existing session if already established."""
@@ -346,12 +404,14 @@ class TestSessionManager:
         expected_uuid = uuid.uuid4()
         mock_api = MagicMock(spec=APIClient)
         mock_api.create_session.return_value = expected_uuid
+        mock_api.get_session_token.return_value = "new-token"
 
         active_id = SessionManager.init_session(mock_api)
 
         assert active_id == expected_uuid
         assert st.session_state["session_id"] == expected_uuid
         assert st.query_params["session_id"] == str(expected_uuid)
+        assert SessionManager.get_session_token() == "new-token"
         mock_api.create_session.assert_called_once()
 
     def test_messages_management(self) -> None:

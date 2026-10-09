@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="MedBridge">
+  <defs>
+    <linearGradient id="mb-g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0e7490"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#mb-g)"/>
+  <path d="M32 50C20 42 13 35 13 26.5 13 20.7 17.4 16 23 16c3.7 0 6.9 2 9 5 2.1-3 5.3-5 9-5 5.6 0 10 4.7 10 10.5C51 35 44 42 32 50z" fill="#ffffff" fill-opacity="0.16"/>
+  <path d="M12 33h10l4-9 6 17 5-11 3 3h12" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

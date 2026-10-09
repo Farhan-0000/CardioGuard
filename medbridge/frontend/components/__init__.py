@@ -13,12 +13,12 @@ from medbridge.frontend.components.disclaimer import (
 from medbridge.frontend.components.sidebar import render_sidebar
 
 __all__ = [
-    "render_disclaimer",
-    "DISCLAIMER_TEXT",
-    "render_action_badge",
-    "get_action_badge_html",
-    "render_chat_message",
     "ACTION_BADGE_CONFIG",
+    "DISCLAIMER_TEXT",
+    "get_action_badge_html",
+    "render_action_badge",
+    "render_chat_message",
     "render_citations_panel",
+    "render_disclaimer",
     "render_sidebar",
 ]

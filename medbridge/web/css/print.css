@@ -1,0 +1,31 @@
+/* Print / "Save as PDF": the conversation only, without app chrome. */
+@page { margin: 18mm 16mm; }
+
+html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000 !important; }
+.app { display: block !important; height: auto !important; }
+.sidebar, .scrim, .topbar, .composer-wrap, .context-panel, .drawer, .jump, .toasts,
+.msg__actions, .steps, .why, .skip-link, .welcome, .modal-backdrop { display: none !important; }
+.main { display: block !important; height: auto !important; }
+.chat, .chat__scroll { height: auto !important; overflow: visible !important; }
+.thread { display: block !important; max-width: none !important; padding: 0 !important; }
+.thread::before {
+  content: "MedBridge conversation — general, guideline-based information; not a diagnosis or prescription.";
+  display: block; margin-bottom: 12pt; padding-bottom: 6pt; border-bottom: 1px solid #999;
+  font-size: 9pt; color: #444;
+}
+.msg { break-inside: avoid; margin: 0 0 14pt; animation: none !important; }
+.msg__avatar { display: none !important; }
+.msg--assistant { display: block !important; }
+.msg__bubble { max-width: none; background: #f2f2f2 !important; border-radius: 8px; }
+.prose { font-size: 11pt; color: #000; }
+.badge, .chip, .pill, .cite-chip { border: 1px solid #888 !important; background: #fff !important; color: #000 !important; }
+.sources__list { display: block !important; }
+.source-item { border: 0 !important; padding: 0 !important; display: block !important; background: none !important; }
+.source-item > span { display: inline !important; white-space: normal !important; }
+.source-item__n { background: none !important; color: #000 !important; font-weight: 700; }
+.source-item__n::before { content: "["; }
+.source-item__n::after { content: "] "; }
+.source-item__meta::before { content: " — "; }
+.emergency { border: 2px solid #000 !important; background: #fff !important; }
+.emergency__call { box-shadow: none !important; background: #fff !important; color: #000 !important; border: 1px solid #000; }
+a { color: #000 !important; }

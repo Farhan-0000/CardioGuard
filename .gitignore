@@ -28,3 +28,7 @@ evaluation/cache/
 report/build/
 ~$*.docx
 ~$*.pptx
+
+# Dev-only UI screenshots against the mock server
+medbridge/web/dev_screenshots/
+node_modules/

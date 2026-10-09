@@ -9,44 +9,49 @@ Assembles:
 5. Triage action badge rendering (R-FE-03) and collapsible citations accordion (R-FE-04).
 6. Chat input box with 2,000-character constraint (Constitution §8.5).
 7. Fail-safe error handling and network fallback shielding (Non-Negotiable #7).
+8. Bearer-token session access: if the backend rejects the session token (expired,
+   erased, or lost after a page reload) a fresh session is started transparently.
+
+This Streamlit UI is the legacy/fallback front-end; the primary UI is the
+FastAPI-served SPA in ``medbridge/web``.
 
 Technical Specification Part I §3.2, §3.3.
 """
-from pathlib import Path
 import sys
-from typing import Optional
 import uuid
+from pathlib import Path
 
 # Ensure repository root is on sys.path when launched via standalone streamlit CLI
 repo_root = str(Path(__file__).resolve().parent.parent.parent)
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
-import structlog
-import streamlit as st
+# The imports below intentionally follow the sys.path bootstrap above (E402).
+import streamlit as st  # noqa: E402
+import structlog  # noqa: E402
 
-from medbridge.frontend.components import (
+from medbridge.api.schemas.responses import MessageResponse  # noqa: E402
+from medbridge.frontend.components import (  # noqa: E402
     render_chat_message,
     render_disclaimer,
     render_sidebar,
 )
-from medbridge.frontend.services.api_client import (
+from medbridge.frontend.services.api_client import (  # noqa: E402
     DEFAULT_SAFE_FALLBACK,
     APIClient,
     APIConnectionError,
     APIStatusError,
     APITimeoutError,
 )
-from medbridge.frontend.services.session import SessionManager
+from medbridge.frontend.services.session import SessionManager  # noqa: E402
 
 logger = structlog.get_logger(__name__)
 
+# System font stack only: no web fonts are fetched (local-only / privacy mode).
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-
 html, body, [class*="css"] {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Custom disclaimer styling */
@@ -182,17 +187,20 @@ def inject_custom_css() -> None:
 
 WELCOME_MESSAGE = (
     "### 👋 Welcome to MedBridge\n"
-    "**Evidence-Grounded Clinical Guidance for Hypertension Management**\n\n"
-    "I assist patients and clinicians by referencing validated clinical guidelines "
-    "(**AHA/ACC 2025**, **ESC/ESH 2024**, **ADA 2025**, and **KDIGO 2024**) "
+    "**Evidence-Grounded Guidance on Blood Pressure and Heart Health**\n\n"
+    "I assist patients and clinicians by referencing curated cardiology and hypertension "
+    "guidelines (e.g., AHA/ACC, ESC, NICE, WHO) "
     "with transparent evidence citations and safety guardrails.\n\n"
     "#### 💡 What you can ask:\n"
     "- 🎯 **Blood Pressure Targets**: *\"My BP was 145/92 this morning, is this considered high?\"*\n"
-    "- 📚 **Clinical Guidelines**: *\"What does AHA/ACC 2025 recommend for Stage 1 hypertension?\"*\n"
+    "- 📚 **Clinical Guidelines**: *\"What do the guidelines recommend for Stage 1 hypertension?\"*\n"
     "- 💊 **Medication Classes**: *\"What are first-line medications for high blood pressure with diabetes?\"*\n"
     "- 🥗 **Lifestyle & Self-Care**: *\"What dietary sodium limits and exercise habits help lower BP?\"*\n\n"
     "To begin, type your question below. All guidance is strictly grounded in peer-reviewed clinical guidelines."
 )
+
+# HTTP statuses meaning "this session token is no longer accepted".
+SESSION_REJECTED_STATUSES = frozenset({401, 403, 404})
 
 
 def restore_history(client: APIClient, session_id: uuid.UUID) -> None:
@@ -222,6 +230,33 @@ def restore_history(client: APIClient, session_id: uuid.UUID) -> None:
         )
 
 
+def start_new_session(client: APIClient) -> uuid.UUID:
+    """Create a fresh backend session, store its id and token, and return the id."""
+    new_id = client.create_session()
+    SessionManager.set_session_id(new_id)
+    SessionManager.set_session_token(client.get_session_token(new_id))
+    return new_id
+
+
+def send_with_session_recovery(
+    client: APIClient,
+    session_id: uuid.UUID,
+    prompt: str,
+) -> MessageResponse:
+    """
+    Send a message; if the backend rejects the session token, start a new session
+    and retry once (the old conversation cannot be accessed without its token).
+    """
+    try:
+        return client.send_message(session_id=session_id, message=prompt)
+    except APIStatusError as exc:
+        if exc.status_code not in SESSION_REJECTED_STATUSES:
+            raise
+        logger.warning("session_rejected_new_session_started", status_code=exc.status_code)
+        new_id = start_new_session(client)
+        return client.send_message(session_id=new_id, message=prompt)
+
+
 def process_user_query(
     client: APIClient,
     session_id: uuid.UUID,
@@ -240,8 +275,8 @@ def process_user_query(
 
     # 2. Invoke MedBridge 8-stage pipeline via backend API
     try:
-        with st.spinner("Consulting clinical guidelines (AHA/ACC 2025, ESC/ESH 2024, ADA 2025)..."):
-            response = client.send_message(session_id=session_id, message=clean_prompt)
+        with st.spinner("Consulting curated clinical guidelines..."):
+            response = send_with_session_recovery(client, session_id, clean_prompt)
 
         action_str = response.action.value if hasattr(response.action, "value") else str(response.action)
         SessionManager.add_message(
@@ -301,6 +336,7 @@ def main() -> None:
     except Exception as exc:
         logger.warning("session_init_backend_offline_fallback", error=str(exc))
         session_id = SessionManager.init_session(None)
+    client.set_session_token(session_id, SessionManager.get_session_token())
 
     # 4. Restore history if page was refreshed
     restore_history(client, session_id)
@@ -313,7 +349,7 @@ def main() -> None:
 
     # 7. Main Application Header
     st.title("🩺 MedBridge Clinical Guidance")
-    st.caption("Evidence-Grounded AI Guidance for Hypertension Management")
+    st.caption("Evidence-grounded guidance on blood pressure and heart health")
     st.divider()
 
     # 8. Render Message History

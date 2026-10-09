@@ -10,7 +10,8 @@ DISCLAIMER_TEXT = (
     "**Medical Disclaimer**: This tool provides informational guidance only. "
     "It does not replace professional medical advice, diagnosis, or treatment. "
     "If you are experiencing a medical emergency (e.g., severe chest pain, "
-    "shortness of breath, sudden numbness), call 911 or your local emergency services immediately."
+    "shortness of breath, sudden numbness), call your local emergency number immediately "
+    "(112 in India, 911 in the US)."
 )
 
 

@@ -1,0 +1,6 @@
+{
+  "name": "medbridge-web",
+  "private": true,
+  "description": "Type marker only: the SPA's ES modules and node unit tests (node --test medbridge/web/tests). No dependencies, no build step.",
+  "type": "module"
+}

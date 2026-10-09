@@ -3,8 +3,9 @@ Unit Tests for Frontend Presentation Components (TASK-26, Module M-20).
 
 Verifies disclaimer banner, action badges, citation accordion, and sidebar rendering.
 """
-from unittest.mock import MagicMock, patch
 import uuid
+from unittest.mock import MagicMock, patch
+
 import pytest
 import streamlit as st
 
@@ -22,7 +23,6 @@ from medbridge.frontend.components.disclaimer import (
     render_disclaimer,
 )
 from medbridge.frontend.components.sidebar import render_sidebar
-
 
 # ===========================================================================
 # 1. Disclaimer Component Tests
@@ -81,6 +81,16 @@ class TestActionBadges:
             assert "🔴" in args[0]
             assert "ESCALATE" in args[0]
             assert kwargs.get("unsafe_allow_html") is True
+
+    def test_render_chat_message_assistant_abstain_shows_badge(self) -> None:
+        """ABSTAIN answers (templates, no citations) still show their action badge."""
+        mock_chat_ctx = MagicMock()
+        with patch("streamlit.chat_message", return_value=mock_chat_ctx), \
+             patch("streamlit.markdown") as mock_md:
+            render_chat_message(role="assistant", content="Outside scope.", action="ABSTAIN")
+            badge_html = mock_md.call_args_list[0][0][0]
+            assert "ABSTAIN" in badge_html
+            assert ACTION_BADGE_CONFIG["ABSTAIN"]["desc"] in badge_html
 
     def test_render_chat_message_user(self) -> None:
         """User messages render without action badge inside user chat bubble."""

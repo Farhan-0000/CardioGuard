@@ -4,11 +4,15 @@ Frontend API Client Service (TASK-25, Module M-20).
 Provides synchronous and asynchronous communication with the MedBridge FastAPI backend,
 handling network timeouts, connection errors, and structured safe fallback mapping.
 
+Session routes are protected by signed session tokens: ``create_session`` captures the
+``session_token`` returned by ``POST /api/sessions`` and every later call for that session
+sends ``Authorization: Bearer <token>``.
+
 Technical Specification Part I §4, §9, §10.
 """
 import os
-from typing import Any, Optional, Union
 import uuid
+from typing import Any
 
 import httpx
 
@@ -16,7 +20,6 @@ from medbridge.api.schemas.responses import (
     HealthResponse,
     HistoryResponse,
     MessageResponse,
-    SessionResponse,
 )
 
 DEFAULT_API_URL = os.getenv("MEDBRIDGE_API_URL", "http://localhost:8000")
@@ -35,8 +38,8 @@ class APIError(Exception):
         self,
         message: str,
         safe_fallback: str = DEFAULT_SAFE_FALLBACK,
-        error_code: Optional[str] = None,
-        status_code: Optional[int] = None,
+        error_code: str | None = None,
+        status_code: int | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -76,7 +79,7 @@ class APIStatusError(APIError):
     def __init__(
         self,
         status_code: int,
-        error_code: Optional[str],
+        error_code: str | None,
         message: str,
         safe_fallback: str,
     ) -> None:
@@ -96,7 +99,7 @@ def _parse_error_response(response: httpx.Response) -> APIStatusError:
         error_code = data.get("error_code")
         message = data.get("message", f"HTTP {status_code} error from server.")
         safe_fallback = data.get("safe_fallback", DEFAULT_SAFE_FALLBACK)
-    except Exception:
+    except ValueError:
         error_code = f"HTTP_{status_code}"
         raw = response.text
         message = f"HTTP {status_code}: {raw[:200]}{'...' if len(raw) > 200 else ''}"
@@ -115,12 +118,39 @@ class APIClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
         timeout: float = DEFAULT_TIMEOUT,
     ) -> None:
         self.base_url = (base_url or DEFAULT_API_URL).rstrip("/")
         self.timeout = timeout
         self._client: httpx.Client = httpx.Client(timeout=self.timeout)
+        self._session_tokens: dict[str, str] = {}
+
+    # ------------------------------------------------------------------
+    # Session tokens
+    # ------------------------------------------------------------------
+
+    def set_session_token(self, session_id: uuid.UUID | str, token: str | None) -> None:
+        """Remember (or forget, when ``token`` is falsy) the bearer token of a session."""
+        if token:
+            self._session_tokens[str(session_id)] = token
+        else:
+            self._session_tokens.pop(str(session_id), None)
+
+    def get_session_token(self, session_id: uuid.UUID | str) -> str | None:
+        """Return the bearer token captured for ``session_id``, if any."""
+        return self._session_tokens.get(str(session_id))
+
+    def _auth_headers(self, session_id: uuid.UUID | str) -> dict[str, str]:
+        """``Authorization`` header for session-scoped routes (empty if no token)."""
+        token = self.get_session_token(session_id)
+        return {"Authorization": f"Bearer {token}"} if token else {}
+
+    def _remember_session(self, data: dict[str, Any]) -> uuid.UUID:
+        """Parse a SessionResponse body and store its token."""
+        session_id = uuid.UUID(data["session_id"])
+        self.set_session_token(session_id, data.get("session_token"))
+        return session_id
 
     def _get_client(self) -> httpx.Client:
         """Return the active HTTP client, recreating it if closed."""
@@ -151,8 +181,8 @@ class APIClient:
 
     def create_session(self) -> uuid.UUID:
         """
-        Create a new conversation session on the backend.
-        
+        Create a new conversation session on the backend and capture its bearer token.
+
         Returns:
             Newly initialized session UUID.
         Raises:
@@ -172,17 +202,16 @@ class APIClient:
         if resp.is_error:
             raise _parse_error_response(resp)
 
-        data = resp.json()
-        return uuid.UUID(data["session_id"])
+        return self._remember_session(resp.json())
 
     def send_message(
         self,
-        session_id: Union[uuid.UUID, str],
+        session_id: uuid.UUID | str,
         message: str,
     ) -> MessageResponse:
         """
         Submit a clinical query to the MedBridge pipeline for a given session.
-        
+
         Returns:
             Validated MessageResponse containing action, response_text, citations.
         Raises:
@@ -192,7 +221,7 @@ class APIClient:
         payload = {"message": message}
         try:
             client = self._get_client()
-            resp = client.post(url, json=payload)
+            resp = client.post(url, json=payload, headers=self._auth_headers(session_id))
         except httpx.ConnectError as exc:
             raise APIConnectionError(str(exc)) from exc
         except httpx.TimeoutException as exc:
@@ -207,11 +236,11 @@ class APIClient:
 
     def get_history(
         self,
-        session_id: Union[uuid.UUID, str],
+        session_id: uuid.UUID | str,
     ) -> HistoryResponse:
         """
         Retrieve conversation message history for a given session.
-        
+
         Returns:
             Validated HistoryResponse containing chronological messages.
         Raises:
@@ -220,7 +249,7 @@ class APIClient:
         url = f"{self.base_url}/api/sessions/{session_id}/history"
         try:
             client = self._get_client()
-            resp = client.get(url)
+            resp = client.get(url, headers=self._auth_headers(session_id))
         except httpx.ConnectError as exc:
             raise APIConnectionError(str(exc)) from exc
         except httpx.TimeoutException as exc:
@@ -236,7 +265,7 @@ class APIClient:
     def health_check(self) -> HealthResponse:
         """
         Probe system health status (PostgreSQL + Qdrant).
-        
+
         Returns:
             Validated HealthResponse.
         Raises:
@@ -282,12 +311,11 @@ class APIClient:
         if resp.is_error:
             raise _parse_error_response(resp)
 
-        data = resp.json()
-        return uuid.UUID(data["session_id"])
+        return self._remember_session(resp.json())
 
     async def asend_message(
         self,
-        session_id: Union[uuid.UUID, str],
+        session_id: uuid.UUID | str,
         message: str,
     ) -> MessageResponse:
         """Asynchronously submit a patient message."""
@@ -295,7 +323,7 @@ class APIClient:
         payload = {"message": message}
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.post(url, json=payload)
+                resp = await client.post(url, json=payload, headers=self._auth_headers(session_id))
         except httpx.ConnectError as exc:
             raise APIConnectionError(str(exc)) from exc
         except httpx.TimeoutException as exc:
@@ -310,13 +338,13 @@ class APIClient:
 
     async def aget_history(
         self,
-        session_id: Union[uuid.UUID, str],
+        session_id: uuid.UUID | str,
     ) -> HistoryResponse:
         """Asynchronously retrieve conversation history."""
         url = f"{self.base_url}/api/sessions/{session_id}/history"
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.get(url)
+                resp = await client.get(url, headers=self._auth_headers(session_id))
         except httpx.ConnectError as exc:
             raise APIConnectionError(str(exc)) from exc
         except httpx.TimeoutException as exc:
