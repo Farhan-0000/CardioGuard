@@ -7,7 +7,7 @@ sparse BM25 vectors via EmbeddingClient, and performs batch upsert to Qdrant.
 Constitution §6.4: Dual vector search (Dense + BM25).
 Technical Specification Part V §3.1, §4.2, §5.
 """
-import logging
+import structlog
 import uuid
 from typing import Optional
 
@@ -16,7 +16,7 @@ from qdrant_client import QdrantClient, models
 from medbridge.ingestion.chunker import RawChunk
 from medbridge.retrieval.embedder import EmbeddingClient, get_embedding_client
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Qdrant Collection Configuration (Technical Specification Part V §3.1)
 COLLECTION_CONFIG = {

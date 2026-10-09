@@ -6,7 +6,10 @@ class Settings(BaseSettings):
     # LLM
     GROQ_API_KEY: str
     OPENAI_API_KEY: str = ""
+    LLM_PROVIDER: str = "groq"
+    OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
     LLM_MODEL: str = "llama-3.1-8b-instant"
+    LLM_TIMEOUT: float = 90.0
     LLM_TEMPERATURE_GATES: float = 0.0
     LLM_TEMPERATURE_GENERATOR: float = 0.3
     LLM_MAX_TOKENS_GATES: int = 512

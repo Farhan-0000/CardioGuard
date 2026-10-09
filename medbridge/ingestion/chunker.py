@@ -7,7 +7,7 @@ guideline section headers, page numbers, and citation metadata.
 
 Technical Specification Part V §3.3, ADL-003.
 """
-import logging
+import structlog
 import re
 from typing import Optional
 
@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from medbridge.ingestion.parser import ParsedDocument, ParsedPage
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Common clinical section header regex patterns
 _SECTION_PATTERNS: list[re.Pattern[str]] = [

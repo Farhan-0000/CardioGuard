@@ -51,9 +51,8 @@ def render_sidebar(
         st.subheader("📚 Guideline Index")
         st.markdown(
             "• **AHA/ACC 2025** Hypertension  \n"
-            "• **ESC/ESH 2024** Guidelines  \n"
-            "• **ADA 2025** Standards of Care  \n"
-            "• **KDIGO 2024** Blood Pressure in CKD"
+            "• **ESC 2024** Guidelines  \n"
+            "• **NICE NG136** Management"
         )
 
         st.divider()

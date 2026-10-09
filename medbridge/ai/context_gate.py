@@ -11,14 +11,14 @@ Constitution §7.1 / Non-Negotiable #5: Input encapsulated in <untrusted_user_in
 Technical Specification Part III §3.4.
 """
 import json
-import logging
+import structlog
 from typing import Any, Optional
 
-from medbridge.ai.llm_wrapper import ResilientLLMWrapper
+from medbridge.ai.llm_wrapper import ResilientLLMWrapper, get_llm_wrapper
 from medbridge.ai.schemas.context_gate import ContextGateOutput
 from medbridge.config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # ------------------------------------------------------------------
 # System prompt (§3.4 — verbatim from Tech Spec)
@@ -27,10 +27,9 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT: str = (
     "You are a clinical context sufficiency classifier. Given a patient's accumulated "
     "medical context and their question intent, determine whether sufficient information "
-    "exists to safely provide PERSONALIZED clinical guidance.\n\n"
-    "If critical context is missing (e.g., age, current medications for a drug-specific "
-    "question, relevant comorbidities for a treatment question), output SOFT-ASK.\n"
-    "If context is sufficient for the question type, output PROCEED.\n\n"
+    "exists to safely provide clinical guidance.\n\n"
+    "If critical context is missing for personalized guidance (for example, patient asks if they should adjust or change their medication dose, but their current medication or blood pressure is unknown), output SOFT-ASK.\n"
+    "If the patient is asking a general informational question about hypertension guidelines (such as lifestyle, dietary changes, exercise, blood pressure definitions or targets), or if sufficient context exists, output PROCEED.\n\n"
     "Output ONLY valid JSON. Schema:\n"
     "{\n"
     '  "action": "SOFT-ASK" | "PROCEED",\n'
@@ -65,7 +64,7 @@ class ContextGate:
     """
 
     def __init__(self, llm: Optional[ResilientLLMWrapper] = None) -> None:
-        self._llm = llm or ResilientLLMWrapper()
+        self._llm = llm or get_llm_wrapper()
         self._settings = get_settings()
 
     async def evaluate(

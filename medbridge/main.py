@@ -21,6 +21,7 @@ from medbridge.api.routes import api_router, health_router
 from medbridge.config import Settings, get_settings
 from medbridge.db.connection import close_db, init_db
 from medbridge.logging_config import configure_logging
+from medbridge.ai.llm_wrapper import get_llm_wrapper
 from medbridge.retrieval.embedder import EmbeddingClient
 
 logger = structlog.get_logger(__name__)
@@ -53,6 +54,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Shutdown
     logger.info("app_shutdown_begin")
+
+    # Close persistent LLM HTTP client
+    try:
+        llm_wrapper = get_llm_wrapper()
+        await llm_wrapper.close()
+        logger.info("llm_client_closed_successfully")
+    except Exception as exc:
+        logger.warning("llm_client_close_failed", error=str(exc))
+
     try:
         await close_db()
         logger.info("db_closed_successfully")

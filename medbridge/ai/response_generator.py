@@ -9,10 +9,11 @@ Constitution §7.1 / Non-Negotiable #5: User input encapsulated in <untrusted_us
 Technical Specification Part III §3.8, §3.9.
 """
 import json
-import logging
+import structlog
 from typing import Any, Optional, Union
 
-from medbridge.ai.llm_wrapper import ResilientLLMWrapper
+from medbridge.ai.llm_wrapper import ResilientLLMWrapper, get_llm_wrapper
+from medbridge.ai.prompt_utils import format_chunks
 from medbridge.ai.schemas.response_generator import (
     GeneratedCitation,
     ResponseGeneratorOutput,
@@ -20,7 +21,7 @@ from medbridge.ai.schemas.response_generator import (
 from medbridge.api.schemas.enums import ActionEnum
 from medbridge.config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Actions that invoke LLM Call 4
 ALLOWED_ACTIONS: set[str] = {"ANSWER", "GENERALIZE", "SOFT-ASK"}
@@ -34,6 +35,7 @@ SYSTEM_INSTRUCTIONS_TEMPLATE: str = (
     "ONLY the evidence provided in <clinical_evidence>. Do not assume or\n"
     "infer patient information not present in <patient_context>. Follow\n"
     "the routing action: {action_decision}.\n"
+    "If action is SOFT-ASK, ask the patient for clarifying clinical context needed.\n"
     "Include inline citation markers [1], [2], etc. for each clinical claim.\n"
     "Do not provide diagnosis or prescriptions. Use empathetic, plain language.\n\n"
     "Output ONLY valid JSON. Schema:\n"
@@ -47,39 +49,8 @@ SYSTEM_INSTRUCTIONS_TEMPLATE: str = (
 
 def _format_chunks(chunks: list[Any]) -> str:
     """Format up to top-5 retrieved chunks into XML tags (ADL-025)."""
-    if not chunks:
-        return '<chunk id="0" source="None" section="None">\nNo clinical evidence provided.\n</chunk>'
+    return format_chunks(chunks)
 
-    formatted_pieces: list[str] = []
-    for i, chunk in enumerate(chunks[:5], start=1):
-        if hasattr(chunk, "chunk_text"):
-            chunk_id = str(getattr(chunk, "chunk_id", i))
-            source = str(getattr(chunk, "guideline_id", "Unknown"))
-            section = str(getattr(chunk, "section_title", "General"))
-            text = str(chunk.chunk_text)
-        elif isinstance(chunk, dict):
-            chunk_id = str(chunk.get("chunk_id", i))
-            source = str(chunk.get("guideline_id", "Unknown"))
-            section = str(chunk.get("section_title", "General"))
-            text = str(chunk.get("chunk_text", ""))
-        elif isinstance(chunk, tuple) and len(chunk) >= 2:
-            chunk_id = str(i)
-            source = "RetrievedGuideline"
-            section = "General"
-            text = str(chunk[0])
-        else:
-            chunk_id = str(i)
-            source = "RetrievedGuideline"
-            section = "General"
-            text = str(chunk)
-
-        formatted_pieces.append(
-            f'<chunk id="{chunk_id}" source="{source}" section="{section}">\n'
-            f"{text.strip()}\n"
-            f"</chunk>"
-        )
-
-    return "\n".join(formatted_pieces)
 
 
 def _build_system_prompt(action: str) -> str:
@@ -131,7 +102,7 @@ class ResponseGenerator:
     """
 
     def __init__(self, llm: Optional[ResilientLLMWrapper] = None) -> None:
-        self._llm = llm or ResilientLLMWrapper()
+        self._llm = llm or get_llm_wrapper()
         self._settings = get_settings()
 
     async def generate(

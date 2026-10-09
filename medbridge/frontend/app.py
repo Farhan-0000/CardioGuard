@@ -59,28 +59,65 @@ div[data-testid="stAlert"] {
     margin-bottom: 1.25rem !important;
 }
 
-/* Sidebar styling */
+/* Sidebar styling - Sleek High-Contrast Dark Theme */
 section[data-testid="stSidebar"] {
-    background-color: #F8FAFC !important;
-    border-right: 1px solid #E2E8F0 !important;
+    background-color: #111827 !important;
+    border-right: 1px solid #1F2937 !important;
 }
 
-/* Session ID code block in sidebar: clean word wrap without horizontal scrollbar */
+/* Sidebar Headings & Titles */
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] h4,
+section[data-testid="stSidebar"] strong {
+    color: #F8FAFC !important;
+    font-weight: 700 !important;
+}
+
+/* Sidebar Body text, spans, labels, and list items */
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] li,
+section[data-testid="stSidebar"] div {
+    color: #E2E8F0 !important;
+}
+
+/* Sidebar Captions & secondary notes */
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] *,
+section[data-testid="stSidebar"] small,
+section[data-testid="stSidebar"] .stCaption {
+    color: #94A3B8 !important;
+}
+
+/* Sidebar Dividers */
+section[data-testid="stSidebar"] hr {
+    border-color: #1F2937 !important;
+}
+
+/* Session ID code block in sidebar: clean, bright, high-contrast */
 section[data-testid="stSidebar"] [data-testid="stCodeBlock"],
-section[data-testid="stSidebar"] [data-testid="stCode"] {
-    background: #FFFFFF !important;
-    border: 1px solid #CBD5E1 !important;
+section[data-testid="stSidebar"] [data-testid="stCode"],
+section[data-testid="stSidebar"] pre {
+    background-color: #1E293B !important;
+    border: 1px solid #334155 !important;
     border-radius: 8px !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
     overflow: hidden !important;
 }
 section[data-testid="stSidebar"] [data-testid="stCodeBlock"] *,
-section[data-testid="stSidebar"] [data-testid="stCode"] * {
+section[data-testid="stSidebar"] [data-testid="stCode"] *,
+section[data-testid="stSidebar"] pre code,
+section[data-testid="stSidebar"] code {
     white-space: pre-wrap !important;
     word-break: break-all !important;
     overflow-wrap: anywhere !important;
-    font-size: 0.72rem !important;
-    color: #1E293B !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    color: #38BDF8 !important;
+    font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace !important;
 }
 
 /* Primary buttons (e.g. New Conversation) */
@@ -92,11 +129,11 @@ button[kind="primary"], .stButton > button[type="primary"] {
     font-weight: 600 !important;
     padding: 0.5rem 1rem !important;
     transition: all 0.2s ease !important;
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
 }
 button[kind="primary"]:hover, .stButton > button[type="primary"]:hover {
     background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%) !important;
-    box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3) !important;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45) !important;
     transform: translateY(-1px);
 }
 
@@ -105,31 +142,34 @@ div[data-testid="stChatMessage"] {
     border-radius: 12px !important;
     margin-bottom: 1rem !important;
     padding: 1rem 1.25rem !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
     transition: box-shadow 0.2s ease !important;
 }
 div[data-testid="stChatMessage"]:hover {
-    box-shadow: 0 3px 8px rgba(0,0,0,0.07) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
 }
 
 /* Citations Expander */
 div[data-testid="stExpander"] {
-    background-color: #F8FAFC !important;
+    background-color: #1E293B !important;
     border-radius: 8px !important;
-    border: 1px solid #E2E8F0 !important;
+    border: 1px solid #334155 !important;
     margin-top: 0.75rem !important;
+}
+div[data-testid="stExpander"] * {
+    color: #E2E8F0 !important;
 }
 
 /* Chat Input Bar */
 div[data-testid="stChatInput"] {
     border-radius: 12px !important;
-    border: 1.5px solid #CBD5E1 !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+    border: 1.5px solid #334155 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
     transition: all 0.2s ease !important;
 }
 div[data-testid="stChatInput"]:focus-within {
-    border-color: #2563EB !important;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+    border-color: #38BDF8 !important;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
 }
 </style>
 """

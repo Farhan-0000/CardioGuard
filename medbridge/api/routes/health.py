@@ -35,6 +35,7 @@ async def check_postgres_health() -> bool:
 
 async def check_qdrant_health() -> bool:
     """Probe Qdrant vector store with a get_collections query."""
+    client = None
     try:
         settings = get_settings()
         client = AsyncQdrantClient(url=settings.QDRANT_URL, timeout=2.0)
@@ -43,6 +44,13 @@ async def check_qdrant_health() -> bool:
     except Exception as exc:
         logger.warning("health_check_qdrant_failed", error=str(exc))
         return False
+    finally:
+        if client is not None:
+            try:
+                await client.close()
+            except Exception:
+                pass
+
 
 
 @health_router.get(

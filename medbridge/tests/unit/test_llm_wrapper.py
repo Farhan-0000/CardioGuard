@@ -191,6 +191,21 @@ class TestJsonRepair:
         parsed = json.loads(repaired)
         assert parsed["action"] == "PROCEED"
 
+    def test_apostrophes_preserved_in_values(self, wrapper):
+        """Mid-word apostrophes (e.g. patient's) must NOT be replaced."""
+        malformed = """{'rationale': "The patient's BP is high"}"""
+        repaired = wrapper._repair_json(malformed)
+        parsed = json.loads(repaired)
+        assert "patient's" in parsed["rationale"]
+
+    def test_mixed_quotes_with_apostrophe(self, wrapper):
+        """Single-quoted keys with double-quoted values containing apostrophes."""
+        malformed = """{'text': "patient's reading isn't normal", 'action': 'PROCEED'}"""
+        repaired = wrapper._repair_json(malformed)
+        parsed = json.loads(repaired)
+        assert "patient's" in parsed["text"]
+        assert parsed["action"] == "PROCEED"
+
     def test_combined_errors(self, wrapper):
         """Trailing comma + unclosed brace."""
         malformed = '{"action": "PROCEED", "rationale": "ok",'

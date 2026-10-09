@@ -254,6 +254,7 @@ async def test_soft_ask_loop_breaker_forces_generalize(orchestrator, mock_compon
 
     with patch("medbridge.core.orchestrator.load_session_state", new=AsyncMock(return_value={"snapshot": {}, "soft_ask_count": 2})), \
          patch("medbridge.core.orchestrator.increment_soft_ask_count", new=AsyncMock()) as mock_inc, \
+         patch("medbridge.core.orchestrator.reset_soft_ask_count", new=AsyncMock()) as mock_reset, \
          patch("medbridge.core.orchestrator.save_message", new=AsyncMock(return_value=uuid.uuid4())):
 
         response = await orchestrator.process_message(
@@ -264,6 +265,10 @@ async def test_soft_ask_loop_breaker_forces_generalize(orchestrator, mock_compon
 
         # Must not increment soft_ask_count again
         mock_inc.assert_not_called()
+
+        # Must reset soft_ask_count after loop-breaker fires
+        mock_reset.assert_called_once_with(mock_db_session, sample_session_id)
+        assert response.soft_ask_count == 0
 
         # Must force GENERALIZE
         assert response.action == ActionEnum.GENERALIZE
@@ -488,6 +493,48 @@ async def test_guaranteed_non_throwing_on_critical_exception(orchestrator, mock_
         assert response.session_id == sample_session_id
 
 
+@pytest.mark.asyncio
+async def test_duplicate_chunk_text_deduplication_and_matching(
+    orchestrator, mock_components, mock_db_session, sample_session_id
+):
+    """Verifies candidate chunks with duplicate text are deduplicated before reranking and matched via dict lookup."""
+    chunk1 = RetrievedChunk(
+        chunk_id="chunk-1",
+        chunk_text="Duplicate guideline text.",
+        guideline_id="AHA_ACC_2025",
+        section_title="Section A",
+        score=0.8,
+    )
+    chunk2 = RetrievedChunk(
+        chunk_id="chunk-2",
+        chunk_text="Duplicate guideline text.",
+        guideline_id="AHA_ACC_2025",
+        section_title="Section B",
+        score=0.7,
+    )
+    mock_components["hybrid_retriever"].hybrid_search = AsyncMock(return_value=[chunk1, chunk2])
+    mock_components["reranker"].rerank = AsyncMock(
+        return_value=[("Duplicate guideline text.", 0.95)]
+    )
+
+    with patch("medbridge.core.orchestrator.load_session_state", new=AsyncMock(return_value={"snapshot": {}, "soft_ask_count": 0})), \
+         patch("medbridge.core.orchestrator.reset_soft_ask_count", new=AsyncMock()), \
+         patch("medbridge.core.orchestrator.save_message", new=AsyncMock(return_value=uuid.uuid4())):
+
+        response = await orchestrator.process_message(
+            session_id=sample_session_id,
+            message="What is the guideline?",
+            db=mock_db_session,
+        )
+
+        assert response.action == ActionEnum.ANSWER
+        mock_components["reranker"].rerank.assert_called_once()
+        _, call_chunk_texts = mock_components["reranker"].rerank.call_args[0][:2]
+        assert len(call_chunk_texts) == 1
+        assert call_chunk_texts == ["Duplicate guideline text."]
+
+
 def test_factory_function():
     orch = get_orchestrator()
     assert isinstance(orch, PipelineOrchestrator)
+

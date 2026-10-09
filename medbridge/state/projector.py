@@ -13,11 +13,15 @@ import copy
 import uuid
 from typing import Any
 
+import structlog
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from medbridge.ai.schemas.extractor import DeltaEvent
 from medbridge.db.models import ClinicalEvent, ContextSnapshot, EventTypeEnum
+
+logger = structlog.get_logger(__name__)
 
 
 class StateProjector:
@@ -82,10 +86,15 @@ class StateProjector:
 
         # 2. Persist each event row
         for event in events:
+            raw_type = event.event_type.value if hasattr(event.event_type, "value") else str(event.event_type)
+            try:
+                enum_val = EventTypeEnum(raw_type)
+            except ValueError:
+                continue
             row = ClinicalEvent(
                 event_id=uuid.uuid4(),
                 session_id=session_id,
-                event_type=EventTypeEnum(event.event_type.value),
+                event_type=enum_val,
                 payload=event.payload,
             )
             session.add(row)
@@ -113,8 +122,8 @@ class StateProjector:
         snapshot: dict[str, Any],
         event: DeltaEvent,
     ) -> dict[str, Any]:
-        """Apply one delta event to the snapshot (mutates in-place)."""
-        match event.event_type.value:
+        ev_type = event.event_type.value if hasattr(event.event_type, "value") else str(event.event_type)
+        match ev_type:
             case "BP_READING":
                 readings = snapshot.setdefault("recent_bp_readings", [])
                 readings.append(event.payload)
@@ -122,30 +131,49 @@ class StateProjector:
 
             case "MEDICATION_ADDED":
                 meds = snapshot.setdefault("current_medications", [])
-                name = event.payload["drug_name"].lower()
-                if not any(m["drug"].lower() == name for m in meds):
-                    meds.append({
-                        "drug": event.payload["drug_name"],
-                        "dosage": event.payload.get("dosage", ""),
-                        "frequency": event.payload.get("frequency", ""),
-                    })
+                drug_name = (
+                    event.payload.get("drug_name")
+                    or event.payload.get("drug")
+                    or event.payload.get("name")
+                    or event.payload.get("medication")
+                )
+                if drug_name:
+                    name_lower = str(drug_name).strip().lower()
+                    if not any(str(m.get("drug", "")).strip().lower() == name_lower for m in meds):
+                        meds.append({
+                            "drug": str(drug_name).strip(),
+                            "dosage": str(event.payload.get("dosage") or event.payload.get("dose") or "").strip(),
+                            "frequency": str(event.payload.get("frequency") or "").strip(),
+                        })
 
             case "MEDICATION_STOPPED":
-                name = event.payload["drug_name"].lower()
-                current = snapshot.get("current_medications", [])
-                stopped = [m for m in current if m["drug"].lower() == name]
-                snapshot["current_medications"] = [
-                    m for m in current if m["drug"].lower() != name
-                ]
-                disc = snapshot.setdefault("discontinued_medications", [])
-                for m in stopped:
-                    disc.append({**m, "reason": event.payload.get("reason", "")})
+                drug_name = (
+                    event.payload.get("drug_name")
+                    or event.payload.get("drug")
+                    or event.payload.get("name")
+                    or event.payload.get("medication")
+                )
+                if drug_name:
+                    name_lower = str(drug_name).strip().lower()
+                    current = snapshot.get("current_medications", [])
+                    stopped = [m for m in current if str(m.get("drug", "")).strip().lower() == name_lower]
+                    snapshot["current_medications"] = [
+                        m for m in current if str(m.get("drug", "")).strip().lower() != name_lower
+                    ]
+                    disc = snapshot.setdefault("discontinued_medications", [])
+                    for m in stopped:
+                        disc.append({**m, "reason": event.payload.get("reason", "")})
 
             case "SYMPTOM_REPORTED":
                 symptoms = snapshot.setdefault("symptoms", [])
-                new = event.payload.get("symptom", "").lower()
-                if new and new not in [s.lower() for s in symptoms]:
-                    symptoms.append(event.payload["symptom"])
+                symptom_val = (
+                    event.payload.get("symptom")
+                    or event.payload.get("name")
+                    or ""
+                )
+                new = str(symptom_val).strip()
+                if new and new.lower() not in [str(s).strip().lower() for s in symptoms]:
+                    symptoms.append(new)
 
             case "DEMOGRAPHIC":
                 demo = snapshot.setdefault("demographics", {})

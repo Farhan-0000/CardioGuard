@@ -24,6 +24,9 @@ _EMERGENCY_PATTERNS: list[re.Pattern[str]] = [
         r"(?:bp|blood\s+pressure|cuff|reading|machine|monitor).*?(?:2[0-9]{2}|1[89][0-9])\s*/\s*\d+",
         r"(?:bp|blood\s+pressure|cuff|reading|machine|monitor).*?\d+\s*/\s*(?:1[2-9][0-9]|[2-9][0-9]{2})",
         r"(?:systolic\s+(?:is|was|of|:)?\s*(?:2[0-9]{2}|1[89][0-9])|diastolic\s+(?:is|was|of|:)?\s*(?:1[2-9][0-9]|[2-9][0-9]{2}))",
+        # Standalone crisis BP: both systolic ≥180 AND diastolic ≥120 without prefix
+        # (dual-threshold avoids false positives on unrelated number pairs)
+        r"\b(?:2[0-9]{2}|1[89][0-9])\s*/\s*(?:1[2-9][0-9]|[2-9][0-9]{2})\b",
         # Red-flag symptoms
         r"chest\s+(?:pain|pressure|tightness|squeezing)",
         r"(?:difficulty\s+breathing|shortness\s+of\s+breath|cannot\s+catch\s+(?:my\s+)?breath|can't\s+catch\s+(?:my\s+)?breath|gasping\s+for\s+air)",

@@ -7,7 +7,7 @@ using Reciprocal Rank Fusion (RRF, k=60) to retrieve Top-20 candidates from Qdra
 Constitution §6.4: The retrieval module has strictly read-only search access to Qdrant.
 Technical Specification Part III §3.5.
 """
-import logging
+import structlog
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -16,7 +16,7 @@ from qdrant_client import AsyncQdrantClient, models
 from medbridge.config import get_settings
 from medbridge.retrieval.embedder import EmbeddingClient, get_embedding_client
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class RetrievedChunk(BaseModel):

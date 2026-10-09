@@ -15,7 +15,7 @@ Constitution §7 / Non-Negotiables #1–7.
 Technical Specification Part III §3.1, §3.8, §3.9, Part IV §4.
 """
 import copy
-import logging
+import structlog
 import time
 import uuid
 from datetime import datetime, timezone
@@ -54,7 +54,7 @@ from medbridge.state.session_manager import (
     save_message,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class PipelineOrchestrator:
@@ -341,6 +341,8 @@ class PipelineOrchestrator:
                     extra={"session_id": str(session_id)},
                 )
                 force_generalize = True
+                await reset_soft_ask_count(db, session_id)
+                soft_ask_count = 0
 
         elif gate_1_action == "PROCEED":
             # Context sufficient: reset soft-ask counter
@@ -358,14 +360,15 @@ class PipelineOrchestrator:
 
         top_chunks: list[RetrievedChunk] = []
         if candidate_chunks:
-            chunk_texts = [c.chunk_text for c in candidate_chunks]
+            chunk_map = {c.chunk_text: c for c in candidate_chunks}
+            chunk_texts = list(chunk_map.keys())
             reranked_tuples = await self._reranker.rerank(
                 retrieval_query,
                 chunk_texts,
                 top_k=self._settings.RETRIEVAL_TOP_K_RERANKED,
             )
             for text, score in reranked_tuples:
-                matching = next((c for c in candidate_chunks if c.chunk_text == text), None)
+                matching = chunk_map.get(text)
                 if matching:
                     chunk_copy = (
                         matching.model_copy()

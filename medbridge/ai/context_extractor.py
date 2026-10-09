@@ -10,14 +10,14 @@ Security: Patient messages are strictly encapsulated within
 Technical Specification Part III §3.3.
 """
 import json
-import logging
+import structlog
 from typing import Any, Optional
 
-from medbridge.ai.llm_wrapper import ResilientLLMWrapper
+from medbridge.ai.llm_wrapper import ResilientLLMWrapper, get_llm_wrapper
 from medbridge.ai.schemas.extractor import ExtractorOutput
 from medbridge.config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # ------------------------------------------------------------------
 # System prompt (§3.3 — verbatim from Tech Spec)
@@ -26,14 +26,21 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT: str = (
     "You are a clinical context extraction engine. Given a patient's message and their "
     "existing medical context snapshot, extract NEW medical facts as structured delta events. "
+    "If the patient message contains NO new clinical facts, BP readings, symptoms, or medications, "
+    'set "delta_events": []. Do not invent event types.\n'
     "Also produce a reformulated clinical search query suitable for retrieving hypertension "
     "guidelines, and a brief summary of what the patient is asking.\n\n"
     "Output ONLY valid JSON matching the schema below. Do not include explanations.\n\n"
     "Schema:\n"
     "{\n"
-    '  "delta_events": [{"event_type": '
-    '"BP_READING|MEDICATION_ADDED|MEDICATION_STOPPED|SYMPTOM_REPORTED|DEMOGRAPHIC|LAB_RESULT", '
-    '"payload": {...}}],\n'
+    '  "delta_events": [\n'
+    '    {"event_type": "BP_READING", "payload": {"systolic": 145, "diastolic": 92}},\n'
+    '    {"event_type": "MEDICATION_ADDED", "payload": {"drug_name": "Lisinopril", "dosage": "10mg", "frequency": "daily"}},\n'
+    '    {"event_type": "MEDICATION_STOPPED", "payload": {"drug_name": "Amlodipine", "reason": "side effects"}},\n'
+    '    {"event_type": "SYMPTOM_REPORTED", "payload": {"symptom": "headache"}},\n'
+    '    {"event_type": "DEMOGRAPHIC", "payload": {"age": 55, "sex": "male"}},\n'
+    '    {"event_type": "LAB_RESULT", "payload": {"lab_type": "eGFR", "value": 60, "unit": "mL/min"}}\n'
+    '  ],\n'
     '  "search_query": "clinical search query for guideline retrieval",\n'
     '  "raw_intent": "what the patient wants to know"\n'
     "}"
@@ -67,7 +74,7 @@ class ContextExtractor:
     """
 
     def __init__(self, llm: Optional[ResilientLLMWrapper] = None) -> None:
-        self._llm = llm or ResilientLLMWrapper()
+        self._llm = llm or get_llm_wrapper()
         self._settings = get_settings()
 
     async def extract(

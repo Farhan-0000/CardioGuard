@@ -1,4 +1,4 @@
-import logging
+import structlog
 from typing import AsyncGenerator
 
 from sqlalchemy import text
@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import (
 
 from medbridge.config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 _engine: AsyncEngine | None = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None

@@ -20,13 +20,7 @@ class Base(DeclarativeBase):
     pass
 
 
-class EventTypeEnum(str, enum.Enum):
-    BP_READING = "BP_READING"
-    MEDICATION_ADDED = "MEDICATION_ADDED"
-    MEDICATION_STOPPED = "MEDICATION_STOPPED"
-    SYMPTOM_REPORTED = "SYMPTOM_REPORTED"
-    DEMOGRAPHIC = "DEMOGRAPHIC"
-    LAB_RESULT = "LAB_RESULT"
+from medbridge.api.schemas.enums import EventTypeEnum
 
 
 class Gate1ActionEnum(str, enum.Enum):

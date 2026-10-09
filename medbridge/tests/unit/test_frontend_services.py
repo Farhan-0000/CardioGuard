@@ -225,6 +225,49 @@ class TestAPIClient:
             res_uuid = await client.acreate_session()
             assert res_uuid == expected_uuid
 
+    def test_http_error_truncation_with_ellipsis(self) -> None:
+        """Non-JSON errors exceeding 200 characters should be truncated with ellipsis."""
+        client = APIClient(base_url="http://testserver")
+
+        # Long text (> 200 chars)
+        long_text = "A" * 250
+        mock_resp = MagicMock()
+        mock_resp.is_error = True
+        mock_resp.status_code = 500
+        mock_resp.text = long_text
+        mock_resp.json.side_effect = ValueError("Not JSON")
+
+        with patch("httpx.Client.post", return_value=mock_resp):
+            with pytest.raises(APIStatusError) as exc_info:
+                client.create_session()
+            assert exc_info.value.message == f"HTTP 500: {'A' * 200}..."
+
+        # Short text (<= 200 chars)
+        short_text = "B" * 50
+        mock_resp.text = short_text
+        with patch("httpx.Client.post", return_value=mock_resp):
+            with pytest.raises(APIStatusError) as exc_info:
+                client.create_session()
+            assert exc_info.value.message == f"HTTP 500: {short_text}"
+
+    def test_client_close_and_context_manager(self) -> None:
+        """APIClient close() closes persistent client, and context manager handles lifecycle."""
+        client = APIClient(base_url="http://testserver")
+        assert not client._client.is_closed
+        client.close()
+        assert client._client.is_closed
+
+        # Re-accessing via _get_client creates fresh active client
+        reopened = client._get_client()
+        assert not reopened.is_closed
+        client.close()
+
+        # Context manager
+        with APIClient(base_url="http://testserver") as cm_client:
+            assert not cm_client._client.is_closed
+        assert cm_client._client.is_closed
+
+
 
 # ===========================================================================
 # 2. SessionManager Unit Tests

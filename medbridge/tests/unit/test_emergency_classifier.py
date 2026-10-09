@@ -121,8 +121,45 @@ class TestTrueNegatives:
     def test_empty_message(self) -> None:
         assert classify("") is None
 
-    def test_unrelated_numbers(self) -> None:
-        assert classify("My phone number is 180/120") is None  # No "bp" prefix
+    def test_unrelated_numbers_below_dual_threshold(self) -> None:
+        # Numbers that look like BP but don't meet BOTH thresholds (systolic ≥180 AND diastolic ≥120)
+        assert classify("My order number is 180/90") is None
+        assert classify("Room 150/130 is on the left") is None
+        assert classify("Reference code 170/125") is None
+
+
+# ---------------------------------------------------------------------------
+# True Positive Suite — Standalone Crisis BP (No Prefix Required)
+# ---------------------------------------------------------------------------
+
+class TestStandaloneCrisisBP:
+    """Naked BP values with BOTH systolic ≥180 AND diastolic ≥120 → ESCALATE.
+
+    These match the standalone dual-threshold pattern added to close the
+    safety gap where patients omit keywords like 'bp' or 'blood pressure'.
+    """
+
+    @pytest.mark.parametrize("message", [
+        "200/130",                                      # Bare crisis values
+        "220/140",
+        "180/120",                                      # Exact threshold boundary
+        "my reading is 200/120",                        # 'reading' is a prefix keyword too, but test intent
+        "I got 195/125 this morning",                   # No BP keyword prefix
+        "just measured 210/130 at home",                # Contextual sentence, no prefix
+        "it was 185/121 and I feel terrible",           # Just above diastolic threshold
+    ])
+    def test_standalone_crisis_bp_escalates(self, message: str) -> None:
+        assert classify(message) == ActionEnum.ESCALATE
+
+    @pytest.mark.parametrize("message", [
+        "180/90",                                       # Systolic crisis but diastolic normal
+        "150/130",                                      # Diastolic crisis but systolic below 180
+        "170/119",                                      # Both just below thresholds
+        "179/119",                                      # One digit below both thresholds
+        "175/115",                                      # Well below both thresholds
+    ])
+    def test_standalone_below_dual_threshold_returns_none(self, message: str) -> None:
+        assert classify(message) is None
 
 
 # ---------------------------------------------------------------------------

@@ -10,14 +10,15 @@ Constitution §7.1 / Non-Negotiable #5: Input encapsulated in <untrusted_user_in
 Technical Specification Part III §3.7, §3.8, §3.9.
 """
 import json
-import logging
+import structlog
 from typing import Any, Optional
 
-from medbridge.ai.llm_wrapper import ResilientLLMWrapper
+from medbridge.ai.llm_wrapper import ResilientLLMWrapper, get_llm_wrapper
+from medbridge.ai.prompt_utils import format_chunks
 from medbridge.ai.schemas.evidence_gate import EvidenceGateOutput
 from medbridge.config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # ------------------------------------------------------------------
 # System prompt (§3.7 — verbatim from Tech Spec & ADL-024)
@@ -42,42 +43,7 @@ SYSTEM_PROMPT: str = (
 
 def _format_chunks(chunks: list[Any]) -> str:
     """Format up to top-5 retrieved chunks into XML tags (ADL-025)."""
-    if not chunks:
-        return "No clinical evidence available."
-
-    formatted_pieces: list[str] = []
-    # Limit to at most top 5 candidate chunks
-    for i, chunk in enumerate(chunks[:5], start=1):
-        if hasattr(chunk, "chunk_text"):
-            # RetrievedChunk model
-            chunk_id = str(getattr(chunk, "chunk_id", i))
-            source = str(getattr(chunk, "guideline_id", "Unknown"))
-            section = str(getattr(chunk, "section_title", "General"))
-            text = str(chunk.chunk_text)
-        elif isinstance(chunk, dict):
-            chunk_id = str(chunk.get("chunk_id", i))
-            source = str(chunk.get("guideline_id", "Unknown"))
-            section = str(chunk.get("section_title", "General"))
-            text = str(chunk.get("chunk_text", chunk))
-        elif isinstance(chunk, tuple) and len(chunk) >= 2:
-            # (chunk_text, score) tuple from reranker
-            chunk_id = str(i)
-            source = "RetrievedGuideline"
-            section = "General"
-            text = str(chunk[0])
-        else:
-            chunk_id = str(i)
-            source = "RetrievedGuideline"
-            section = "General"
-            text = str(chunk)
-
-        formatted_pieces.append(
-            f'<chunk id="{chunk_id}" source="{source}" section="{section}">\n'
-            f"{text.strip()}\n"
-            f"</chunk>"
-        )
-
-    return "\n".join(formatted_pieces)
+    return format_chunks(chunks, empty_placeholder="No clinical evidence available.")
 
 
 def _build_user_prompt(
@@ -116,7 +82,7 @@ class EvidenceGate:
     """
 
     def __init__(self, llm: Optional[ResilientLLMWrapper] = None) -> None:
-        self._llm = llm or ResilientLLMWrapper()
+        self._llm = llm or get_llm_wrapper()
         self._settings = get_settings()
 
     async def evaluate(

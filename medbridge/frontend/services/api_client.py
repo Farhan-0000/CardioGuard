@@ -98,7 +98,8 @@ def _parse_error_response(response: httpx.Response) -> APIStatusError:
         safe_fallback = data.get("safe_fallback", DEFAULT_SAFE_FALLBACK)
     except Exception:
         error_code = f"HTTP_{status_code}"
-        message = f"HTTP {status_code}: {response.text[:200]}"
+        raw = response.text
+        message = f"HTTP {status_code}: {raw[:200]}{'...' if len(raw) > 200 else ''}"
         safe_fallback = DEFAULT_SAFE_FALLBACK
 
     return APIStatusError(
@@ -119,6 +120,30 @@ class APIClient:
     ) -> None:
         self.base_url = (base_url or DEFAULT_API_URL).rstrip("/")
         self.timeout = timeout
+        self._client: httpx.Client = httpx.Client(timeout=self.timeout)
+
+    def _get_client(self) -> httpx.Client:
+        """Return the active HTTP client, recreating it if closed."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.Client(timeout=self.timeout)
+        return self._client
+
+    def close(self) -> None:
+        """Close the underlying persistent HTTP client."""
+        if self._client is not None and not self._client.is_closed:
+            self._client.close()
+
+    def __enter__(self) -> "APIClient":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Synchronous Methods (Streamlit UI execution)
@@ -135,8 +160,8 @@ class APIClient:
         """
         url = f"{self.base_url}/api/sessions"
         try:
-            with httpx.Client(timeout=self.timeout) as client:
-                resp = client.post(url)
+            client = self._get_client()
+            resp = client.post(url)
         except httpx.ConnectError as exc:
             raise APIConnectionError(str(exc)) from exc
         except httpx.TimeoutException as exc:
@@ -166,8 +191,8 @@ class APIClient:
         url = f"{self.base_url}/api/sessions/{session_id}/messages"
         payload = {"message": message}
         try:
-            with httpx.Client(timeout=self.timeout) as client:
-                resp = client.post(url, json=payload)
+            client = self._get_client()
+            resp = client.post(url, json=payload)
         except httpx.ConnectError as exc:
             raise APIConnectionError(str(exc)) from exc
         except httpx.TimeoutException as exc:
@@ -194,8 +219,8 @@ class APIClient:
         """
         url = f"{self.base_url}/api/sessions/{session_id}/history"
         try:
-            with httpx.Client(timeout=self.timeout) as client:
-                resp = client.get(url)
+            client = self._get_client()
+            resp = client.get(url)
         except httpx.ConnectError as exc:
             raise APIConnectionError(str(exc)) from exc
         except httpx.TimeoutException as exc:
@@ -219,8 +244,8 @@ class APIClient:
         """
         url = f"{self.base_url}/health"
         try:
-            with httpx.Client(timeout=self.timeout) as client:
-                resp = client.get(url)
+            client = self._get_client()
+            resp = client.get(url)
         except httpx.ConnectError as exc:
             raise APIConnectionError(str(exc)) from exc
         except httpx.TimeoutException as exc:

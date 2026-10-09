@@ -6,7 +6,7 @@ Preserves page-level metadata required for citation generation.
 
 Technical Specification Part V §3.2, §8.
 """
-import logging
+import structlog
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,7 +14,7 @@ from typing import Optional, Union
 
 import pymupdf
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class PDFParseError(Exception):
@@ -56,16 +56,22 @@ def deduce_guideline_id(filename: str) -> str:
 
     Examples:
         'aha_acc_2025.pdf' -> 'AHA_ACC_2025'
-        'esc-esh-2024.pdf' -> 'ESC_ESH_2024'
+        'ehae178.pdf' -> 'ESC_2024'
+        'hypertension-in-adults-diagnosis-and-management...pdf' -> 'NICE_NG136'
+        'esc-esh-2024.pdf' -> 'ESC_2024'
         'medlineplus_hypertension.pdf' -> 'MEDLINEPLUS'
     """
     stem = Path(filename).stem
     clean = re.sub(r"[^a-zA-Z0-9]+", "_", stem).strip("_").upper()
 
-    if "AHA" in clean:
+    if "AHA" in clean or "JONES" in clean:
         return "AHA_ACC_2025"
-    if "ESC" in clean:
+    if "ESC_ESH" in clean:
         return "ESC_ESH_2024"
+    if "ESC" in clean or "EHAE178" in clean or "EHAE" in clean:
+        return "ESC_2024"
+    if "NICE" in clean or "DIAGNOSIS_AND_MANAGEMENT" in clean or "NG136" in clean:
+        return "NICE_NG136"
     if "MEDLINE" in clean:
         return "MEDLINEPLUS"
 
