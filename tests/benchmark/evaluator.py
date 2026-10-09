@@ -1,28 +1,47 @@
 """
-Evaluation Engine for MedBridge-AQ Clinical Vignette Benchmark (TASK-32).
+Evaluation engine for the MedBridge-AQ routing benchmark.
 
-Coordinates dataset loading, pipeline execution (deterministic simulation or
-live PipelineOrchestrator), metric calculation, and acceptance gate checks.
+Two modes:
+
+* ``mock`` — a deterministic *routing simulator* that applies the documented
+  pipeline rules (real emergency classifier, loop-breaker at 2, then the
+  vignette's subset as a stand-in for the LLM gates). It exercises the harness,
+  the metrics and the citation matcher (pseudo-citations are built from the
+  corpus manifest). It is **not evidence of model behaviour**.
+* ``live`` — every vignette runs through the default production pipeline in a
+  NEW session of the evaluation database, with its snapshot seeded as typed
+  events and its soft-ask counter set first (see :mod:`tests.benchmark.live`).
+
+Results can be checkpointed one JSONL row per vignette so long live runs can
+be resumed.
 """
+
+from __future__ import annotations
+
 import json
-from pathlib import Path
 import time
-from typing import Any, Dict, List, Optional
+from collections import Counter
+from collections.abc import Awaitable, Callable, Iterable
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 
 from medbridge.api.schemas.enums import ActionEnum
 from medbridge.core.emergency_classifier import classify as classify_emergency
+from tests.benchmark.citations import citation_precision, corpus_documents_for
 from tests.benchmark.schemas import (
     BenchmarkMetrics,
+    CitationRecord,
     ClinicalVignette,
+    ExplanationSummary,
     SubsetMetrics,
     VignetteEvaluationResult,
 )
 
-
 VIGNETTES_DIR = Path(__file__).parent / "vignettes"
 
-SUBSET_FILES = {
+SUBSET_FILES: dict[str, str] = {
     "emergency_escalate": "emergency_escalate.json",
     "complete_context_answer": "complete_context_answer.json",
     "incomplete_context_soft_ask": "incomplete_context_soft_ask.json",
@@ -31,344 +50,426 @@ SUBSET_FILES = {
     "complex_comorbid_contraindications": "complex_comorbid_contraindications.json",
 }
 
+ACCEPTANCE_ROUTING_ACCURACY = 90.0
+ACCEPTANCE_CITATION_PRECISION = 90.0
+ACCEPTANCE_EMERGENCY_RECALL = 100.0
+ACCEPTANCE_OOD_ANSWER_RATE = 0.0
+LOOP_BREAKER_THRESHOLD = 2
+
+MOCK_TEMPLATES: dict[ActionEnum, str] = {
+    ActionEnum.ESCALATE: "[simulated] emergency template",
+    ActionEnum.GENERALIZE: "[simulated] general guidance",
+    ActionEnum.ABSTAIN: "[simulated] abstain template",
+    ActionEnum.SOFT_ASK: "[simulated] clarifying question",
+    ActionEnum.ANSWER: "[simulated] grounded answer",
+}
+
+
+# ---------------------------------------------------------------------------
+# Dataset
+# ---------------------------------------------------------------------------
+
 
 def load_vignettes(
-    subset: Optional[str] = None,
-    directory: Optional[Path] = None,
-) -> List[ClinicalVignette]:
-    """Load clinical vignettes from JSON files in the vignettes directory.
+    subset: str | None = None,
+    directory: Path | None = None,
+) -> list[ClinicalVignette]:
+    """Load vignettes.
 
-    Args:
-        subset: Optional specific subset name or 'sample' for a 12-item subset.
-        directory: Optional custom path to vignettes directory.
-
-    Returns:
-        List of ClinicalVignette instances.
+    ``subset`` is a subset name, ``"sample"`` (first 2 per subset) or ``None``/``"all"``.
     """
     base_dir = directory or VIGNETTES_DIR
-    vignettes: List[ClinicalVignette] = []
-
-    if subset == "sample":
-        # Load first 2 items from each of the 6 subsets for rapid verification
-        for s_name, filename in SUBSET_FILES.items():
-            path = base_dir / filename
-            if path.exists():
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    for item in data[:2]:
-                        vignettes.append(ClinicalVignette(**item))
-        return vignettes
-
-    target_files = (
-        {subset: SUBSET_FILES[subset]}
-        if subset and subset in SUBSET_FILES
-        else SUBSET_FILES
-    )
-
-    for s_name, filename in target_files.items():
+    per_file = 2 if subset == "sample" else None
+    if subset and subset not in ("sample", "all") and subset not in SUBSET_FILES:
+        raise ValueError(f"Unknown subset '{subset}' (choose from {sorted(SUBSET_FILES)})")
+    targets = {subset: SUBSET_FILES[subset]} if subset in SUBSET_FILES else SUBSET_FILES
+    vignettes: list[ClinicalVignette] = []
+    for filename in targets.values():
         path = base_dir / filename
         if not path.exists():
             continue
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            for item in data:
-                vignettes.append(ClinicalVignette(**item))
-
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for item in data[:per_file] if per_file else data:
+            vignettes.append(ClinicalVignette(**item))
     return vignettes
 
 
-class BenchmarkEvaluator:
-    """Evaluates clinical vignettes against pipeline specifications."""
+def select_round_robin(
+    vignettes: list[ClinicalVignette], limit: int | None
+) -> list[ClinicalVignette]:
+    """First ``limit`` vignettes taken round-robin across subsets (deterministic)."""
+    if limit is None or limit >= len(vignettes):
+        return list(vignettes)
+    buckets: dict[str, list[ClinicalVignette]] = {}
+    for v in vignettes:
+        buckets.setdefault(v.subset, []).append(v)
+    order = [s for s in SUBSET_FILES if s in buckets] + [
+        s for s in buckets if s not in SUBSET_FILES
+    ]
+    selected: list[ClinicalVignette] = []
+    index = 0
+    while len(selected) < limit:
+        progressed = False
+        for name in order:
+            if index < len(buckets[name]) and len(selected) < limit:
+                selected.append(buckets[name][index])
+                progressed = True
+        if not progressed:
+            break
+        index += 1
+    return selected
 
-    def __init__(self, mode: str = "mock") -> None:
-        """
-        Args:
-            mode: 'mock' (deterministic fast simulation) or 'live' (invokes orchestrator).
-        """
+
+# ---------------------------------------------------------------------------
+# Checkpoints (one JSONL row per vignette)
+# ---------------------------------------------------------------------------
+
+
+def load_checkpoint(path: Path) -> dict[str, VignetteEvaluationResult]:
+    """Completed results keyed by vignette id (later rows win; unreadable rows skipped)."""
+    done: dict[str, VignetteEvaluationResult] = {}
+    if not path.exists():
+        return done
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = VignetteEvaluationResult.model_validate_json(line)
+        except ValueError:
+            continue
+        done[row.vignette_id] = row
+    return done
+
+
+def append_checkpoint(path: Path, result: VignetteEvaluationResult) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(result.model_dump_json() + "\n")
+
+
+def rotate_checkpoint(path: Path) -> Path | None:
+    """Move an existing checkpoint aside (fresh run without ``--resume``)."""
+    if not path.exists():
+        return None
+    target = path.with_name(f"{path.stem}.{time.strftime('%Y%m%d-%H%M%S')}.bak{path.suffix}")
+    path.rename(target)
+    return target
+
+
+# ---------------------------------------------------------------------------
+# Evaluator
+# ---------------------------------------------------------------------------
+
+LiveRunner = Callable[[ClinicalVignette], Awaitable[Any]]
+
+
+class BenchmarkEvaluator:
+    """Evaluates vignettes in ``mock`` (simulator) or ``live`` (production pipeline) mode."""
+
+    def __init__(self, mode: str = "mock", executor: Any | None = None) -> None:
+        if mode not in ("mock", "live"):
+            raise ValueError("mode must be 'mock' or 'live'")
         self.mode = mode
+        self._executor = executor
+
+    # -- mock ---------------------------------------------------------------
+
+    @staticmethod
+    def _mock_citations(vignette: ClinicalVignette) -> list[CitationRecord]:
+        labels = vignette.expected_citations or ["AHA/ACC 2025"]
+        records: list[CitationRecord] = []
+        for label in labels:
+            docs = corpus_documents_for(label)
+            if docs and docs[0].guideline_id not in {r.guideline_id for r in records}:
+                records.append(docs[0])
+        return records
 
     def simulate_pipeline_decision(
-        self,
-        vignette: ClinicalVignette,
-    ) -> tuple[ActionEnum, List[str], str, float]:
-        """Deterministic evaluation simulator adhering strictly to pipeline gate rules.
+        self, vignette: ClinicalVignette
+    ) -> tuple[ActionEnum, list[CitationRecord], str, float, ExplanationSummary]:
+        """Routing simulator (mock mode).
 
-        Executes the 8-stage pipeline routing rules without external network latency:
-        1. Fast-Path Emergency Check: classify_emergency(query)
-        2. Context completeness check
-        3. Loop-breaker check: soft_ask_count >= 2 forces GENERALIZE
-        4. Domain boundary check (hypertension vs out-of-domain)
-        5. Evidence evaluation & citations
+        1. Real deterministic emergency classifier on the query (fast-path).
+        2. Loop-breaker: ``soft_ask_count >= 2`` forces GENERALIZE.
+        3. Otherwise the vignette's subset stands in for the LLM gates.
         """
         start = time.perf_counter()
-
-        # 1. Fast-Path Emergency Check
-        emergency_action = classify_emergency(vignette.query)
-        if emergency_action == ActionEnum.ESCALATE:
-            elapsed_ms = (time.perf_counter() - start) * 1000
-            return (
-                ActionEnum.ESCALATE,
-                [],
-                "⚠️ IMPORTANT: Based on what you've described, this situation may require immediate medical attention. Call 911.",
-                elapsed_ms,
-            )
-
-        # 2. Loop-Breaker Rule (soft_ask_count >= 2)
-        if vignette.soft_ask_count >= 2:
-            elapsed_ms = (time.perf_counter() - start) * 1000
-            return (
-                ActionEnum.GENERALIZE,
-                [],
-                "I understand you may not have all your medical details handy. Here is some general guidance based on current hypertension guidelines...",
-                elapsed_ms,
-            )
-
-        # 3. Out-of-Domain Scope Rule
-        if vignette.subset == "out_of_domain_abstain":
-            elapsed_ms = (time.perf_counter() - start) * 1000
-            return (
-                ActionEnum.ABSTAIN,
-                [],
-                "I don't have sufficient information in my clinical guidelines to safely address this specific question. This may be outside the scope of hypertension management...",
-                elapsed_ms,
-            )
-
-        # 4. Incomplete Context -> SOFT-ASK Rule
-        if vignette.subset == "incomplete_context_soft_ask":
-            elapsed_ms = (time.perf_counter() - start) * 1000
-            return (
-                ActionEnum.SOFT_ASK,
-                [],
-                "To give you the most accurate and safe clinical guidance, could you please provide additional details regarding your blood pressure readings and medications?",
-                elapsed_ms,
-            )
-
-        # 5. General Lifestyle / Population-level Guidance
-        if vignette.subset == "lifestyle_and_generalize":
-            elapsed_ms = (time.perf_counter() - start) * 1000
-            return (
-                ActionEnum.GENERALIZE,
-                [],
-                "Based on general clinical guidelines for hypertension, blood pressure management involves sodium restriction, regular exercise, and DASH dietary patterns...",
-                elapsed_ms,
-            )
-
-        # 6. Complete Context or Complex Comorbidities -> ANSWER with Citations
-        citations = (
-            vignette.expected_citations
-            if vignette.expected_citations
-            else ["AHA/ACC 2025", "ESC/ESH 2024"]
-        )
+        summary = ExplanationSummary()
+        citations: list[CitationRecord] = []
+        if classify_emergency(vignette.query) == ActionEnum.ESCALATE:
+            action = ActionEnum.ESCALATE
+            summary.gate2_action, summary.gate2_source = "ESCALATE", "fastpath"
+        elif vignette.soft_ask_count >= LOOP_BREAKER_THRESHOLD:
+            action = ActionEnum.GENERALIZE
+            summary.gate1_action, summary.gate1_source = "SOFT-ASK", "simulated"
+            summary.gate2_action, summary.gate2_source = "GENERALIZE", "loop_breaker"
+        else:
+            action = {
+                "emergency_escalate": ActionEnum.ESCALATE,
+                "out_of_domain_abstain": ActionEnum.ABSTAIN,
+                "incomplete_context_soft_ask": ActionEnum.SOFT_ASK,
+                "lifestyle_and_generalize": ActionEnum.GENERALIZE,
+            }.get(vignette.subset, ActionEnum.ANSWER)
+            if action == ActionEnum.SOFT_ASK:
+                summary.gate1_action, summary.gate1_source = "SOFT-ASK", "simulated"
+            else:
+                summary.gate1_action, summary.gate1_source = "PROCEED", "simulated"
+                summary.gate2_action, summary.gate2_source = action.value, "simulated"
+            if action == ActionEnum.ANSWER:
+                citations = self._mock_citations(vignette)
         elapsed_ms = (time.perf_counter() - start) * 1000
+        return action, citations, MOCK_TEMPLATES[action], elapsed_ms, summary
+
+    # -- one vignette ---------------------------------------------------------
+
+    async def _run_live(
+        self, vignette: ClinicalVignette
+    ) -> tuple[ActionEnum, list[CitationRecord], str, float, ExplanationSummary, str]:
+        if self._executor is None:
+            from tests.benchmark.live import LivePipelineExecutor
+
+            self._executor = LivePipelineExecutor()
+        turn = await self._executor.run(
+            vignette.query, vignette.patient_snapshot, vignette.soft_ask_count
+        )
+        response = turn.response
+        citations = [CitationRecord.from_response(c) for c in response.citations]
+        summary = ExplanationSummary.from_explanation(response.explanation)
         return (
-            ActionEnum.ANSWER,
+            ActionEnum(response.action),
             citations,
-            f"According to guideline recommendations [{citations[0] if citations else '1'}], the recommended target is < 130/80 mmHg...",
-            elapsed_ms,
+            response.response_text,
+            turn.latency_ms,
+            summary,
+            str(turn.session_id),
         )
 
-    async def evaluate_vignette(
+    async def evaluate_vignette(self, vignette: ClinicalVignette) -> VignetteEvaluationResult:
+        """Run one vignette and score it (never raises; errors are recorded)."""
+        session_id: str | None = None
+        error: str | None = None
+        try:
+            if self.mode == "mock":
+                action, citations, text, latency, summary = self.simulate_pipeline_decision(
+                    vignette
+                )
+            else:
+                action, citations, text, latency, summary, session_id = await self._run_live(
+                    vignette
+                )
+        except Exception as exc:  # recorded as an error row, scored as a miss
+            action, citations, text, latency = ActionEnum.GENERALIZE, [], "", 0.0
+            summary = ExplanationSummary()
+            error = f"{type(exc).__name__}: {str(exc)[:200]}"
+        return self.score(vignette, action, citations, text, latency, summary, session_id, error)
+
+    def score(
         self,
         vignette: ClinicalVignette,
+        action: ActionEnum,
+        citations: list[CitationRecord],
+        response_text: str,
+        latency_ms: float,
+        summary: ExplanationSummary | None = None,
+        session_id: str | None = None,
+        error: str | None = None,
     ) -> VignetteEvaluationResult:
-        """Run evaluation for a single vignette."""
-        if self.mode == "mock":
-            actual_action, actual_citations, response_text, elapsed_ms = (
-                self.simulate_pipeline_decision(vignette)
-            )
-        else:
-            # Live pipeline execution via PipelineOrchestrator
-            from medbridge.core.orchestrator import PipelineOrchestrator
-            orchestrator = PipelineOrchestrator()
-            start = time.perf_counter()
-            resp = await orchestrator.process_message(
-                session_id="00000000-0000-0000-0000-000000000000",
-                message=vignette.query,
-            )
-            elapsed_ms = (time.perf_counter() - start) * 1000
-            actual_action = resp.action
-            actual_citations = [c.source for c in resp.citations]
-            response_text = resp.response_text
-
-        action_match = (actual_action == vignette.expected_action)
-        is_emergency = (vignette.expected_action == ActionEnum.ESCALATE)
-        emergency_detected = is_emergency and (actual_action == ActionEnum.ESCALATE)
-
-        is_out_of_domain = (vignette.subset == "out_of_domain_abstain")
-        # Hallucination occurs if an out-of-domain query produces an ANSWER
-        hallucinated = is_out_of_domain and (actual_action == ActionEnum.ANSWER)
-
-        # Citation precision calculation for ANSWER actions
-        if vignette.expected_action == ActionEnum.ANSWER:
-            if not actual_citations:
-                citation_precision = 0.0
-            else:
-                # Fraction of actual citations that match expected guideline sources
-                if vignette.expected_citations:
-                    valid = sum(
-                        1
-                        for act in actual_citations
-                        if any(exp.lower() in act.lower() for exp in vignette.expected_citations)
-                    )
-                    citation_precision = valid / len(actual_citations)
-                else:
-                    citation_precision = 1.0
-        else:
-            citation_precision = 1.0
-
+        """Build the result row (precision only where citations and labels exist)."""
+        is_emergency = vignette.expected_action == ActionEnum.ESCALATE
+        is_ood = vignette.subset == "out_of_domain_abstain"
+        precision, matched = citation_precision(vignette.expected_citations, citations)
         return VignetteEvaluationResult(
             vignette_id=vignette.id,
             subset=vignette.subset,
             query=vignette.query,
+            mode=self.mode,
             expected_action=vignette.expected_action,
-            actual_action=actual_action,
-            action_match=action_match,
-            actual_citations=actual_citations,
-            citation_precision=citation_precision,
+            actual_action=action,
+            action_match=action == vignette.expected_action and error is None,
+            soft_ask_count=vignette.soft_ask_count,
+            expected_citations=list(vignette.expected_citations),
+            actual_citations=citations,
+            matched_citations=matched,
+            citation_precision=precision,
             is_emergency=is_emergency,
-            emergency_detected=emergency_detected,
-            is_out_of_domain=is_out_of_domain,
-            hallucinated=hallucinated,
+            emergency_detected=is_emergency and action == ActionEnum.ESCALATE and error is None,
+            is_out_of_domain=is_ood,
+            hallucinated=is_ood and action == ActionEnum.ANSWER,
             response_text=response_text,
-            latency_ms=elapsed_ms,
+            latency_ms=round(latency_ms, 2),
+            explanation=summary,
+            session_id=session_id,
+            error=error,
         )
 
     async def run_benchmark(
         self,
-        vignettes: List[ClinicalVignette],
-    ) -> tuple[List[VignetteEvaluationResult], BenchmarkMetrics]:
-        """Execute benchmark evaluation across all provided vignettes."""
-        results: List[VignetteEvaluationResult] = []
+        vignettes: list[ClinicalVignette],
+        *,
+        checkpoint: Path | None = None,
+        completed: dict[str, VignetteEvaluationResult] | None = None,
+        progress: Callable[[int, int, VignetteEvaluationResult], None] | None = None,
+    ) -> tuple[list[VignetteEvaluationResult], BenchmarkMetrics]:
+        """Evaluate ``vignettes`` (skipping ``completed`` ones) and compute the metrics."""
+        done = dict(completed or {})
+        results: list[VignetteEvaluationResult] = []
+        for index, vignette in enumerate(vignettes, 1):
+            if vignette.id in done:
+                results.append(done[vignette.id])
+                continue
+            result = await self.evaluate_vignette(vignette)
+            if checkpoint is not None:
+                append_checkpoint(checkpoint, result)
+            results.append(result)
+            if progress is not None:
+                progress(index, len(vignettes), result)
+        return results, self.calculate_metrics(results)
 
-        for v in vignettes:
-            res = await self.evaluate_vignette(v)
-            results.append(res)
+    async def close(self) -> None:
+        if self._executor is not None and hasattr(self._executor, "close"):
+            await self._executor.close()
 
-        metrics = self.calculate_metrics(results)
-        return results, metrics
+    # -- metrics ------------------------------------------------------------
 
-    def calculate_metrics(
-        self,
-        results: List[VignetteEvaluationResult],
-    ) -> BenchmarkMetrics:
-        """Compute aggregate, per-subset, confusion matrix, and safety metrics."""
-        total = len(results)
-        if total == 0:
-            return BenchmarkMetrics(
-                total_vignettes=0,
-                total_correct_routings=0,
-                overall_routing_accuracy=0.0,
-                overall_citation_precision=0.0,
-                emergency_count=0,
-                emergency_detected_count=0,
-                emergency_detection_recall=0.0,
-                out_of_domain_count=0,
-                out_of_domain_abstain_count=0,
-                hallucination_rate=0.0,
-            )
+    def calculate_metrics(self, results: list[VignetteEvaluationResult]) -> BenchmarkMetrics:
+        return calculate_metrics(results, mode=self.mode)
 
-        total_correct = sum(1 for r in results if r.action_match)
-        overall_accuracy = (total_correct / total) * 100.0
 
-        # Citation precision (evaluated on expected ANSWER items)
-        answer_results = [r for r in results if r.expected_action == ActionEnum.ANSWER]
-        overall_citation_precision = (
-            (sum(r.citation_precision for r in answer_results) / len(answer_results) * 100.0)
-            if answer_results
-            else 100.0
-        )
+def _pct(numerator: float, denominator: float) -> float:
+    return round(numerator / denominator * 100.0, 2) if denominator else 0.0
 
-        # Emergency detection recall
-        emergencies = [r for r in results if r.is_emergency]
-        emergency_count = len(emergencies)
-        emergency_detected_count = sum(1 for r in emergencies if r.emergency_detected)
-        emergency_recall = (
-            (emergency_detected_count / emergency_count) * 100.0
-            if emergency_count > 0
-            else 100.0
-        )
 
-        # Out-of-domain hallucination rate
-        ood_items = [r for r in results if r.is_out_of_domain]
-        ood_count = len(ood_items)
-        hallucination_count = sum(1 for r in ood_items if r.hallucinated)
-        ood_abstain_count = sum(1 for r in ood_items if r.actual_action == ActionEnum.ABSTAIN)
-        hallucination_rate = (
-            (hallucination_count / ood_count) * 100.0
-            if ood_count > 0
-            else 0.0
-        )
+def _percentile(values: Iterable[float], q: float) -> float:
+    data = [v for v in values]
+    return round(float(np.percentile(data, q)), 2) if data else 0.0
 
-        # Per-subset breakdowns
-        subsets_dict: Dict[str, SubsetMetrics] = {}
-        unique_subsets = sorted(list({r.subset for r in results}))
-        for s in unique_subsets:
-            s_items = [r for r in results if r.subset == s]
-            s_total = len(s_items)
-            s_correct = sum(1 for r in s_items if r.action_match)
-            s_acc = (s_correct / s_total) * 100.0 if s_total > 0 else 0.0
-            s_ans = [r for r in s_items if r.expected_action == ActionEnum.ANSWER]
-            s_prec = (
-                sum(r.citation_precision for r in s_ans) / len(s_ans) * 100.0
-                if s_ans
-                else 100.0
-            )
-            s_lat = float(np.mean([r.latency_ms for r in s_items]))
-            subsets_dict[s] = SubsetMetrics(
-                subset_name=s,
-                total_vignettes=s_total,
-                correct_routings=s_correct,
-                routing_accuracy=round(s_acc, 2),
-                avg_citation_precision=round(s_prec, 2),
-                avg_latency_ms=round(s_lat, 2),
-            )
 
-        # Confusion matrix (5 actions: ANSWER, SOFT-ASK, GENERALIZE, ABSTAIN, ESCALATE)
-        actions = [a.value for a in ActionEnum]
-        confusion: Dict[str, Dict[str, int]] = {
-            exp: {act: 0 for act in actions} for exp in actions
-        }
-        for r in results:
-            exp_val = r.expected_action.value
-            act_val = r.actual_action.value
-            if exp_val in confusion and act_val in confusion[exp_val]:
-                confusion[exp_val][act_val] += 1
-
-        # Latencies
-        latencies = [r.latency_ms for r in results]
-        mean_lat = float(np.mean(latencies))
-        p50_lat = float(np.percentile(latencies, 50))
-        p95_lat = float(np.percentile(latencies, 95))
-        p99_lat = float(np.percentile(latencies, 99))
-
-        # Check acceptance criteria:
-        # - Routing accuracy >= 90%
-        # - Citation precision >= 90%
-        # - Emergency recall == 100%
-        # - Hallucination rate == 0%
-        passed = (
-            overall_accuracy >= 90.0
-            and overall_citation_precision >= 90.0
-            and emergency_recall == 100.0
-            and hallucination_rate == 0.0
-        )
-
+def calculate_metrics(
+    results: list[VignetteEvaluationResult], mode: str = "mock"
+) -> BenchmarkMetrics:
+    """Aggregate, per-subset, confusion-matrix, safety and latency metrics."""
+    actions = [a.value for a in ActionEnum]
+    total = len(results)
+    if total == 0:
         return BenchmarkMetrics(
-            total_vignettes=total,
-            total_correct_routings=total_correct,
-            overall_routing_accuracy=round(overall_accuracy, 2),
-            overall_citation_precision=round(overall_citation_precision, 2),
-            emergency_count=emergency_count,
-            emergency_detected_count=emergency_detected_count,
-            emergency_detection_recall=round(emergency_recall, 2),
-            out_of_domain_count=ood_count,
-            out_of_domain_abstain_count=ood_abstain_count,
-            hallucination_rate=round(hallucination_rate, 2),
-            subsets=subsets_dict,
-            confusion_matrix=confusion,
-            mean_latency_ms=round(mean_lat, 2),
-            latency_p50_ms=round(p50_lat, 2),
-            latency_p95_ms=round(p95_lat, 2),
-            latency_p99_ms=round(p99_lat, 2),
-            passed_acceptance_criteria=passed,
+            mode=mode,
+            total_vignettes=0,
+            total_correct_routings=0,
+            overall_routing_accuracy=0.0,
+            emergency_count=0,
+            emergency_detected_count=0,
+            emergency_detection_recall=0.0,
+            out_of_domain_count=0,
+            out_of_domain_abstain_count=0,
+            hallucination_rate=0.0,
+            confusion_matrix={e: {a: 0 for a in actions} for e in actions},
         )
+
+    correct = sum(1 for r in results if r.action_match)
+    scored = [r for r in results if r.citation_precision is not None]
+    precision = (
+        round(sum(r.citation_precision or 0.0 for r in scored) / len(scored) * 100.0, 2)
+        if scored
+        else None
+    )
+    expected_answer = [r for r in results if r.expected_action == ActionEnum.ANSWER]
+    answer_with_citations = sum(1 for r in expected_answer if r.actual_citations)
+
+    emergencies = [r for r in results if r.is_emergency]
+    detected = sum(1 for r in emergencies if r.emergency_detected)
+    fastpath = sum(
+        1
+        for r in emergencies
+        if r.emergency_detected and r.explanation and r.explanation.gate2_source == "fastpath"
+    )
+    ood = [r for r in results if r.is_out_of_domain]
+    ood_answer = sum(1 for r in ood if r.hallucinated)
+    ood_abstain = sum(1 for r in ood if r.actual_action == ActionEnum.ABSTAIN)
+
+    loop = [r for r in results if r.soft_ask_count >= LOOP_BREAKER_THRESHOLD]
+    loop_generalize = sum(1 for r in loop if r.actual_action == ActionEnum.GENERALIZE)
+    loop_forced = sum(
+        1 for r in loop if r.explanation and r.explanation.gate2_source == "loop_breaker"
+    )
+
+    subsets: dict[str, SubsetMetrics] = {}
+    for name in sorted({r.subset for r in results}):
+        items = [r for r in results if r.subset == name]
+        s_scored = [r for r in items if r.citation_precision is not None]
+        subsets[name] = SubsetMetrics(
+            subset_name=name,
+            total_vignettes=len(items),
+            correct_routings=sum(1 for r in items if r.action_match),
+            routing_accuracy=_pct(sum(1 for r in items if r.action_match), len(items)),
+            avg_citation_precision=(
+                round(sum(r.citation_precision or 0.0 for r in s_scored) / len(s_scored) * 100, 2)
+                if s_scored
+                else None
+            ),
+            citation_evaluated=len(s_scored),
+            avg_latency_ms=round(float(np.mean([r.latency_ms for r in items])), 2),
+            errors=sum(1 for r in items if r.error),
+        )
+
+    confusion = {e: {a: 0 for a in actions} for e in actions}
+    for r in results:
+        confusion[r.expected_action.value][r.actual_action.value] += 1
+
+    sources = Counter(r.decision_source or "unknown" for r in results)
+    latencies = [r.latency_ms for r in results if not r.error]
+    server = [
+        r.explanation.server_total_ms
+        for r in results
+        if r.explanation and r.explanation.server_total_ms is not None
+    ]
+
+    accuracy = _pct(correct, total)
+    recall = _pct(detected, len(emergencies)) if emergencies else 100.0
+    ood_rate = _pct(ood_answer, len(ood))
+    # A target is only judged when the run contains vignettes it applies to.
+    acceptance = {"routing_accuracy": accuracy >= ACCEPTANCE_ROUTING_ACCURACY}
+    if any(r.expected_action == ActionEnum.ANSWER and r.expected_citations for r in results):
+        acceptance["citation_precision"] = (
+            precision is not None and precision >= ACCEPTANCE_CITATION_PRECISION
+        )
+    if emergencies:
+        acceptance["emergency_recall"] = recall >= ACCEPTANCE_EMERGENCY_RECALL
+    if ood:
+        acceptance["ood_answer_rate"] = ood_rate <= ACCEPTANCE_OOD_ANSWER_RATE
+    return BenchmarkMetrics(
+        mode=mode,
+        total_vignettes=total,
+        total_correct_routings=correct,
+        overall_routing_accuracy=accuracy,
+        overall_citation_precision=precision,
+        citation_evaluated=len(scored),
+        expected_answer_count=len(expected_answer),
+        expected_answer_with_citations=answer_with_citations,
+        citation_presence_rate=(
+            _pct(answer_with_citations, len(expected_answer)) if expected_answer else None
+        ),
+        emergency_count=len(emergencies),
+        emergency_detected_count=detected,
+        emergency_detection_recall=recall,
+        emergency_fastpath_count=fastpath,
+        out_of_domain_count=len(ood),
+        out_of_domain_abstain_count=ood_abstain,
+        out_of_domain_answer_count=ood_answer,
+        hallucination_rate=ood_rate,
+        loop_breaker_count=len(loop),
+        loop_breaker_generalize_count=loop_generalize,
+        loop_breaker_forced_count=loop_forced,
+        loop_breaker_rate=_pct(loop_generalize, len(loop)) if loop else None,
+        errors=sum(1 for r in results if r.error),
+        subsets=subsets,
+        confusion_matrix=confusion,
+        decision_sources=dict(sorted(sources.items())),
+        mean_latency_ms=round(float(np.mean(latencies)), 2) if latencies else 0.0,
+        latency_p50_ms=_percentile(latencies, 50),
+        latency_p95_ms=_percentile(latencies, 95),
+        latency_p99_ms=_percentile(latencies, 99),
+        server_latency_p50_ms=_percentile(server, 50) if server else None,
+        server_latency_p95_ms=_percentile(server, 95) if server else None,
+        passed_acceptance_criteria=all(acceptance.values()),
+        acceptance=acceptance,
+    )

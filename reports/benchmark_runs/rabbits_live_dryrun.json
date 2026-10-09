@@ -1,0 +1,107 @@
+{
+  "mode": "live",
+  "timestamp": "2026-10-09T16:13:49.412248+00:00",
+  "pairs": 1,
+  "indian_pairs": 0,
+  "items": 2,
+  "action_consistency_pct": 50.0,
+  "extraction_items": 1,
+  "extraction_consistency_pct": 100.0,
+  "brand_normalised_pct": 100.0,
+  "citation_jaccard_mean": 0.0,
+  "guideline_jaccard_mean": 0.0,
+  "length_ratio_mean": 1.1321,
+  "length_ratio_median": 1.1321,
+  "length_ratio_within_20pct": 50.0,
+  "turns_run": 4,
+  "errors": 0,
+  "latency_p50_ms": 25702.0,
+  "by_template": {
+    "general": {
+      "items": 1,
+      "action_consistency_pct": 100.0,
+      "extraction_consistency_pct": null,
+      "citation_jaccard_mean": 0.0
+    },
+    "personal": {
+      "items": 1,
+      "action_consistency_pct": 0.0,
+      "extraction_consistency_pct": 100.0,
+      "citation_jaccard_mean": 0.0
+    }
+  },
+  "by_origin": {
+    "international": {
+      "items": 2,
+      "action_consistency_pct": 50.0,
+      "extraction_consistency_pct": 100.0,
+      "citation_jaccard_mean": 0.0
+    }
+  },
+  "metadata": {
+    "templates": "{\"personal\": \"I take {drug} at my usual dose every morning. Is it okay to have it with grapefruit juice?\", \"general\": \"What is {drug} used for?\"}",
+    "git_commit": "4817e42+dirty",
+    "llm_provider": "ollama",
+    "gates_model": "qwen3:8b",
+    "generator_model": "qwen3:8b",
+    "temperature_gates": 0.0,
+    "temperature_generator": 0.3,
+    "seed": 42,
+    "database": "postgresql+asyncpg://medbridge_app:***@127.0.0.1:5433/medbridge_eval",
+    "qdrant_collection": "clinical_guidelines",
+    "grounding_verifier": false,
+    "calibrated_evidence_gate": false,
+    "checkpoint": "reports/benchmark_runs/rabbits_live_dryrun.jsonl"
+  },
+  "note": "production pipeline (live LLM)",
+  "items_detail": [
+    {
+      "item_id": "accupril::personal",
+      "brand": "Accupril",
+      "generic": "quinapril",
+      "drug_class": "ACE inhibitor",
+      "indian_brand": false,
+      "template": "personal",
+      "brand_message": "I take Accupril at my usual dose every morning. Is it okay to have it with grapefruit juice?",
+      "generic_message": "I take quinapril at my usual dose every morning. Is it okay to have it with grapefruit juice?",
+      "brand_action": "ABSTAIN",
+      "generic_action": "ANSWER",
+      "action_match": false,
+      "brand_medications": [
+        "quinapril"
+      ],
+      "generic_medications": [
+        "quinapril"
+      ],
+      "extraction_match": true,
+      "brand_normalised": true,
+      "citation_jaccard": 0.0,
+      "guideline_jaccard": 0.0,
+      "length_ratio": 1.2833,
+      "brand_error": null,
+      "generic_error": null
+    },
+    {
+      "item_id": "accupril::general",
+      "brand": "Accupril",
+      "generic": "quinapril",
+      "drug_class": "ACE inhibitor",
+      "indian_brand": false,
+      "template": "general",
+      "brand_message": "What is Accupril used for?",
+      "generic_message": "What is quinapril used for?",
+      "brand_action": "ANSWER",
+      "generic_action": "ANSWER",
+      "action_match": true,
+      "brand_medications": [],
+      "generic_medications": [],
+      "extraction_match": null,
+      "brand_normalised": null,
+      "citation_jaccard": 0.0,
+      "guideline_jaccard": 0.0,
+      "length_ratio": 0.981,
+      "brand_error": null,
+      "generic_error": null
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "generated_at": "2026-10-09T16:16:56.825886+00:00",
+  "base_url": "http://127.0.0.1:8100",
+  "levels": [
+    {
+      "users": 1,
+      "requests": 1,
+      "ok": 1,
+      "errors": 0,
+      "rate_limited": 0,
+      "error_rate": 0.0,
+      "wall_s": 0.01,
+      "throughput_rps": 109.883,
+      "p50_ms": 9.0,
+      "p95_ms": 9.0,
+      "max_ms": 9.0,
+      "session_wait_s": 0.0,
+      "by_kind": {
+        "emergency": {
+          "n": 1,
+          "ok": 1,
+          "p50_ms": 9.0,
+          "max_ms": 9.0
+        }
+      },
+      "actions": {
+        "ESCALATE": 1
+      }
+    },
+    {
+      "users": 2,
+      "requests": 2,
+      "ok": 2,
+      "errors": 0,
+      "rate_limited": 0,
+      "error_rate": 0.0,
+      "wall_s": 0.01,
+      "throughput_rps": 220.025,
+      "p50_ms": 7.9,
+      "p95_ms": 8.9,
+      "max_ms": 8.9,
+      "session_wait_s": 0.0,
+      "by_kind": {
+        "emergency": {
+          "n": 1,
+          "ok": 1,
+          "p50_ms": 7.9,
+          "max_ms": 7.9
+        },
+        "small_talk": {
+          "n": 1,
+          "ok": 1,
+          "p50_ms": 8.9,
+          "max_ms": 8.9
+        }
+      },
+      "actions": {
+        "ESCALATE": 1,
+        "GENERALIZE": 1
+      }
+    }
+  ],
+  "requests_per_user": 1,
+  "required_rate_limit": 2,
+  "query_mix": [
+    "emergency",
+    "small_talk",
+    "general",
+    "out_of_domain",
+    "personal",
+    "clarification"
+  ],
+  "median_ok_latency_all_ms": 8.9,
+  "notes": [
+    "A single local Ollama server serialises LLM calls (one at a time), so concurrent requests queue and per-request latency grows with the number of users; the emergency fast-path and small-talk paths make no LLM call and are not affected.",
+    "The API rate limiter counts per client IP. All simulated users share one IP, so the server under test needs RATE_LIMIT_PER_MINUTE at least as large as the number of message requests sent within one minute (or 0 to disable). Session creation is limited to 10/min per IP; the load test waits for Retry-After and does not count that wait as latency."
+  ],
+  "requests": [
+    {
+      "level": 1,
+      "user": 0,
+      "kind": "emergency",
+      "status": 200,
+      "latency_ms": 9.0,
+      "action": "ESCALATE",
+      "error": null
+    },
+    {
+      "level": 2,
+      "user": 0,
+      "kind": "emergency",
+      "status": 200,
+      "latency_ms": 7.9,
+      "action": "ESCALATE",
+      "error": null
+    },
+    {
+      "level": 2,
+      "user": 1,
+      "kind": "small_talk",
+      "status": 200,
+      "latency_ms": 8.9,
+      "action": "GENERALIZE",
+      "error": null
+    }
+  ]
+}

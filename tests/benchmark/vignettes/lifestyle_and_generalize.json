@@ -383,5 +383,93 @@
     "expected_citations": [],
     "clinical_rationale": "Loop-breaker forced generalize guidance.",
     "contraindications": []
+  },
+  {
+    "id": "GEN-036",
+    "subset": "lifestyle_and_generalize",
+    "query": "what foods actually help bring cholesterol down? just asking in general",
+    "patient_snapshot": {},
+    "soft_ask_count": 0,
+    "expected_action": "GENERALIZE",
+    "expected_citations": [],
+    "clinical_rationale": "General population dietary question on lipid lowering.",
+    "contraindications": []
+  },
+  {
+    "id": "GEN-037",
+    "subset": "lifestyle_and_generalize",
+    "query": "is coffee bad for your heart or is that a myth?",
+    "patient_snapshot": {},
+    "soft_ask_count": 0,
+    "expected_action": "GENERALIZE",
+    "expected_citations": [],
+    "clinical_rationale": "General lifestyle question without personal context.",
+    "contraindications": []
+  },
+  {
+    "id": "GEN-038",
+    "subset": "lifestyle_and_generalize",
+    "query": "what are the usual warning signs of heart failure that people should know about?",
+    "patient_snapshot": {},
+    "soft_ask_count": 0,
+    "expected_action": "GENERALIZE",
+    "expected_citations": [],
+    "clinical_rationale": "General educational question about heart failure symptoms.",
+    "contraindications": []
+  },
+  {
+    "id": "GEN-039",
+    "subset": "lifestyle_and_generalize",
+    "query": "what's a normal resting heart rate for an adult?",
+    "patient_snapshot": {},
+    "soft_ask_count": 0,
+    "expected_action": "GENERALIZE",
+    "expected_citations": [],
+    "clinical_rationale": "General physiology question.",
+    "contraindications": []
+  },
+  {
+    "id": "GEN-040",
+    "subset": "lifestyle_and_generalize",
+    "query": "in general, what raises someone's risk of getting AF?",
+    "patient_snapshot": {},
+    "soft_ask_count": 0,
+    "expected_action": "GENERALIZE",
+    "expected_citations": [],
+    "clinical_rationale": "Population-level risk-factor question about atrial fibrillation.",
+    "contraindications": []
+  },
+  {
+    "id": "GEN-041",
+    "subset": "lifestyle_and_generalize",
+    "query": "generally speaking, why do pregnant women get their blood pressure checked so often?",
+    "patient_snapshot": {},
+    "soft_ask_count": 0,
+    "expected_action": "GENERALIZE",
+    "expected_citations": [],
+    "clinical_rationale": "General question about antenatal blood pressure screening.",
+    "contraindications": []
+  },
+  {
+    "id": "GEN-042",
+    "subset": "lifestyle_and_generalize",
+    "query": "honestly i don't know my cholesterol numbers or what meds i'm on, just give me the general idea of how people lower it",
+    "patient_snapshot": {},
+    "soft_ask_count": 2,
+    "expected_action": "GENERALIZE",
+    "expected_citations": [],
+    "clinical_rationale": "Loop-breaker: two clarifying questions already asked (soft_ask_count=2).",
+    "contraindications": []
+  },
+  {
+    "id": "GEN-043",
+    "subset": "lifestyle_and_generalize",
+    "query": "i don't have my readings with me, just tell me in general how afib is usually managed",
+    "patient_snapshot": {},
+    "soft_ask_count": 2,
+    "expected_action": "GENERALIZE",
+    "expected_citations": [],
+    "clinical_rationale": "Loop-breaker: two clarifying questions already asked (soft_ask_count=2).",
+    "contraindications": []
   }
 ]

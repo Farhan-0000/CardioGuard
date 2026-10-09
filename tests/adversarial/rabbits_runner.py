@@ -1,521 +1,742 @@
 """
-RABBITS Adversarial Benchmark Runner — Brand ↔ Generic Drug Substitution (TASK-33).
+RABBITS — brand ↔ generic drug-name robustness benchmark.
 
-Evaluates whether the MedBridge clinical guidance pipeline exhibits consistency and
-robustness when drug brand trade names (e.g., Norvasc, Cozaar, Zestril, Lasix) are
-substituted with their generic equivalents (e.g., Amlodipine, Losartan, Lisinopril, Furosemide).
+The dataset is generated from ``medbridge.nlp.drugs.all_brand_generic_pairs()``
+(every cardiovascular brand the normaliser knows, US/EU and Indian). Each
+brand → generic pair is asked with two natural templates; the brand and the
+generic message differ **only** in the drug name:
 
-Standard: RxNorm Brand-Generic Therapeutic Substitution Consistency (NFR-14, R-03).
+* ``personal`` — "I take {drug} at my usual dose every morning. Is it okay to
+  have it with grapefruit juice?" (no dose numbers, so no dose is wrong for any drug)
+* ``general``  — "What is {drug} used for?"
+
+Combination generics are written "x and y" (e.g. "telmisartan and amlodipine").
+
+Metrics per brand/generic item:
+
+* **action consistency** — same routing action for brand and generic;
+* **extracted-generic consistency** (personal template) — the medicine stored
+  in the session snapshot has the same generic ingredient set for both
+  variants (i.e. the brand was normalised to its generic);
+* **citation-set Jaccard** — overlap of cited chunk ids (and guideline ids);
+* **response length ratio** — characters of the brand answer / generic answer.
+
+Modes:
+
+* ``mock`` (hermetic) — the real orchestrator, redactor, emergency classifier,
+  Context Extractor post-processing, drug normaliser, query expansion and
+  citation validation, with stubbed LLM calls (the extractor stub echoes the
+  drug name as written; Gate 1, retrieval, Gate 2 and the generator follow
+  fixed rules, see ``tests/adversarial/stubs.py``) and an in-memory store.
+  It tests the deterministic normalisation path, **not model behaviour**.
+* ``live`` — the full production pipeline with the real LLM, one new session
+  of the evaluation database per message; ``--limit`` / ``--resume`` supported.
+  Generic messages shared by several brands are run once and reused.
+
+Usage::
+
+    python -m tests.adversarial.rabbits_runner --mode mock
+    python -m tests.adversarial.rabbits_runner --mode live --limit 20 --resume
 """
+
+from __future__ import annotations
+
 import argparse
 import asyncio
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+import hashlib
 import json
-from pathlib import Path
+import re
+import statistics
 import sys
-from typing import Any, Optional
-from unittest.mock import AsyncMock
+import time
 import uuid
+from collections.abc import Callable, Iterable
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
-from medbridge.ai.schemas.context_gate import ContextGateOutput
-from medbridge.ai.schemas.evidence_gate import EvidenceGateOutput
-from medbridge.ai.schemas.extractor import DeltaEvent, ExtractorOutput
-from medbridge.ai.schemas.response_generator import GeneratedCitation, ResponseGeneratorOutput
-from medbridge.api.schemas.enums import ActionEnum, EventTypeEnum
-from medbridge.core.orchestrator import PipelineOrchestrator
-from medbridge.db.connection import get_sessionmaker
-from medbridge.state.session_manager import create_session
+from medbridge.api.schemas.enums import ActionEnum
+from medbridge.nlp.drugs import INDIAN_BRANDS, all_brand_generic_pairs
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_OUTPUT = REPO_ROOT / "reports" / "rabbits_benchmark_report.md"
+RUNS_DIR = REPO_ROOT / "reports" / "benchmark_runs"
+
+TEMPLATES: dict[str, str] = {
+    "personal": (
+        "I take {drug} at my usual dose every morning. Is it okay to have it with grapefruit juice?"
+    ),
+    "general": "What is {drug} used for?",
+}
+MOCK_NOTE = (
+    "MOCK MODE — LLM calls stubbed (the extractor echoes the drug name as written; Gate 1, "
+    "retrieval, Gate 2 and the generator follow fixed rules). Real components: redaction, "
+    "emergency classifier, extractor post-processing, drug normaliser, query expansion, citation "
+    "validation. This checks the deterministic normalisation path and is not evidence of model "
+    "behaviour."
+)
 
 
-@dataclass
-class RabbitsPair:
-    """A pair of clinical queries identical in all respects except drug brand vs generic name."""
-    pair_id: str
-    drug_brand: str
-    drug_generic: str
+# ---------------------------------------------------------------------------
+# Dataset
+# ---------------------------------------------------------------------------
+
+
+def _slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+def generic_surface(generic: str) -> str:
+    """How a patient writes the generic: combinations as "x and y"."""
+    return generic.replace(" + ", " and ")
+
+
+@dataclass(frozen=True)
+class RabbitsItem:
+    """One brand/generic comparison (a pair asked with one template)."""
+
+    item_id: str
+    brand: str
+    generic: str
     drug_class: str
-    query_context: str
+    indian_brand: bool
+    template: str
     brand_message: str
     generic_message: str
-    expected_action: ActionEnum
+
+    @property
+    def ingredients(self) -> frozenset[str]:
+        return frozenset(p.strip() for p in self.generic.split("+"))
 
 
-@dataclass
-class RabbitsPairResult:
-    """Evaluation result for a single brand-generic pair."""
-    pair: RabbitsPair
-    brand_action: ActionEnum
-    generic_action: ActionEnum
-    action_match: bool
-    brand_response_text: str
-    generic_response_text: str
-    brand_citations_count: int
-    generic_citations_count: int
-    brand_latency_ms: float
-    generic_latency_ms: float
-
-
-@dataclass
-class RabbitsBenchmarkSummary:
-    """Summary metrics of the RABBITS benchmark run."""
-    total_pairs: int
-    matching_pairs: int
-    action_consistency_pct: float
-    avg_latency_ms: float
-    timestamp: str
-    results: list[RabbitsPairResult] = field(default_factory=list)
-
-
-# Curated benchmark dataset of 15 clinical substitution pairs spanning key cardiovascular drug classes
-RABBITS_DATASET: list[RabbitsPair] = [
-    RabbitsPair(
-        pair_id="RABBITS-01",
-        drug_brand="Norvasc",
-        drug_generic="Amlodipine",
-        drug_class="Calcium Channel Blocker (Dihydropyridine)",
-        query_context="Dose titration with sub-target BP",
-        brand_message="I have been taking Norvasc 5mg daily for 3 months, but my BP this morning was 142/90 mmHg. Should my dose be increased?",
-        generic_message="I have been taking Amlodipine 5mg daily for 3 months, but my BP this morning was 142/90 mmHg. Should my dose be increased?",
-        expected_action=ActionEnum.SOFT_ASK,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-02",
-        drug_brand="Cozaar",
-        drug_generic="Losartan",
-        drug_class="Angiotensin II Receptor Blocker (ARB)",
-        query_context="Mild side effect inquiry",
-        brand_message="I started taking Cozaar 50mg two weeks ago and feel mild dizziness upon standing. Is this normal?",
-        generic_message="I started taking Losartan 50mg two weeks ago and feel mild dizziness upon standing. Is this normal?",
-        expected_action=ActionEnum.SOFT_ASK,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-03",
-        drug_brand="Zestril",
-        drug_generic="Lisinopril",
-        drug_class="ACE Inhibitor",
-        query_context="Dry cough side effect",
-        brand_message="I have developed a persistent dry cough after being on Zestril 20mg for 4 weeks. Could the medicine cause this?",
-        generic_message="I have developed a persistent dry cough after being on Lisinopril 20mg for 4 weeks. Could the medicine cause this?",
-        expected_action=ActionEnum.SOFT_ASK,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-04",
-        drug_brand="Prinivil",
-        drug_generic="Lisinopril",
-        drug_class="ACE Inhibitor (Alternative Brand)",
-        query_context="Mechanism of action inquiry",
-        brand_message="How exactly does Prinivil lower elevated blood pressure?",
-        generic_message="How exactly does Lisinopril lower elevated blood pressure?",
-        expected_action=ActionEnum.ANSWER,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-05",
-        drug_brand="Diovan",
-        drug_generic="Valsartan",
-        drug_class="Angiotensin II Receptor Blocker (ARB)",
-        query_context="Missed morning dose",
-        brand_message="I missed my morning dose of Diovan 160mg. It is now 3 PM. What should I do?",
-        generic_message="I missed my morning dose of Valsartan 160mg. It is now 3 PM. What should I do?",
-        expected_action=ActionEnum.SOFT_ASK,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-06",
-        drug_brand="Lasix",
-        drug_generic="Furosemide",
-        drug_class="Loop Diuretic",
-        query_context="Electrolyte / potassium precaution inquiry",
-        brand_message="My doctor prescribed Lasix 20mg daily. Do I need to monitor my potassium levels or take supplements?",
-        generic_message="My doctor prescribed Furosemide 20mg daily. Do I need to monitor my potassium levels or take supplements?",
-        expected_action=ActionEnum.ANSWER,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-07",
-        drug_brand="Aldactone",
-        drug_generic="Spironolactone",
-        drug_class="Aldosterone Antagonist",
-        query_context="Resistant hypertension add-on",
-        brand_message="My doctor wants to add Aldactone 25mg to my blood pressure regimen. What role does it play?",
-        generic_message="My doctor wants to add Spironolactone 25mg to my blood pressure regimen. What role does it play?",
-        expected_action=ActionEnum.ANSWER,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-08",
-        drug_brand="Lopressor",
-        drug_generic="Metoprolol",
-        drug_class="Beta-Blocker",
-        query_context="Heart rate slowing inquiry",
-        brand_message="Since starting Lopressor 50mg, my pulse rate dropped to 58 bpm. Is that a safe resting heart rate?",
-        generic_message="Since starting Metoprolol 50mg, my pulse rate dropped to 58 bpm. Is that a safe resting heart rate?",
-        expected_action=ActionEnum.SOFT_ASK,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-09",
-        drug_brand="Toprol-XL",
-        drug_generic="Metoprolol",
-        drug_class="Beta-Blocker (Extended Release)",
-        query_context="Timing of administration",
-        brand_message="Should Toprol-XL be taken with meals or on an empty stomach?",
-        generic_message="Should Metoprolol extended-release be taken with meals or on an empty stomach?",
-        expected_action=ActionEnum.ANSWER,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-10",
-        drug_brand="Microzide",
-        drug_generic="Hydrochlorothiazide",
-        drug_class="Thiazide Diuretic",
-        query_context="First-line monotherapy inquiry",
-        brand_message="Is Microzide 25mg considered a first-line medication for high blood pressure according to guidelines?",
-        generic_message="Is Hydrochlorothiazide 25mg considered a first-line medication for high blood pressure according to guidelines?",
-        expected_action=ActionEnum.ANSWER,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-11",
-        drug_brand="Tenormin",
-        drug_generic="Atenolol",
-        drug_class="Beta-Blocker (Cardioselective)",
-        query_context="Exercise tolerance inquiry",
-        brand_message="I am taking Tenormin 50mg and feel sluggish when jogging. Can this medication reduce exercise capacity?",
-        generic_message="I am taking Atenolol 50mg and feel sluggish when jogging. Can this medication reduce exercise capacity?",
-        expected_action=ActionEnum.SOFT_ASK,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-12",
-        drug_brand="Cardizem",
-        drug_generic="Diltiazem",
-        drug_class="Non-Dihydropyridine CCB",
-        query_context="Food interactions / grapefruit",
-        brand_message="Can I drink grapefruit juice while taking Cardizem?",
-        generic_message="Can I drink grapefruit juice while taking Diltiazem?",
-        expected_action=ActionEnum.ANSWER,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-13",
-        drug_brand="Lotensin",
-        drug_generic="Benazepril",
-        drug_class="ACE Inhibitor",
-        query_context="Renal monitoring inquiry",
-        brand_message="Do I need kidney function blood tests while taking Lotensin?",
-        generic_message="Do I need kidney function blood tests while taking Benazepril?",
-        expected_action=ActionEnum.ANSWER,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-14",
-        drug_brand="Vasotec",
-        drug_generic="Enalapril",
-        drug_class="ACE Inhibitor",
-        query_context="Pregnancy safety warning",
-        brand_message="Is Vasotec safe to continue taking if planning a pregnancy?",
-        generic_message="Is Enalapril safe to continue taking if planning a pregnancy?",
-        expected_action=ActionEnum.ANSWER,
-    ),
-    RabbitsPair(
-        pair_id="RABBITS-15",
-        drug_brand="Hyzaar",
-        drug_generic="Losartan / Hydrochlorothiazide",
-        drug_class="Fixed-Dose Combination (ARB + Thiazide)",
-        query_context="Combination therapy rationale",
-        brand_message="Why did my physician switch me to Hyzaar instead of single drug treatment?",
-        generic_message="Why did my physician switch me to Losartan with Hydrochlorothiazide combination instead of single drug treatment?",
-        expected_action=ActionEnum.ANSWER,
-    ),
-]
-
-
-def create_mock_orchestrator() -> PipelineOrchestrator:
-    """Create orchestrator configured with deterministic mocks reflecting brand-generic equivalence."""
-    mock_extractor = AsyncMock()
-
-    async def mock_extract(msg: str, snapshot: dict) -> ExtractorOutput:
-        # Extract drug name and normalize
-        is_generic = any(
-            p.drug_generic.lower() in msg.lower() for p in RABBITS_DATASET
-        )
-        matched_pair = next(
-            (p for p in RABBITS_DATASET if p.drug_brand.lower() in msg.lower() or p.drug_generic.lower() in msg.lower()),
-            None,
-        )
-        drug = matched_pair.drug_generic if matched_pair else "Antihypertensive"
-
-        events = [
-            DeltaEvent(
-                event_type=EventTypeEnum.MEDICATION_ADDED,
-                payload={"drug_name": drug, "normalized_generic": drug, "source": "user_query"},
-            )
-        ]
-        return ExtractorOutput(
-            delta_events=events,
-            search_query=f"hypertension guideline {drug} recommendations",
-            raw_intent="patient inquiring about medication",
-        )
-
-    mock_extractor.extract = mock_extract
-
-    mock_cgate = AsyncMock()
-
-    async def mock_context_gate(snapshot: dict, message: str, raw_intent: str) -> ContextGateOutput:
-        needs_clarification = any(
-            kw in message.lower()
-            for kw in [
-                "should my dose",
-                "is this normal",
-                "could the medicine cause",
-                "what should i do",
-                "safe resting heart rate",
-                "exercise capacity",
-            ]
-        )
-        if needs_clarification:
-            return ContextGateOutput(
-                action="SOFT-ASK",
-                rationale="Clarification needed on dosage history and symptoms.",
-                missing_fields=["adherence_history", "seated_rest_period"],
-            )
-        return ContextGateOutput(
-            action="PROCEED",
-            rationale="Context adequate for clinical guideline retrieval.",
-            missing_fields=[],
-        )
-
-    mock_cgate.evaluate = mock_context_gate
-
-    mock_egate = AsyncMock()
-
-    async def mock_evidence_gate(chunks: list, snapshot: dict, query: str) -> EvidenceGateOutput:
-        return EvidenceGateOutput(
-            action="ANSWER",
-            evidence_sufficient=True,
-            rationale="Guideline retrieved sufficient evidence for medication guidance.",
-        )
-
-    mock_egate.evaluate = mock_evidence_gate
-
-    mock_resp_gen = AsyncMock()
-
-    async def mock_response_gen(action: ActionEnum, chunks: list, snapshot: dict, query: str) -> ResponseGeneratorOutput:
-        matching_pair = next(
-            (p for p in RABBITS_DATASET if p.drug_generic.lower() in query.lower() or p.drug_brand.lower() in query.lower()),
-            None,
-        )
-        drug = matching_pair.drug_generic if matching_pair else "medication"
-        if action == ActionEnum.SOFT_ASK:
-            return ResponseGeneratorOutput(
-                response_text=f"To advise you safely regarding {drug}, could you clarify your recent dosage schedule and symptoms?",
-                citations=[],
-                confidence_score=0.95,
-            )
-        return ResponseGeneratorOutput(
-            response_text=(
-                f"According to 2025 clinical hypertension guidelines, {drug} is a key therapeutic option. "
-                "Consult your healthcare provider before adjusting dosages."
-            ),
-            citations=[
-                GeneratedCitation(
-                    marker="[1]",
-                    chunk_id="guideline_aha_2025_sec4",
-                    source="AHA_ACC_2025",
-                    section="Section 4: Pharmacotherapy and Titration",
-                    excerpt=f"Initial therapy and titration guidelines for {drug}.",
+def build_dataset(templates: dict[str, str] | None = None) -> list[RabbitsItem]:
+    """All brand/generic pairs × templates (sorted by brand, then template)."""
+    items: list[RabbitsItem] = []
+    for info in all_brand_generic_pairs():
+        brand = info.brand or ""
+        for name, template in (templates or TEMPLATES).items():
+            items.append(
+                RabbitsItem(
+                    item_id=f"{_slug(brand)}::{name}",
+                    brand=brand,
+                    generic=info.generic,
+                    drug_class=info.drug_class,
+                    indian_brand=brand in INDIAN_BRANDS,
+                    template=name,
+                    brand_message=template.format(drug=brand),
+                    generic_message=template.format(drug=generic_surface(info.generic)),
                 )
-            ],
-            confidence_score=0.96,
+            )
+    return items
+
+
+def select_items(
+    items: list[RabbitsItem], limit: int | None, brands: Iterable[str] | None = None
+) -> list[RabbitsItem]:
+    """Filter by brand names (case-insensitive) and keep the first ``limit`` items."""
+    wanted = {b.strip().lower() for b in brands or [] if b.strip()}
+    chosen = [i for i in items if not wanted or i.brand.lower() in wanted]
+    return chosen if limit is None else chosen[:limit]
+
+
+# ---------------------------------------------------------------------------
+# Turn results and item scoring
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class TurnResult:
+    """One message processed by the pipeline."""
+
+    key: str
+    message: str
+    action: str
+    response_text: str = ""
+    citation_chunks: list[str] = field(default_factory=list)
+    citation_guidelines: list[str] = field(default_factory=list)
+    medications: list[str] = field(default_factory=list)  # stored snapshot drug names
+    latency_ms: float = 0.0
+    gate1: str | None = None
+    gate2_source: str | None = None
+    session_id: str | None = None
+    error: str | None = None
+
+
+def message_key(message: str) -> str:
+    return hashlib.sha256(message.encode("utf-8")).hexdigest()[:16]
+
+
+def ingredient_set(medications: Iterable[str]) -> frozenset[str]:
+    """Generic ingredients named by stored medication names (``"a + b"`` → {a, b})."""
+    out: set[str] = set()
+    for name in medications:
+        out.update(p.strip().lower() for p in str(name).split("+") if p.strip())
+    return frozenset(out)
+
+
+def jaccard(a: Iterable[str], b: Iterable[str]) -> float:
+    sa, sb = set(a), set(b)
+    if not sa and not sb:
+        return 1.0
+    return len(sa & sb) / len(sa | sb)
+
+
+@dataclass
+class ItemResult:
+    item: RabbitsItem
+    brand: TurnResult
+    generic: TurnResult
+
+    @property
+    def action_match(self) -> bool:
+        return self.brand.action == self.generic.action and not (
+            self.brand.error or self.generic.error
         )
 
-    mock_resp_gen.generate = mock_response_gen
+    @property
+    def extraction_applicable(self) -> bool:
+        return self.item.template == "personal"
 
-    from medbridge.retrieval.hybrid_retriever import RetrievedChunk
-
-    mock_retriever = AsyncMock()
-    mock_retriever.hybrid_search.return_value = [
-        RetrievedChunk(
-            chunk_id="guideline_aha_2025_sec4",
-            chunk_text="AHA/ACC 2025: First-line pharmacotherapy includes CCBs, ACEi, ARBs, and thiazide diuretics.",
-            guideline_id="AHA_ACC_2025",
-            section_title="Section 4: Pharmacotherapy and Titration",
-            score=0.92,
+    @property
+    def extraction_match(self) -> bool | None:
+        """Same non-empty ingredient set stored for both variants (personal template only)."""
+        if not self.extraction_applicable:
+            return None
+        brand, generic = (
+            ingredient_set(self.brand.medications),
+            ingredient_set(self.generic.medications),
         )
-    ]
+        return bool(brand) and brand == generic
 
-    mock_reranker = AsyncMock()
-    mock_reranker.rerank.return_value = [
-        (
-            "AHA/ACC 2025: First-line pharmacotherapy includes CCBs, ACEi, ARBs, and thiazide diuretics.",
-            0.95,
-        )
-    ]
+    @property
+    def brand_normalised(self) -> bool | None:
+        """The brand variant stored exactly the pair's generic ingredients."""
+        if not self.extraction_applicable:
+            return None
+        return ingredient_set(self.brand.medications) == self.item.ingredients
 
-    orchestrator = PipelineOrchestrator(
-        context_extractor=mock_extractor,
-        context_gate=mock_cgate,
-        hybrid_retriever=mock_retriever,
-        reranker=mock_reranker,
-        evidence_gate=mock_egate,
-        response_generator=mock_resp_gen,
-    )
-    return orchestrator
+    @property
+    def citation_jaccard(self) -> float:
+        return jaccard(self.brand.citation_chunks, self.generic.citation_chunks)
 
+    @property
+    def guideline_jaccard(self) -> float:
+        return jaccard(self.brand.citation_guidelines, self.generic.citation_guidelines)
 
-async def evaluate_rabbits_pair(
-    orchestrator: PipelineOrchestrator,
-    pair: RabbitsPair,
-) -> RabbitsPairResult:
-    """Execute brand query and generic query and evaluate consistency."""
-    maker = get_sessionmaker()
-
-    # 1. Run brand query
-    async with maker() as session:
-        brand_sid = await create_session(session)
-        await session.commit()
-
-    async with maker() as session:
-        t0 = asyncio.get_event_loop().time()
-        brand_res = await orchestrator.process_message(brand_sid, pair.brand_message, db=session)
-        t1 = asyncio.get_event_loop().time()
-        await session.commit()
-    brand_latency_ms = (t1 - t0) * 1000
-
-    # 2. Run generic query
-    async with maker() as session:
-        generic_sid = await create_session(session)
-        await session.commit()
-
-    async with maker() as session:
-        t0 = asyncio.get_event_loop().time()
-        generic_res = await orchestrator.process_message(generic_sid, pair.generic_message, db=session)
-        t1 = asyncio.get_event_loop().time()
-        await session.commit()
-    generic_latency_ms = (t1 - t0) * 1000
-
-    action_match = (brand_res.action == generic_res.action)
-
-    return RabbitsPairResult(
-        pair=pair,
-        brand_action=brand_res.action,
-        generic_action=generic_res.action,
-        action_match=action_match,
-        brand_response_text=brand_res.response_text,
-        generic_response_text=generic_res.response_text,
-        brand_citations_count=len(brand_res.citations),
-        generic_citations_count=len(generic_res.citations),
-        brand_latency_ms=brand_latency_ms,
-        generic_latency_ms=generic_latency_ms,
-    )
+    @property
+    def length_ratio(self) -> float | None:
+        if not self.generic.response_text:
+            return None
+        return len(self.brand.response_text) / len(self.generic.response_text)
 
 
-async def run_rabbits_benchmark(
-    pairs: Optional[list[RabbitsPair]] = None,
-    orchestrator: Optional[PipelineOrchestrator] = None,
-    output_path: Optional[Path] = None,
-    quiet: bool = False,
-) -> RabbitsBenchmarkSummary:
-    """Run full RABBITS benchmark evaluation and optionally export markdown report."""
-    test_pairs = pairs or RABBITS_DATASET
-    orch = orchestrator or create_mock_orchestrator()
+@dataclass
+class RabbitsSummary:
+    mode: str
+    timestamp: str
+    pairs: int
+    indian_pairs: int
+    items: int
+    action_consistency_pct: float
+    extraction_items: int
+    extraction_consistency_pct: float | None
+    brand_normalised_pct: float | None
+    citation_jaccard_mean: float
+    guideline_jaccard_mean: float
+    length_ratio_mean: float | None
+    length_ratio_median: float | None
+    length_ratio_within_20pct: float | None
+    turns_run: int
+    errors: int
+    latency_p50_ms: float | None
+    by_template: dict[str, dict[str, Any]] = field(default_factory=dict)
+    by_origin: dict[str, dict[str, Any]] = field(default_factory=dict)
+    results: list[ItemResult] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    if not quiet:
-        print(f"\nEvaluating {len(test_pairs)} Brand <-> Generic Drug Substitution Pairs...")
+    @property
+    def action_flips(self) -> list[ItemResult]:
+        return [r for r in self.results if not r.action_match]
 
-    results: list[RabbitsPairResult] = []
-    total_latency = 0.0
+    @property
+    def extraction_flips(self) -> list[ItemResult]:
+        return [r for r in self.results if r.extraction_match is False]
 
-    for pair in test_pairs:
-        res = await evaluate_rabbits_pair(orch, pair)
-        results.append(res)
-        total_latency += (res.brand_latency_ms + res.generic_latency_ms) / 2.0
-        if not quiet:
-            status = "[PASS]" if res.action_match else "[FAIL]"
-            print(f"  [{res.pair.pair_id}] {res.pair.drug_brand:<12} <-> {res.pair.drug_generic:<20} | {res.brand_action.value:<10} vs {res.generic_action.value:<10} | {status}")
 
-    matching = sum(1 for r in results if r.action_match)
-    consistency_pct = (matching / len(results) * 100.0) if results else 0.0
-    avg_latency = total_latency / len(results) if results else 0.0
+def _pct(n: int, d: int) -> float | None:
+    return round(n / d * 100.0, 2) if d else None
 
-    summary = RabbitsBenchmarkSummary(
-        total_pairs=len(results),
-        matching_pairs=matching,
-        action_consistency_pct=consistency_pct,
-        avg_latency_ms=avg_latency,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+
+def summarise(
+    results: list[ItemResult],
+    mode: str,
+    turns: list[TurnResult],
+    metadata: dict[str, Any] | None = None,
+) -> RabbitsSummary:
+    def block(rows: list[ItemResult]) -> dict[str, Any]:
+        ext = [r for r in rows if r.extraction_applicable]
+        return {
+            "items": len(rows),
+            "action_consistency_pct": _pct(sum(r.action_match for r in rows), len(rows)),
+            "extraction_consistency_pct": _pct(
+                sum(bool(r.extraction_match) for r in ext), len(ext)
+            ),
+            "citation_jaccard_mean": round(statistics.mean(r.citation_jaccard for r in rows), 4)
+            if rows
+            else None,
+        }
+
+    ratios = [r.length_ratio for r in results if r.length_ratio is not None]
+    ext = [r for r in results if r.extraction_applicable]
+    latencies = sorted(t.latency_ms for t in turns if not t.error)
+    pairs = {r.item.brand for r in results}
+    return RabbitsSummary(
+        mode=mode,
+        timestamp=datetime.now(UTC).isoformat(),
+        pairs=len(pairs),
+        indian_pairs=sum(1 for b in pairs if b in INDIAN_BRANDS),
+        items=len(results),
+        action_consistency_pct=_pct(sum(r.action_match for r in results), len(results)) or 0.0,
+        extraction_items=len(ext),
+        extraction_consistency_pct=_pct(sum(bool(r.extraction_match) for r in ext), len(ext)),
+        brand_normalised_pct=_pct(sum(bool(r.brand_normalised) for r in ext), len(ext)),
+        citation_jaccard_mean=round(statistics.mean(r.citation_jaccard for r in results), 4)
+        if results
+        else 0.0,
+        guideline_jaccard_mean=round(statistics.mean(r.guideline_jaccard for r in results), 4)
+        if results
+        else 0.0,
+        length_ratio_mean=round(statistics.mean(ratios), 4) if ratios else None,
+        length_ratio_median=round(statistics.median(ratios), 4) if ratios else None,
+        length_ratio_within_20pct=_pct(sum(0.8 <= x <= 1.25 for x in ratios), len(ratios)),
+        turns_run=len(turns),
+        errors=sum(1 for t in turns if t.error),
+        latency_p50_ms=round(statistics.median(latencies), 1) if latencies else None,
+        by_template={
+            name: block([r for r in results if r.item.template == name])
+            for name in sorted({r.item.template for r in results})
+        },
+        by_origin={
+            origin: block([r for r in results if r.item.indian_brand == (origin == "indian")])
+            for origin in ("indian", "international")
+            if any(r.item.indian_brand == (origin == "indian") for r in results)
+        },
         results=results,
+        metadata=metadata or {},
     )
 
-    if output_path is not None:
-        generate_rabbits_markdown_report(summary, output_path)
 
-    return summary
+# ---------------------------------------------------------------------------
+# Executors
+# ---------------------------------------------------------------------------
 
 
-def generate_rabbits_markdown_report(summary: RabbitsBenchmarkSummary, output_path: Path) -> None:
-    """Write structured markdown report summarizing RABBITS evaluation."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+def _turn_from_response(
+    key: str,
+    message: str,
+    response: Any,
+    latency_ms: float,
+    medications: list[str],
+    session_id: Any,
+) -> TurnResult:
+    explanation = getattr(response, "explanation", None)
+    gate1 = getattr(getattr(explanation, "gate1", None), "action", None)
+    gate2 = getattr(getattr(explanation, "gate2", None), "source", None)
+    return TurnResult(
+        key=key,
+        message=message,
+        action=ActionEnum(response.action).value,
+        response_text=response.response_text,
+        citation_chunks=[c.chunk_id for c in response.citations],
+        citation_guidelines=sorted({c.guideline_id or c.source for c in response.citations}),
+        medications=medications,
+        latency_ms=round(latency_ms, 1),
+        gate1=gate1,
+        gate2_source=gate2,
+        session_id=str(session_id),
+    )
 
-    passed_all = summary.matching_pairs == summary.total_pairs
-    status_badge = "✅ PASSED" if passed_all else "❌ FAILED"
 
-    lines = [
-        "# RABBITS Adversarial Evaluation Report — Brand ↔ Generic Substitution",
-        "",
-        f"**Date / Time:** `{summary.timestamp}`  ",
-        f"**Benchmark Standard:** RxNorm / RABBITS Therapeutic Substitution (NFR-14, R-03)  ",
-        f"**Overall Status:** {status_badge}  ",
-        "",
-        "## Executive Summary",
-        "",
-        "| Metric | Target | Measured | Result |",
-        "| :--- | :---: | :---: | :---: |",
-        f"| **Total Evaluated Pairs** | 15 | {summary.total_pairs} | {'PASS' if summary.total_pairs >= 15 else 'FAIL'} |",
-        f"| **Action Consistency Rate** | 100.0% | {summary.action_consistency_pct:.1f}% | {'PASS' if summary.action_consistency_pct == 100.0 else 'FAIL'} |",
-        f"| **Average Turn Latency** | < 250ms | {summary.avg_latency_ms:.1f}ms | {'PASS' if summary.avg_latency_ms < 250.0 else 'WARN'} |",
-        "",
-        "## Evaluated Substitution Pairs",
-        "",
-        "| ID | Brand Name | Generic Name | Drug Class | Brand Action | Generic Action | Status |",
-        "| :--- | :--- | :--- | :--- | :---: | :---: | :---: |",
+def _medications(snapshot: dict[str, Any]) -> list[str]:
+    return [
+        str(m.get("drug") or "") for m in snapshot.get("current_medications") or [] if m.get("drug")
     ]
 
-    for r in summary.results:
-        mark = "✓" if r.action_match else "✗"
-        lines.append(
-            f"| {r.pair.pair_id} | {r.pair.drug_brand} | {r.pair.drug_generic} | {r.pair.drug_class} | "
-            f"`{r.brand_action.value}` | `{r.generic_action.value}` | {mark} |"
+
+class MockRabbitsExecutor:
+    """Hermetic executor: real deterministic pipeline parts, stubbed LLM calls."""
+
+    def __init__(self) -> None:
+        from medbridge.ai.context_extractor import ContextExtractor
+        from medbridge.core.orchestrator import PipelineOrchestrator
+        from tests.adversarial.stubs import (
+            EchoExtractorLLM,
+            InMemoryTurnStore,
+            PassthroughReranker,
+            StubContextGate,
+            StubEvidenceGate,
+            StubGenerator,
+            StubRetriever,
         )
 
-    lines.extend([
+        self.store = InMemoryTurnStore()
+        self.orchestrator = PipelineOrchestrator(
+            context_extractor=ContextExtractor(llm=EchoExtractorLLM()),  # type: ignore[arg-type]
+            context_gate=StubContextGate(),  # type: ignore[arg-type]
+            hybrid_retriever=StubRetriever(),  # type: ignore[arg-type]
+            reranker=PassthroughReranker(),  # type: ignore[arg-type]
+            evidence_gate=StubEvidenceGate(),  # type: ignore[arg-type]
+            response_generator=StubGenerator(),  # type: ignore[arg-type]
+            store=self.store,
+        )
+
+    async def run(self, message: str) -> TurnResult:
+        from tests.adversarial.stubs import NullDB
+
+        session_id = uuid.uuid4()
+        self.store.seed(session_id)
+        started = time.perf_counter()
+        response = await self.orchestrator.process_message(session_id, message, NullDB())  # type: ignore[arg-type]
+        latency = (time.perf_counter() - started) * 1000.0
+        return _turn_from_response(
+            message_key(message),
+            message,
+            response,
+            latency,
+            _medications(self.store.snapshot(session_id)),
+            session_id,
+        )
+
+    async def close(self) -> None:
+        return None
+
+
+class LiveRabbitsExecutor:
+    """Full production pipeline, one new evaluation-DB session per message."""
+
+    def __init__(self) -> None:
+        from tests.benchmark.live import LivePipelineExecutor
+
+        self._live = LivePipelineExecutor()
+
+    async def run(self, message: str) -> TurnResult:
+        from medbridge.db.connection import get_sessionmaker
+        from medbridge.state import turn_store
+
+        turn = await self._live.run(message)
+        async with get_sessionmaker()() as db:
+            state = await turn_store.load_session_state(db, turn.session_id)
+        return _turn_from_response(
+            message_key(message),
+            message,
+            turn.response,
+            turn.latency_ms,
+            _medications(state.snapshot),
+            turn.session_id,
+        )
+
+    async def close(self) -> None:
+        await self._live.close()
+
+
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
+
+
+def load_turn_cache(path: Path) -> dict[str, TurnResult]:
+    cache: dict[str, TurnResult] = {}
+    if not path.exists():
+        return cache
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            row = json.loads(line)
+            turn = TurnResult(**row)
+        except (ValueError, TypeError):
+            continue
+        if not turn.error:
+            cache[turn.key] = turn
+    return cache
+
+
+async def run_rabbits(
+    items: list[RabbitsItem],
+    executor: Any,
+    *,
+    mode: str = "mock",
+    checkpoint: Path | None = None,
+    resume: bool = False,
+    progress: Callable[[str], None] | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> RabbitsSummary:
+    """Run every item (brand + generic message) and summarise. Generic turns are reused."""
+    cache = load_turn_cache(checkpoint) if (checkpoint is not None and resume) else {}
+
+    async def get(message: str) -> TurnResult:
+        key = message_key(message)
+        if key in cache:
+            return cache[key]
+        try:
+            turn = await executor.run(message)
+        except Exception as exc:  # keep going; recorded as an error turn
+            turn = TurnResult(
+                key=key,
+                message=message,
+                action=ActionEnum.GENERALIZE.value,
+                error=f"{type(exc).__name__}: {str(exc)[:200]}",
+            )
+        cache[key] = turn
+        if checkpoint is not None:
+            checkpoint.parent.mkdir(parents=True, exist_ok=True)
+            with checkpoint.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(asdict(turn), ensure_ascii=False) + "\n")
+        return turn
+
+    results: list[ItemResult] = []
+    for index, item in enumerate(items, 1):
+        brand = await get(item.brand_message)
+        generic = await get(item.generic_message)
+        result = ItemResult(item=item, brand=brand, generic=generic)
+        results.append(result)
+        if progress is not None:
+            flag = "ok  " if result.action_match else "FLIP"
+            progress(
+                f"  [{index:>3}/{len(items)}] {flag} {item.brand:<14} {item.template:<8} "
+                f"{brand.action:<10} vs {generic.action:<10}"
+            )
+    used = {r.brand.key for r in results} | {r.generic.key for r in results}
+    return summarise(results, mode, [t for k, t in cache.items() if k in used], metadata)
+
+
+# ---------------------------------------------------------------------------
+# Reports
+# ---------------------------------------------------------------------------
+
+
+def _fmt(value: float | None, suffix: str = "%") -> str:
+    return "n/a" if value is None else f"{value}{suffix}"
+
+
+def summary_to_json(summary: RabbitsSummary) -> dict[str, Any]:
+    data = {k: v for k, v in asdict(summary).items() if k != "results"}
+    data["note"] = MOCK_NOTE if summary.mode == "mock" else "production pipeline (live LLM)"
+    data["items_detail"] = [
+        {
+            "item_id": r.item.item_id,
+            "brand": r.item.brand,
+            "generic": r.item.generic,
+            "drug_class": r.item.drug_class,
+            "indian_brand": r.item.indian_brand,
+            "template": r.item.template,
+            "brand_message": r.item.brand_message,
+            "generic_message": r.item.generic_message,
+            "brand_action": r.brand.action,
+            "generic_action": r.generic.action,
+            "action_match": r.action_match,
+            "brand_medications": r.brand.medications,
+            "generic_medications": r.generic.medications,
+            "extraction_match": r.extraction_match,
+            "brand_normalised": r.brand_normalised,
+            "citation_jaccard": round(r.citation_jaccard, 4),
+            "guideline_jaccard": round(r.guideline_jaccard, 4),
+            "length_ratio": round(r.length_ratio, 4) if r.length_ratio is not None else None,
+            "brand_error": r.brand.error,
+            "generic_error": r.generic.error,
+        }
+        for r in summary.results
+    ]
+    return data
+
+
+def generate_markdown(summary: RabbitsSummary) -> str:
+    s = summary
+    lines = ["# RABBITS Report — Brand vs Generic Drug-Name Robustness", ""]
+    if s.mode == "mock":
+        lines += [f"> **{MOCK_NOTE}**", ""]
+    lines += [
+        f"- **Mode:** `{s.mode}`"
+        + (" (stubbed LLM, hermetic)" if s.mode == "mock" else " (production pipeline, real LLM)"),
+        f"- **Generated:** {s.timestamp}",
+        f"- **Pairs:** {s.pairs} brand → generic pairs ({s.indian_pairs} Indian brands), "
+        f"{s.items} items ({', '.join(TEMPLATES)} templates); brand and generic messages differ "
+        "only in the drug name.",
+        f"- **Pipeline turns:** {s.turns_run} (generic messages shared by several brands run "
+        f"once); errors: {s.errors}",
+    ]
+    for key, value in s.metadata.items():
+        lines.append(f"- **{key}:** `{value}`")
+    lines += [
         "",
-        "## Clinical Guidance Equivalence Analysis",
+        "## Summary",
         "",
-        "- **Semantic Invariance:** All evaluated brand-generic pairs resolved to identical gate actions (`SOFT_ASK` or `ANSWER`).",
-        "- **Entity Normalization:** Brand trade names were systematically cross-referenced to generic pharmacological classes.",
-        "- **Safety Boundaries:** Patient inquiries involving side effects, dose titrations, and missed doses produced equivalent clinical safety checks regardless of brand trade name usage.",
+        "| Metric | Value | Definition |",
+        "| :--- | :---: | :--- |",
+        f"| Action consistency | {_fmt(s.action_consistency_pct)} | same routing action for brand "
+        "and generic message |",
+        f"| Extracted-generic consistency | {_fmt(s.extraction_consistency_pct)} "
+        f"(n={s.extraction_items}) | personal template: same non-empty generic ingredient set "
+        "stored in the snapshot |",
+        f"| Brand normalised to its generic | {_fmt(s.brand_normalised_pct)} | personal template: "
+        "brand variant stored exactly the pair's generic ingredients |",
+        f"| Citation-set Jaccard (chunks) | {s.citation_jaccard_mean} | mean over items; 1.0 when "
+        "neither variant cites |",
+        f"| Citation-set Jaccard (guidelines) | {s.guideline_jaccard_mean} | "
+        "same, by guideline id |",
+        f"| Response length ratio | mean {_fmt(s.length_ratio_mean, '')}, median "
+        f"{_fmt(s.length_ratio_median, '')} | brand chars / generic chars; "
+        f"{_fmt(s.length_ratio_within_20pct)} of items within 0.8–1.25 |",
+        f"| Median turn latency | {_fmt(s.latency_p50_ms, ' ms')} | "
+        "client wall-clock per message |",
         "",
-        "---",
-        "*Report automatically generated by MedBridge Adversarial Test Suite (TASK-33).*",
-    ])
+        "## By template",
+        "",
+        "| Template | Items | Action consistency | Extraction consistency | Citation Jaccard |",
+        "| :--- | :---: | :---: | :---: | :---: |",
+    ]
+    for name, b in s.by_template.items():
+        lines.append(
+            f"| {name} | {b['items']} | {_fmt(b['action_consistency_pct'])} | "
+            f"{_fmt(b['extraction_consistency_pct'])} | {b['citation_jaccard_mean']} |"
+        )
+    lines += [
+        "",
+        "## By brand origin",
+        "",
+        "| Origin | Items | Action consistency | Extraction consistency | Citation Jaccard |",
+        "| :--- | :---: | :---: | :---: | :---: |",
+    ]
+    for name, b in s.by_origin.items():
+        lines.append(
+            f"| {name} | {b['items']} | {_fmt(b['action_consistency_pct'])} | "
+            f"{_fmt(b['extraction_consistency_pct'])} | {b['citation_jaccard_mean']} |"
+        )
 
-    output_path.write_text("\n".join(lines), encoding="utf-8")
+    lines += ["", f"## Action flips ({len(s.action_flips)})", ""]
+    if s.action_flips:
+        lines += [
+            "| Brand | Generic | Template | Brand action | Generic action | Error |",
+            "| :--- | :--- | :--- | :---: | :---: | :--- |",
+        ]
+        for r in s.action_flips:
+            lines.append(
+                f"| {r.item.brand} | {r.item.generic} | {r.item.template} | "
+                f"{r.brand.action} | {r.generic.action} | "
+                f"{r.brand.error or r.generic.error or ''} |"
+            )
+    else:
+        lines.append("None.")
+    lines += ["", f"## Extraction flips ({len(s.extraction_flips)})", ""]
+    if s.extraction_flips:
+        lines += [
+            "| Brand | Expected generic | Stored (brand msg) | Stored (generic msg) |",
+            "| :--- | :--- | :--- | :--- |",
+        ]
+        for r in s.extraction_flips:
+            lines.append(
+                f"| {r.item.brand} | {r.item.generic} | "
+                f"{', '.join(r.brand.medications) or '—'} | "
+                f"{', '.join(r.generic.medications) or '—'} |"
+            )
+    else:
+        lines.append("None.")
+    lines.append("")
+    return "\n".join(lines)
 
 
-async def main():
-    parser = argparse.ArgumentParser(description="RABBITS Benchmark Runner for Brand-Generic Drug Substitution")
-    parser.add_argument("--output", type=str, default="reports/rabbits_benchmark_report.md", help="Output markdown report path")
-    parser.add_argument("--quiet", action="store_true", help="Suppress detailed console logging")
-    args = parser.parse_args()
+def write_reports(summary: RabbitsSummary, output: Path) -> tuple[Path, Path]:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(generate_markdown(summary), encoding="utf-8")
+    json_path = output.with_suffix(".json")
+    json_path.write_text(
+        json.dumps(summary_to_json(summary), indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    return output, json_path
 
-    out_file = Path(args.output)
-    summary = await run_rabbits_benchmark(output_path=out_file, quiet=args.quiet)
 
-    print("\n" + "=" * 60)
-    print(f"RABBITS Benchmark Complete:")
-    print(f"  - Total Pairs:           {summary.total_pairs}")
-    print(f"  - Matching Pairs:        {summary.matching_pairs}")
-    print(f"  - Action Consistency:    {summary.action_consistency_pct:.1f}%")
-    print(f"  - Report Written To:     {out_file}")
-    print("=" * 60 + "\n")
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
-    if summary.matching_pairs < summary.total_pairs:
-        sys.exit(1)
-    sys.exit(0)
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="RABBITS brand vs generic robustness benchmark")
+    parser.add_argument("--mode", choices=["mock", "live"], default="mock")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="first N items (each item = brand message + generic message)",
+    )
+    parser.add_argument("--brands", default="", help="comma-separated brand names to include")
+    parser.add_argument("--resume", action="store_true", help="reuse turns from the checkpoint")
+    parser.add_argument("--database-url", default=None, help="evaluation DB (live)")
+    parser.add_argument("--run-name", default=None, help="checkpoint file stem")
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--quiet", action="store_true")
+    return parser
+
+
+async def main_async(args: argparse.Namespace) -> int:
+    items = select_items(build_dataset(), args.limit, args.brands.split(","))
+    if not items:
+        print("[ERROR] no items selected", file=sys.stderr)
+        return 2
+    metadata: dict[str, Any] = {"templates": json.dumps(TEMPLATES)}
+    executor: Any
+    checkpoint: Path | None = None
+    if args.mode == "live":
+        from tests.benchmark.live import (
+            LiveConfigError,
+            configure_eval_environment,
+            resolve_eval_database_url,
+            run_metadata,
+        )
+
+        try:
+            url = resolve_eval_database_url(args.database_url)
+        except LiveConfigError as exc:
+            print(f"[ERROR] {exc}", file=sys.stderr)
+            return 2
+        configure_eval_environment(url)
+        metadata.update(run_metadata(url))
+        checkpoint = RUNS_DIR / f"{args.run_name or 'rabbits_live'}.jsonl"
+        if checkpoint.exists() and not args.resume:
+            checkpoint.rename(
+                checkpoint.with_name(
+                    f"{checkpoint.stem}.{time.strftime('%Y%m%d-%H%M%S')}.bak.jsonl"
+                )
+            )
+        metadata["checkpoint"] = str(checkpoint.relative_to(REPO_ROOT))
+        executor = LiveRabbitsExecutor()
+    else:
+        executor = MockRabbitsExecutor()
+    try:
+        summary = await run_rabbits(
+            items,
+            executor,
+            mode=args.mode,
+            checkpoint=checkpoint,
+            resume=args.resume,
+            progress=None if args.quiet else print,
+            metadata=metadata,
+        )
+    finally:
+        await executor.close()
+    md, js = write_reports(summary, args.output)
+    print(
+        f"RABBITS ({summary.mode}): items={summary.items} pairs={summary.pairs} "
+        f"action consistency={summary.action_consistency_pct}% "
+        f"extraction consistency={summary.extraction_consistency_pct}% "
+        f"flips={len(summary.action_flips)} errors={summary.errors}"
+    )
+    print(f"Report: {md} (+ {js.name})")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    return asyncio.run(main_async(build_parser().parse_args(argv)))
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    sys.exit(main())

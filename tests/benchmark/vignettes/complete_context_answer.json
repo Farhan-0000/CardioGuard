@@ -11,7 +11,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Patient has confirmed stage 2 HTN with diabetes; target is <130/80 mmHg and dual therapy is indicated.",
     "contraindications": []
   },
@@ -27,7 +27,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Stage 2 hypertension with BP > 20/10 mmHg above goal recommends starting with 2 first-line agents of different classes.",
     "contraindications": []
   },
@@ -43,7 +43,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "KDIGO 2024"],
+    "expected_citations": ["AHA/ACC 2025", "KDIGO 2021"],
     "clinical_rationale": "In CKD with albuminuria, ACE inhibitor or ARB is strongly recommended as first-line therapy for renal protection.",
     "contraindications": []
   },
@@ -75,7 +75,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Isolated systolic hypertension in the elderly is treated to target SBP < 130-139 mmHg while avoiding severe DBP reduction < 65-70.",
     "contraindications": []
   },
@@ -107,7 +107,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Standard triple therapy comprises an RAS blocker (ACEi/ARB), a CCB, and a thiazide-like diuretic (e.g. Chlorthalidone or Indapamide).",
     "contraindications": []
   },
@@ -137,7 +137,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "BP remaining above goal despite adherence to three optimally dosed antihypertensive agents of different classes (including a diuretic) defines resistant hypertension.",
     "contraindications": []
   },
@@ -152,7 +152,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Spironolactone (mineralocorticoid receptor antagonist) is the preferred 4th-line agent for resistant hypertension if eGFR > 45 and K+ < 4.5.",
     "contraindications": []
   },
@@ -167,7 +167,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["ESC/ESH 2024"],
+    "expected_citations": ["ESC 2024"],
     "clinical_rationale": "ESC/ESH guidelines strongly favor initiating treatment with a single-pill two-drug combination (typically ACEi/ARB + CCB or diuretic) to improve adherence.",
     "contraindications": []
   },
@@ -243,7 +243,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Thiazide diuretics increase serum uric acid levels by competitive inhibition of uric acid secretion in the renal tubules, precipitating gout attacks.",
     "contraindications": []
   },
@@ -258,7 +258,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Beta-blockers have demonstrated inferior stroke and cardiovascular event prevention compared to ACEi/ARBs, CCBs, and thiazides in the absence of compelling indications.",
     "contraindications": []
   },
@@ -286,7 +286,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Masked hypertension carries cardiovascular risk comparable to sustained hypertension and requires pharmacotherapy.",
     "contraindications": []
   },
@@ -346,7 +346,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["ESC/ESH 2024", "AHA/ACC 2025"],
+    "expected_citations": ["ESC 2024", "AHA/ACC 2025"],
     "clinical_rationale": "Fixed-dose single-pill combinations significantly improve patient adherence, reduce pill burden, and achieve faster blood pressure control.",
     "contraindications": []
   },
@@ -375,7 +375,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Dual renin-angiotensin system blockade (combining ACEi and ARB) is harmful and contraindicated due to heightened risk of hyperkalemia, syncope, and acute kidney injury.",
     "contraindications": ["Avoid dual RAS blockade"]
   },
@@ -391,7 +391,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["ESC/ESH 2024", "AHA/ACC 2025"],
+    "expected_citations": ["ESC 2024", "AHA/ACC 2025"],
     "clinical_rationale": "Losartan has a unique uricosuric effect mediated by URAT1 inhibition, lowering serum uric acid levels.",
     "contraindications": []
   },
@@ -465,7 +465,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Limiting alcohol to <= 2 drinks/day for men and <= 1 drink/day for women reduces systolic BP by approximately 4 mmHg.",
     "contraindications": []
   },
@@ -481,7 +481,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["ESC/ESH 2024", "ADA 2025"],
+    "expected_citations": ["ESC 2024"],
     "clinical_rationale": "SGLT2 inhibitors confer modest blood pressure reduction (3-5 mmHg), reduce heart failure hospitalizations, and slow progression of diabetic kidney disease.",
     "contraindications": []
   },
@@ -496,7 +496,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "MRAs can induce life-threatening hyperkalemia and acute decline in renal function, requiring potassium/creatinine checks at 1, 4, and 12 weeks after initiation.",
     "contraindications": []
   },
@@ -510,7 +510,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Structured aerobic exercise (90-150 min/week at 65-75% HR reserve) lowers systolic BP by 5-8 mmHg.",
     "contraindications": []
   },
@@ -630,7 +630,7 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Protocol: 5 minutes quiet rest seated with back supported, cuff at heart level, no talking/caffeine/smoking, take 2 readings 1 min apart in morning and evening for 7 days.",
     "contraindications": []
   },
@@ -689,8 +689,169 @@
     },
     "soft_ask_count": 0,
     "expected_action": "ANSWER",
-    "expected_citations": ["AHA/ACC 2025", "ESC/ESH 2024"],
+    "expected_citations": ["AHA/ACC 2025", "ESC 2024"],
     "clinical_rationale": "Combining a CCB (Amlodipine) with an ARB (Telmisartan) provides complementary vasodilatory mechanisms and reduces the incidence of CCB-induced peripheral edema.",
+    "contraindications": []
+  },
+  {
+    "id": "ANS-047",
+    "subset": "complete_context_answer",
+    "query": "hey, I'm 67 and got told I have heart failure with an EF of 30%. I'm on ramipril and bisoprolol. my cardiologist mentioned the 'four pillars' - what other meds usually get added?",
+    "patient_snapshot": {
+      "demographics": {"age": 67, "sex": "male"},
+      "recent_bp_readings": [{"sbp": 118, "dbp": 72}],
+      "current_medications": [{"drug": "Ramipril", "dosage": "5mg"}, {"drug": "Bisoprolol", "dosage": "5mg"}],
+      "symptoms": ["heart failure with reduced ejection fraction"]
+    },
+    "soft_ask_count": 0,
+    "expected_action": "ANSWER",
+    "expected_citations": ["NICE_NG106", "ESC 2024"],
+    "clinical_rationale": "NICE NG106 rec 1.4.1: offer an ACE inhibitor, a beta-blocker, a mineralocorticoid receptor antagonist (MRA) and an SGLT2 inhibitor in HFrEF; the MRA and SGLT2 inhibitor are the missing classes.",
+    "contraindications": []
+  },
+  {
+    "id": "ANS-048",
+    "subset": "complete_context_answer",
+    "query": "I'm 72, female, I've got AF plus high blood pressure and no bleeding problems so far. why does my doctor want me on a blood thinner like apixaban?",
+    "patient_snapshot": {
+      "demographics": {"age": 72, "sex": "female"},
+      "recent_bp_readings": [{"sbp": 138, "dbp": 82}],
+      "current_medications": [{"drug": "Amlodipine", "dosage": "5mg"}],
+      "symptoms": ["atrial fibrillation"]
+    },
+    "soft_ask_count": 0,
+    "expected_action": "ANSWER",
+    "expected_citations": ["NICE_NG196", "ACC/AHA 2023", "MedlinePlus"],
+    "clinical_rationale": "AF raises stroke risk; NICE NG196 uses the CHA2DS2-VASc score (age, female sex and hypertension each add points) and recommends anticoagulation with a direct-acting oral anticoagulant, with bleeding risk assessed (ORBIT).",
+    "contraindications": []
+  },
+  {
+    "id": "ANS-049",
+    "subset": "complete_context_answer",
+    "query": "had a heart attack last year, I'm 58, on atorvastatin 80 and my LDL is still 2.4 mmol/L. what's the target and what usually comes next?",
+    "patient_snapshot": {
+      "demographics": {"age": 58, "sex": "male"},
+      "current_medications": [{"drug": "Atorvastatin", "dosage": "80mg"}, {"drug": "Aspirin", "dosage": "75mg"}],
+      "lab_results": [{"lab_type": "LDL", "value": "2.4 mmol/L"}],
+      "symptoms": ["prior myocardial infarction"]
+    },
+    "soft_ask_count": 0,
+    "expected_action": "ANSWER",
+    "expected_citations": ["NICE_NG238", "AHA/ACC 2018"],
+    "clinical_rationale": "NICE NG238 rec 1.7.1: for secondary prevention aim for LDL cholesterol 2.0 mmol/L or less; ezetimibe added to a maximally tolerated statin is the usual next step (also AHA/ACC 2018 for very high-risk ASCVD with LDL-C >= 1.8 mmol/L).",
+    "contraindications": []
+  },
+  {
+    "id": "ANS-050",
+    "subset": "complete_context_answer",
+    "query": "I'm 63 with CKD stage 3 (eGFR 48), no diabetes, and my BP sits around 134/82 on ramipril. what top number do the kidney guidelines suggest aiming for?",
+    "patient_snapshot": {
+      "demographics": {"age": 63, "sex": "female"},
+      "recent_bp_readings": [{"sbp": 134, "dbp": 82}],
+      "current_medications": [{"drug": "Ramipril", "dosage": "10mg"}],
+      "lab_results": [{"lab_type": "eGFR", "value": "48 mL/min/1.73m2"}],
+      "symptoms": ["chronic kidney disease"]
+    },
+    "soft_ask_count": 0,
+    "expected_action": "ANSWER",
+    "expected_citations": ["KDIGO 2021"],
+    "clinical_rationale": "KDIGO 2021 recommendation 3.1.1: adults with high BP and CKD should be treated to a systolic target below 120 mmHg when tolerated, using standardised office measurement.",
+    "contraindications": []
+  },
+  {
+    "id": "ANS-051",
+    "subset": "complete_context_answer",
+    "query": "I'm 30 weeks pregnant with chronic high BP. they put me on labetalol and my readings are about 145/95. what BP are they trying to get me down to?",
+    "patient_snapshot": {
+      "demographics": {"age": 33, "sex": "female", "pregnancy_weeks": 30},
+      "recent_bp_readings": [{"sbp": 145, "dbp": 95}],
+      "current_medications": [{"drug": "Labetalol", "dosage": "200mg"}],
+      "symptoms": ["chronic hypertension"]
+    },
+    "soft_ask_count": 0,
+    "expected_action": "ANSWER",
+    "expected_citations": ["NICE_NG133"],
+    "clinical_rationale": "NICE NG133 rec 1.3.9: when treating hypertension in pregnancy aim for a target blood pressure of 135/85 mmHg.",
+    "contraindications": []
+  },
+  {
+    "id": "ANS-052",
+    "subset": "complete_context_answer",
+    "query": "so I had an MI 3 months ago, I'm 61. they've got me on aspirin, ticagrelor, ramipril, bisoprolol and a statin. how long do I need to stay on both blood thinners?",
+    "patient_snapshot": {
+      "demographics": {"age": 61, "sex": "male"},
+      "current_medications": [{"drug": "Aspirin", "dosage": "75mg"}, {"drug": "Ticagrelor", "dosage": "90mg"}, {"drug": "Ramipril", "dosage": "5mg"}, {"drug": "Bisoprolol", "dosage": "2.5mg"}, {"drug": "Atorvastatin", "dosage": "80mg"}],
+      "symptoms": ["myocardial infarction 3 months ago"]
+    },
+    "soft_ask_count": 0,
+    "expected_action": "ANSWER",
+    "expected_citations": ["NICE_NG185", "CCD_GUIDELINE_REVIEW_2024"],
+    "clinical_rationale": "NICE NG185 rec 1.4.15: continue dual antiplatelet therapy for up to 12 months after an MI unless contraindicated; aspirin is then continued indefinitely (rec 1.4.14).",
+    "contraindications": []
+  },
+  {
+    "id": "ANS-053",
+    "subset": "complete_context_answer",
+    "query": "I've got permanent AF, I'm 70, BP is fine (128/78) and I don't have heart failure. what tablet is usually used first to slow my heart rate down?",
+    "patient_snapshot": {
+      "demographics": {"age": 70, "sex": "male"},
+      "recent_bp_readings": [{"sbp": 128, "dbp": 78}],
+      "current_medications": [{"drug": "Apixaban", "dosage": "5mg"}],
+      "symptoms": ["permanent atrial fibrillation"]
+    },
+    "soft_ask_count": 0,
+    "expected_action": "ANSWER",
+    "expected_citations": ["NICE_NG196", "ACC/AHA 2023"],
+    "clinical_rationale": "NICE NG196 rec 1.7.2: offer a standard beta-blocker or a rate-limiting calcium-channel blocker (diltiazem or verapamil) as initial rate-control monotherapy.",
+    "contraindications": []
+  },
+  {
+    "id": "ANS-054",
+    "subset": "complete_context_answer",
+    "query": "I have heart failure (EF 35%), I'm 74 and on all the usual tablets. do I really have to cut right down on salt and fluids?",
+    "patient_snapshot": {
+      "demographics": {"age": 74, "sex": "female"},
+      "recent_bp_readings": [{"sbp": 116, "dbp": 70}],
+      "current_medications": [{"drug": "Sacubitril/valsartan", "dosage": "49/51mg"}, {"drug": "Bisoprolol", "dosage": "5mg"}, {"drug": "Spironolactone", "dosage": "25mg"}, {"drug": "Dapagliflozin", "dosage": "10mg"}],
+      "symptoms": ["heart failure with reduced ejection fraction"]
+    },
+    "soft_ask_count": 0,
+    "expected_action": "ANSWER",
+    "expected_citations": ["NICE_NG106"],
+    "clinical_rationale": "NICE NG106 rec 1.9.10: do not routinely advise people with heart failure to restrict sodium or fluid; ask about intake and restrict only when needed (e.g. dilutional hyponatraemia).",
+    "contraindications": []
+  },
+  {
+    "id": "ANS-055",
+    "subset": "complete_context_answer",
+    "query": "I've got stable angina, I'm 64, on amlodipine 5mg and atorvastatin and no other blood thinners. should I be on aspirin as well?",
+    "patient_snapshot": {
+      "demographics": {"age": 64, "sex": "male"},
+      "recent_bp_readings": [{"sbp": 132, "dbp": 80}],
+      "current_medications": [{"drug": "Amlodipine", "dosage": "5mg"}, {"drug": "Atorvastatin", "dosage": "40mg"}],
+      "symptoms": ["chronic stable angina"]
+    },
+    "soft_ask_count": 0,
+    "expected_action": "ANSWER",
+    "expected_citations": ["CCD_GUIDELINE_REVIEW_2024"],
+    "clinical_rationale": "2023 chronic coronary disease guideline (reviewed in Clinical Cardiology 2024): without an indication for oral anticoagulation, single antiplatelet therapy with low-dose aspirin (75-100 mg) is recommended to reduce atherosclerotic events.",
+    "contraindications": []
+  },
+  {
+    "id": "ANS-056",
+    "subset": "complete_context_answer",
+    "query": "type 2 diabetic, 59, kidney function is eGFR 52 and BP 136/84 on losartan 100. my GP mentioned an SGLT2 inhibitor - does that help with BP and my kidneys?",
+    "patient_snapshot": {
+      "demographics": {"age": 59, "sex": "female"},
+      "recent_bp_readings": [{"sbp": 136, "dbp": 84}],
+      "current_medications": [{"drug": "Losartan", "dosage": "100mg"}, {"drug": "Metformin", "dosage": "1000mg"}],
+      "lab_results": [{"lab_type": "eGFR", "value": "52 mL/min/1.73m2"}],
+      "symptoms": ["type 2 diabetes", "chronic kidney disease"]
+    },
+    "soft_ask_count": 0,
+    "expected_action": "ANSWER",
+    "expected_citations": ["ESC 2024", "KDIGO 2021"],
+    "clinical_rationale": "ESC 2024: in hypertensive patients with CKD and eGFR > 20 mL/min/1.73 m2, SGLT2 inhibitors are recommended to improve outcomes, in the context of their modest BP-lowering effect.",
     "contraindications": []
   }
 ]

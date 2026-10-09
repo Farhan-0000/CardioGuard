@@ -1,142 +1,222 @@
 """
-CLI Runner for MedBridge-AQ Clinical Vignette Benchmark (TASK-32).
+CLI for the MedBridge-AQ routing benchmark.
 
-Executes the benchmark evaluation harness across 200+ clinical hypertension vignettes,
-computes clinical routing accuracy, citation precision, emergency recall, and
-hallucination rates, and generates a structured Markdown report.
+Examples::
 
-Usage:
-    # Run rapid 12-item sample subset:
-    python -m tests.benchmark.benchmark_runner --subset sample
+    # Harness self-test (routing simulator, hermetic, seconds):
+    python -m tests.benchmark.benchmark_runner --mode mock --all
 
-    # Run full 225-item benchmark suite:
-    python -m tests.benchmark.benchmark_runner --all
+    # Live: production pipeline, one new eval-DB session per vignette, resumable:
+    python -m tests.benchmark.benchmark_runner --mode live --all --resume
+    python -m tests.benchmark.benchmark_runner --mode live --subset emergency_escalate
+    python -m tests.benchmark.benchmark_runner --mode live --all --limit 12   # round-robin
 
-    # Run specific subset:
-    python -m tests.benchmark.benchmark_runner --subset emergency_escalate
+Live mode uses ``--database-url``, else ``$EVAL_DATABASE_URL``, else
+``EVAL_DATABASE_URL`` from ``.env``; it refuses the development database.
+Every evaluated vignette is appended to a JSONL checkpoint in
+``reports/benchmark_runs/`` so ``--resume`` continues an interrupted run (and re-renders
+the report of a finished run without any LLM call).
 
-    # Custom report output:
-    python -m tests.benchmark.benchmark_runner --all --output reports/my_report.md
+Exit codes: 0 = acceptance targets met, 1 = targets not met, 2 = configuration error.
 """
+
+from __future__ import annotations
+
 import argparse
 import asyncio
-from pathlib import Path
 import sys
+from pathlib import Path
+from typing import Any
 
-from tests.benchmark.evaluator import BenchmarkEvaluator, load_vignettes
+from tests.benchmark.evaluator import (
+    SUBSET_FILES,
+    BenchmarkEvaluator,
+    load_checkpoint,
+    load_vignettes,
+    rotate_checkpoint,
+    select_round_robin,
+)
 from tests.benchmark.report_generator import ReportGenerator
+from tests.benchmark.schemas import VignetteEvaluationResult
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+RUNS_DIR = REPO_ROOT / "reports" / "benchmark_runs"
+# One report path for both modes; the report states its mode prominently (mock reports carry
+# the "routing simulator - not evidence of model behaviour" banner). A finished live run can
+# be re-rendered without LLM calls: ``--mode live --all --resume`` reads every row from the
+# checkpoint.
+DEFAULT_REPORT_PATH = REPO_ROOT / "reports" / "medbridge_aq_benchmark_report.md"
 
 
-DEFAULT_REPORT_PATH = Path("reports") / "medbridge_aq_benchmark_report.md"
+def checkpoint_path(mode: str, subset: str, run_name: str | None = None) -> Path:
+    return RUNS_DIR / f"{run_name or f'aq_{mode}_{subset}'}.jsonl"
+
+
+def _progress(index: int, total: int, result: VignetteEvaluationResult) -> None:
+    mark = "ok " if result.action_match else "MISS"
+    extra = f" error={result.error}" if result.error else ""
+    print(
+        f"  [{index:>3}/{total}] {mark} {result.vignette_id:<11} "
+        f"expected={result.expected_action.value:<10} "
+        f"actual={result.actual_action.value:<10} {result.latency_ms:>9.0f} ms{extra}",
+        flush=True,
+    )
 
 
 async def run_benchmark_cli(
     subset: str = "sample",
     mode: str = "mock",
-    output_path: Path = DEFAULT_REPORT_PATH,
+    output_path: Path | None = None,
     quiet: bool = False,
+    *,
+    limit: int | None = None,
+    resume: bool = False,
+    database_url: str | None = None,
+    run_name: str | None = None,
+    use_checkpoint: bool | None = None,
+    executor: Any | None = None,
 ) -> int:
-    """Execute benchmark run and return exit code (0 = passed, 1 = failed)."""
-    if not quiet:
-        print("\n" + "=" * 75)
-        print("MedBridge-AQ Clinical Vignette Benchmark Runner (TASK-32)")
-        print("=" * 75)
-        print(f"• Evaluation Mode:  {mode}")
-        print(f"• Target Subset:    {subset}")
-        print(f"• Report Path:      {output_path}\n")
-
-    vignettes = load_vignettes(subset=subset if subset != "all" else None)
+    """Run the benchmark; returns the process exit code."""
+    output = output_path or DEFAULT_REPORT_PATH
+    try:
+        vignettes = select_round_robin(load_vignettes(None if subset == "all" else subset), limit)
+    except ValueError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 2
     if not vignettes:
         print(f"[ERROR] No vignettes found for subset '{subset}'", file=sys.stderr)
-        return 1
+        return 2
 
-    if not quiet:
-        print(f"Loaded {len(vignettes)} clinical vignettes. Starting evaluation...")
+    metadata: dict[str, Any] = {"subset": subset, "limit": limit if limit is not None else "none"}
+    if mode == "live" and executor is None:
+        from tests.benchmark.live import (
+            LiveConfigError,
+            configure_eval_environment,
+            resolve_eval_database_url,
+            run_metadata,
+        )
 
-    evaluator = BenchmarkEvaluator(mode=mode)
-    results, metrics = await evaluator.run_benchmark(vignettes)
+        try:
+            url = resolve_eval_database_url(database_url)
+        except LiveConfigError as exc:
+            print(f"[ERROR] {exc}", file=sys.stderr)
+            return 2
+        configure_eval_environment(url)
+        metadata.update(run_metadata(url))
 
-    # Generate and save report
-    report_md = ReportGenerator.generate_markdown_report(
-        metrics=metrics,
-        results=results,
-        eval_mode=f"{mode}_mode",
-    )
-    saved_path = ReportGenerator.save_report(report_md, output_path)
-
-    if not quiet:
-        print("\n" + "=" * 75)
-        print("Benchmark Results Summary")
-        print("=" * 75)
-        print(f"Total Evaluated:              {metrics.total_vignettes}")
-        print(f"Overall Routing Accuracy:     {metrics.overall_routing_accuracy}% (Target: >=90%)")
-        print(f"Citation Precision:           {metrics.overall_citation_precision}% (Target: >=90%)")
-        print(f"Emergency Detection Recall:   {metrics.emergency_detection_recall}% (Target: 100%)")
-        print(f"Out-of-Domain Hallucination:  {metrics.hallucination_rate}% (Target: 0%)")
-        print(f"Mean Latency:                 {metrics.mean_latency_ms} ms (P95: {metrics.latency_p95_ms} ms)")
-        print("-" * 75)
-
-        if metrics.passed_acceptance_criteria:
-            print(">> ALL ACCEPTANCE CRITERIA PASSED [OK]")
+    checkpointing = (mode == "live") if use_checkpoint is None else use_checkpoint
+    ckpt = checkpoint_path(mode, subset, run_name) if checkpointing else None
+    completed: dict[str, VignetteEvaluationResult] = {}
+    if ckpt is not None:
+        if resume:
+            completed = load_checkpoint(ckpt)
         else:
-            print(">> ACCEPTANCE CRITERIA FAILED [FAIL]")
+            moved = rotate_checkpoint(ckpt)
+            if moved and not quiet:
+                print(f"Previous checkpoint moved to {moved}")
+        metadata["checkpoint"] = (
+            str(ckpt.relative_to(REPO_ROOT)) if ckpt.is_relative_to(REPO_ROOT) else str(ckpt)
+        )
 
-        print(f">> Full Markdown Report written to: {saved_path}")
-        print("=" * 75 + "\n")
+    if not quiet:
+        print("=" * 78)
+        print(
+            f"MedBridge-AQ routing benchmark — mode={mode} subset={subset} "
+            f"vignettes={len(vignettes)} resume_hits={sum(v.id in completed for v in vignettes)}"
+        )
+        if mode == "mock":
+            print("MOCK MODE: routing simulator — not evidence of model behaviour.")
+        print("=" * 78)
 
+    evaluator = BenchmarkEvaluator(mode=mode, executor=executor)
+    try:
+        results, metrics = await evaluator.run_benchmark(
+            vignettes,
+            checkpoint=ckpt,
+            completed=completed,
+            progress=None if quiet else _progress,
+        )
+    finally:
+        await evaluator.close()
+
+    report = ReportGenerator.generate_markdown_report(
+        metrics=metrics, results=results, eval_mode=mode, metadata=metadata
+    )
+    ReportGenerator.save_report(report, output)
+    json_path = output.with_suffix(".json")
+    ReportGenerator.save_json(ReportGenerator.build_json(metrics, results, metadata), json_path)
+
+    if not quiet:
+        print("-" * 78)
+        print(
+            f"Routing accuracy:      {metrics.overall_routing_accuracy}% "
+            f"({metrics.total_correct_routings}/{metrics.total_vignettes})"
+        )
+        print(
+            f"Citation precision:    {metrics.overall_citation_precision} "
+            f"(n={metrics.citation_evaluated})"
+        )
+        print(
+            f"Emergency recall:      {metrics.emergency_detection_recall}% "
+            f"({metrics.emergency_detected_count}/{metrics.emergency_count})"
+        )
+        print(f"Out-of-domain ANSWER:  {metrics.hallucination_rate}%")
+        print(f"Latency p50/p95:       {metrics.latency_p50_ms} / {metrics.latency_p95_ms} ms")
+        print(f"Errors:                {metrics.errors}")
+        print(f"Report: {output}  (+ {json_path.name})")
     return 0 if metrics.passed_acceptance_criteria else 1
 
 
-def main() -> None:
-    """CLI entry point."""
-    parser = argparse.ArgumentParser(
-        description="MedBridge-AQ Clinical Vignette Benchmark Runner (TASK-32)",
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Run all 225 clinical vignettes across all 6 subsets",
-    )
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="MedBridge-AQ routing benchmark")
+    parser.add_argument("--all", action="store_true", help="all vignettes of all 6 subsets")
     parser.add_argument(
         "--subset",
-        type=str,
         default="sample",
-        help="Target subset (sample, emergency_escalate, complete_context_answer, "
-             "incomplete_context_soft_ask, lifestyle_and_generalize, "
-             "out_of_domain_abstain, complex_comorbid_contraindications)",
+        help="sample | all | " + " | ".join(SUBSET_FILES),
     )
     parser.add_argument(
         "--mode",
-        type=str,
-        default="mock",
         choices=["mock", "live"],
-        help="Execution mode: 'mock' (fast deterministic simulator) or 'live' (invokes orchestrator)",
+        default="mock",
+        help="mock = routing simulator (hermetic); live = production pipeline",
     )
     parser.add_argument(
-        "--output",
-        type=Path,
-        default=DEFAULT_REPORT_PATH,
-        help="Output path for the Markdown evaluation summary report",
+        "--limit",
+        type=int,
+        default=None,
+        help="evaluate only the first N vignettes (round-robin across subsets)",
     )
     parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Suppress console progress banners",
+        "--resume", action="store_true", help="skip vignettes already in the JSONL checkpoint"
     )
+    parser.add_argument(
+        "--database-url", default=None, help="evaluation database (default: EVAL_DATABASE_URL)"
+    )
+    parser.add_argument("--run-name", default=None, help="checkpoint file stem")
+    parser.add_argument(
+        "--output", type=Path, default=None, help="Markdown report path (JSON written next to it)"
+    )
+    parser.add_argument("--quiet", action="store_true")
+    return parser
 
-    args = parser.parse_args()
-    target_subset = "all" if args.all else args.subset
 
-    exit_code = asyncio.run(
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    subset = "all" if args.all else args.subset
+    return asyncio.run(
         run_benchmark_cli(
-            subset=target_subset,
+            subset=subset,
             mode=args.mode,
             output_path=args.output,
             quiet=args.quiet,
+            limit=args.limit,
+            resume=args.resume,
+            database_url=args.database_url,
+            run_name=args.run_name,
         )
     )
-    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
