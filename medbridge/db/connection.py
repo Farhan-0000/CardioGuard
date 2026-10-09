@@ -1,6 +1,13 @@
-import structlog
-from typing import AsyncGenerator
+"""
+Async database engine / session factory (Module M-02).
 
+``hide_parameters=True`` keeps bound SQL parameters (which may contain
+ciphertext or, for legacy rows, patient text) out of exception messages and
+SQL logs.
+"""
+from collections.abc import AsyncGenerator
+
+import structlog
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -18,6 +25,7 @@ _sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
 
 def get_engine() -> AsyncEngine:
+    """Return the process-wide async engine (created lazily)."""
     global _engine
     if _engine is None:
         settings = get_settings()
@@ -26,12 +34,14 @@ def get_engine() -> AsyncEngine:
             pool_size=20,
             max_overflow=10,
             pool_pre_ping=True,
+            hide_parameters=True,
             echo=False,
         )
     return _engine
 
 
 def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
+    """Return the process-wide session factory (autoflush off: one flush per turn)."""
     global _sessionmaker
     if _sessionmaker is None:
         _sessionmaker = async_sessionmaker(
@@ -45,7 +55,7 @@ def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency provider for database sessions."""
+    """FastAPI dependency provider for database sessions (commits on success)."""
     maker = get_sessionmaker()
     async with maker() as session:
         try:
@@ -66,7 +76,7 @@ async def init_db() -> None:
             await conn.execute(text("SELECT 1"))
         logger.info("Database connection established successfully.")
     except Exception as e:
-        logger.error(f"Failed to connect to the database: {e}")
+        logger.error("database_connect_failed", error_type=type(e).__name__, error=str(e))
         raise
 
 

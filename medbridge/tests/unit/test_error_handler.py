@@ -22,7 +22,11 @@ from medbridge.api.middleware.error_handler import (
     validation_error_handler,
 )
 from medbridge.api.schemas.responses import ErrorResponse
-from medbridge.state.session_manager import SessionNotFoundError
+from medbridge.state.session_manager import (
+    MessageNotFoundError,
+    SessionErasedError,
+    SessionNotFoundError,
+)
 
 
 class DummyPayload(BaseModel):
@@ -67,7 +71,28 @@ def test_app() -> FastAPI:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Rate limit exceeded.",
+            headers={"Retry-After": "30"},
         )
+
+    @app.get("/test/http-401")
+    async def route_http_401():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session token required.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    @app.get("/test/http-413")
+    async def route_http_413():
+        raise HTTPException(status_code=413, detail="Request body too large.")
+
+    @app.get("/test/session-erased/{session_id}")
+    async def route_session_erased(session_id: uuid.UUID):
+        raise SessionErasedError(session_id)
+
+    @app.get("/test/message-not-found/{message_id}")
+    async def route_message_not_found(message_id: uuid.UUID):
+        raise MessageNotFoundError(message_id)
 
     return app
 
@@ -179,3 +204,44 @@ class TestGlobalErrorHandler:
         data = response.json()
         assert data["error_code"] == "NOT_FOUND"
         assert data["safe_fallback"] == SAFE_FALLBACK
+
+
+class TestPrivacyAndAuthErrors:
+    """401/403/410/413/429 mapping and PHI-free error logging (finalization)."""
+
+    def test_auth_and_limit_codes_keep_headers(self, client: TestClient) -> None:
+        resp_401 = client.get("/test/http-401")
+        assert resp_401.status_code == 401
+        assert resp_401.json()["error_code"] == "UNAUTHORIZED"
+        assert resp_401.headers["www-authenticate"] == "Bearer"
+
+        resp_413 = client.get("/test/http-413")
+        assert resp_413.status_code == 413
+        assert resp_413.json()["error_code"] == "PAYLOAD_TOO_LARGE"
+
+        resp_429 = client.get("/test/http-429")
+        assert resp_429.headers["retry-after"] == "30"
+
+    def test_erased_session_returns_410(self, client: TestClient) -> None:
+        sid = uuid.uuid4()
+        response = client.get(f"/test/session-erased/{sid}")
+        assert response.status_code == 410
+        data = response.json()
+        assert data["error_code"] == "SESSION_ERASED"
+        assert data["safe_fallback"] == SAFE_FALLBACK
+
+    def test_message_not_found_returns_404(self, client: TestClient) -> None:
+        response = client.get(f"/test/message-not-found/{uuid.uuid4()}")
+        assert response.status_code == 404
+        assert response.json()["error_code"] == "MESSAGE_NOT_FOUND"
+
+    def test_validation_errors_do_not_echo_or_log_the_input(self, client: TestClient) -> None:
+        from structlog.testing import capture_logs
+
+        with capture_logs() as logs:  # "x" is too short → the error carries the input
+            response = client.post("/test/validation", json={"message": "x"})
+        assert response.status_code == 422
+        for err in response.json()["details"]:
+            assert "input" not in err and "ctx" not in err
+        logged = [e for e in logs if e["event"] == "request_validation_error"]
+        assert logged and all("input" not in err for err in logged[0]["errors"])

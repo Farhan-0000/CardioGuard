@@ -1,8 +1,8 @@
 """
 Integration tests for TASK-13: State Projector DB persistence.
 
-Tests transactional atomicity of persist_and_project() against a live
-PostgreSQL database. Requires Docker Compose services to be running.
+Tests transactional atomicity of persist_and_project() against the isolated
+PostgreSQL test database; payloads and snapshots are stored encrypted.
 """
 import os
 import uuid
@@ -18,7 +18,16 @@ from medbridge.ai.schemas.extractor import DeltaEvent
 from medbridge.api.schemas.enums import EventTypeEnum
 from medbridge.db.connection import get_engine, get_sessionmaker
 from medbridge.db.models import ClinicalEvent, ContextSnapshot, Session as SessionModel
+from medbridge.privacy.crypto import get_session_cipher
 from medbridge.state.projector import StateProjector
+
+pytestmark = pytest.mark.postgres
+
+
+async def _plain(db: AsyncSession, session_id: uuid.UUID, value):
+    cipher = await get_session_cipher(db, session_id)
+    assert cipher is not None
+    return cipher.decrypt_json(value)
 
 
 @pytest.fixture
@@ -79,11 +88,16 @@ async def test_persist_creates_events_and_snapshot(
         select(ClinicalEvent).where(ClinicalEvent.session_id == test_session_id)
     )).scalars().all()
     assert len(rows) == 2
+    assert all(row.payload.get("enc") == "v1" for row in rows)  # encrypted at rest
+    assert sorted([(await _plain(db_session, test_session_id, r.payload)).get("age", 0)
+                   for r in rows]) == [0, 55]
 
-    # Verify snapshot persisted
+    # Verify snapshot persisted (encrypted)
     snap = await db_session.get(ContextSnapshot, test_session_id)
     assert snap is not None
-    assert snap.snapshot["demographics"]["age"] == 55
+    assert snap.snapshot.get("enc") == "v1"
+    stored = await _plain(db_session, test_session_id, snap.snapshot)
+    assert stored["demographics"]["age"] == 55
 
 
 @pytest.mark.asyncio
@@ -124,10 +138,11 @@ async def test_persist_upserts_existing_snapshot(
     await db_session.flush()
 
     # Snapshot should have both demographic and BP data
-    stored = await db_session.get(ContextSnapshot, test_session_id)
-    assert stored is not None
-    assert stored.snapshot["demographics"]["age"] == 55
-    assert len(stored.snapshot["recent_bp_readings"]) == 1
+    stored_row = await db_session.get(ContextSnapshot, test_session_id)
+    assert stored_row is not None
+    stored = await _plain(db_session, test_session_id, stored_row.snapshot)
+    assert stored["demographics"]["age"] == 55
+    assert len(stored["recent_bp_readings"]) == 1
 
     # Total events should be 2 (1 + 1)
     rows = (await db_session.execute(

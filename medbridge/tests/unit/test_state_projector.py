@@ -423,3 +423,73 @@ class TestReconstruction:
         result = projector.apply_events(original, [event])
         assert result["demographics"]["age"] == 56
         assert original["demographics"]["age"] == 55  # Unchanged
+
+
+# ---------------------------------------------------------------------------
+# Rule fixes (finalization): stopped_at on MEDICATION_STOPPED, labs per type
+# ---------------------------------------------------------------------------
+
+class TestMedicationStoppedRecordsWhenAndWhy:
+    def test_stopped_at_and_reason_are_recorded(self, projector):
+        snapshot = {"current_medications": [{"drug": "Amlodipine", "dosage": "5mg",
+                                             "frequency": "daily"}]}
+        event = DeltaEvent(
+            event_type=EventTypeEnum.MEDICATION_STOPPED,
+            payload={"drug_name": "amlodipine", "reason": "ankle swelling",
+                     "stopped_at": "2026-10-01"},
+        )
+        stopped = projector.apply_events(snapshot, [event])["discontinued_medications"][0]
+        assert stopped == {"drug": "Amlodipine", "dosage": "5mg", "frequency": "daily",
+                           "reason": "ankle swelling", "stopped_at": "2026-10-01"}
+
+    def test_stopped_at_is_none_when_unknown(self, projector):
+        snapshot = {"current_medications": [{"drug": "Telma", "dosage": "", "frequency": ""}]}
+        event = DeltaEvent(event_type=EventTypeEnum.MEDICATION_STOPPED,
+                           payload={"drug": "Telma"})
+        stopped = projector.apply_events(snapshot, [event])["discontinued_medications"][0]
+        assert stopped["stopped_at"] is None and stopped["reason"] == ""
+
+    def test_projection_stays_a_pure_fold(self, projector):
+        events = [
+            DeltaEvent(event_type=EventTypeEnum.MEDICATION_ADDED,
+                       payload={"drug_name": "Amlodipine"}),
+            DeltaEvent(event_type=EventTypeEnum.MEDICATION_STOPPED,
+                       payload={"drug_name": "Amlodipine", "reason": "edema"}),
+        ]
+        assert projector.reconstruct_from_events(events) == projector.apply_events({}, events)
+
+
+class TestLabResultKeepsLastThreePerType:
+    @staticmethod
+    def _lab(lab_type, value):
+        payload = {"value": value}
+        if lab_type is not None:
+            payload["lab_type"] = lab_type
+        return DeltaEvent(event_type=EventTypeEnum.LAB_RESULT, payload=payload)
+
+    def test_untyped_lab_does_not_truncate_other_types(self, projector):
+        events = [self._lab("potassium", 4.0), self._lab("potassium", 4.1),
+                  self._lab("creatinine", 1.0), self._lab("creatinine", 1.1),
+                  self._lab(None, 99)]
+        labs = projector.apply_events({}, events)["lab_results"]
+        assert len(labs) == 5  # previously truncated to the last 3 overall
+
+    def test_chronological_order_is_preserved(self, projector):
+        events = [self._lab("potassium", 4.0), self._lab("creatinine", 1.0),
+                  self._lab("potassium", 4.1), self._lab("potassium", 4.2),
+                  self._lab("potassium", 4.3), self._lab("creatinine", 1.1)]
+        labs = projector.apply_events({}, events)["lab_results"]
+        assert [lab["value"] for lab in labs] == [1.0, 4.1, 4.2, 4.3, 1.1]
+
+    def test_lab_type_matching_is_case_insensitive_and_aliased(self, projector):
+        events = [DeltaEvent(event_type=EventTypeEnum.LAB_RESULT, payload=p) for p in (
+            {"lab_type": "eGFR", "value": 60}, {"lab": "egfr", "value": 58},
+            {"test": "EGFR", "value": 55}, {"name": "eGFR ", "value": 52},
+        )]
+        labs = projector.apply_events({}, events)["lab_results"]
+        assert [lab["value"] for lab in labs] == [58, 55, 52]
+
+    def test_untyped_labs_keep_last_three(self, projector):
+        events = [self._lab(None, v) for v in range(5)]
+        labs = projector.apply_events({}, events)["lab_results"]
+        assert [lab["value"] for lab in labs] == [2, 3, 4]

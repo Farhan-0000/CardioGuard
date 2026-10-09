@@ -4,24 +4,49 @@ Deterministic State Projector (ADL-001).
 Applies typed delta events to patient context snapshots using pure Python
 deterministic merge rules. Does NOT use the LLM.
 
-Persistence: ``persist_and_project()`` inserts clinical events and upserts
-the snapshot within a single database transaction (atomic).
+Persistence: ``persist_and_project()`` inserts (encrypted) clinical events and
+upserts the (encrypted) snapshot within a single database transaction. The
+pipeline itself uses ``medbridge.state.turn_store`` which applies the same pure
+projection and persists the whole turn with one flush.
 
 Technical Specification Part IV §3.3 / §4.1 Projection Rules.
 """
 import copy
 import uuid
+from datetime import timedelta
 from typing import Any
 
 import structlog
-
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from medbridge.ai.schemas.extractor import DeltaEvent
 from medbridge.db.models import ClinicalEvent, ContextSnapshot, EventTypeEnum
+from medbridge.state.session_manager import require_cipher, utcnow
 
 logger = structlog.get_logger(__name__)
+
+# Readings kept in the snapshot (the full series stays in clinical_events).
+MAX_BP_READINGS = 5
+# Lab results kept per lab type.
+MAX_LABS_PER_TYPE = 3
+
+
+def event_type_value(event: DeltaEvent) -> str:
+    """The event type as a plain string (enum or free text)."""
+    raw = event.event_type
+    return raw.value if isinstance(raw, EventTypeEnum) else str(raw)
+
+
+def _first(payload: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        value = payload.get(key)
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def _lab_key(lab: dict[str, Any]) -> str:
+    return str(_first(lab, "lab_type", "lab", "test", "name") or "").strip().lower()
 
 
 class StateProjector:
@@ -81,35 +106,37 @@ class StateProjector:
         committed; we add work to it but do NOT commit — the caller (or the
         FastAPI dependency) is responsible for committing.
         """
+        cipher = await require_cipher(session, session_id)
         # 1. Compute new snapshot (pure logic)
         updated_snapshot = self.apply_events(current_snapshot, events)
 
-        # 2. Persist each event row
-        for event in events:
-            raw_type = event.event_type.value if hasattr(event.event_type, "value") else str(event.event_type)
+        # 2. Persist each event row (encrypted payload, strictly increasing timestamps)
+        now = utcnow()
+        for offset, event in enumerate(events):
             try:
-                enum_val = EventTypeEnum(raw_type)
+                enum_val = EventTypeEnum(event_type_value(event))
             except ValueError:
+                logger.warning("unknown_event_type_skipped", event_type=event_type_value(event))
                 continue
-            row = ClinicalEvent(
+            session.add(ClinicalEvent(
                 event_id=uuid.uuid4(),
                 session_id=session_id,
                 event_type=enum_val,
-                payload=event.payload,
-            )
-            session.add(row)
+                payload=cipher.encrypt_json(event.payload),
+                created_at=now + timedelta(microseconds=offset),
+            ))
 
         # 3. Upsert context snapshot
         existing = await session.get(ContextSnapshot, session_id)
         if existing is not None:
-            existing.snapshot = updated_snapshot
+            existing.snapshot = cipher.encrypt_json(updated_snapshot)
+            existing.updated_at = now
         else:
-            new_snap = ContextSnapshot(
+            session.add(ContextSnapshot(
                 session_id=session_id,
-                snapshot=updated_snapshot,
+                snapshot=cipher.encrypt_json(updated_snapshot),
                 soft_ask_count=0,
-            )
-            session.add(new_snap)
+            ))
 
         return updated_snapshot
 
@@ -122,81 +149,66 @@ class StateProjector:
         snapshot: dict[str, Any],
         event: DeltaEvent,
     ) -> dict[str, Any]:
-        ev_type = event.event_type.value if hasattr(event.event_type, "value") else str(event.event_type)
-        match ev_type:
+        payload = event.payload
+        match event_type_value(event):
             case "BP_READING":
                 readings = snapshot.setdefault("recent_bp_readings", [])
-                readings.append(event.payload)
-                snapshot["recent_bp_readings"] = readings[-5:]  # Keep last 5
+                readings.append(payload)
+                snapshot["recent_bp_readings"] = readings[-MAX_BP_READINGS:]
 
             case "MEDICATION_ADDED":
                 meds = snapshot.setdefault("current_medications", [])
-                drug_name = (
-                    event.payload.get("drug_name")
-                    or event.payload.get("drug")
-                    or event.payload.get("name")
-                    or event.payload.get("medication")
-                )
+                drug_name = _first(payload, "drug_name", "drug", "name", "medication")
                 if drug_name:
                     name_lower = str(drug_name).strip().lower()
                     if not any(str(m.get("drug", "")).strip().lower() == name_lower for m in meds):
                         meds.append({
                             "drug": str(drug_name).strip(),
-                            "dosage": str(event.payload.get("dosage") or event.payload.get("dose") or "").strip(),
-                            "frequency": str(event.payload.get("frequency") or "").strip(),
+                            "dosage": str(_first(payload, "dosage", "dose") or "").strip(),
+                            "frequency": str(payload.get("frequency") or "").strip(),
                         })
 
             case "MEDICATION_STOPPED":
-                drug_name = (
-                    event.payload.get("drug_name")
-                    or event.payload.get("drug")
-                    or event.payload.get("name")
-                    or event.payload.get("medication")
-                )
+                drug_name = _first(payload, "drug_name", "drug", "name", "medication")
                 if drug_name:
                     name_lower = str(drug_name).strip().lower()
                     current = snapshot.get("current_medications", [])
-                    stopped = [m for m in current if str(m.get("drug", "")).strip().lower() == name_lower]
+                    stopped = [
+                        m for m in current if str(m.get("drug", "")).strip().lower() == name_lower
+                    ]
                     snapshot["current_medications"] = [
                         m for m in current if str(m.get("drug", "")).strip().lower() != name_lower
                     ]
                     disc = snapshot.setdefault("discontinued_medications", [])
                     for m in stopped:
-                        disc.append({**m, "reason": event.payload.get("reason", "")})
+                        disc.append({
+                            **m,
+                            "reason": str(payload.get("reason") or ""),
+                            # Taken from the event so the projection stays a pure fold.
+                            "stopped_at": _first(payload, "stopped_at", "date", "recorded_at"),
+                        })
 
             case "SYMPTOM_REPORTED":
                 symptoms = snapshot.setdefault("symptoms", [])
-                symptom_val = (
-                    event.payload.get("symptom")
-                    or event.payload.get("name")
-                    or ""
-                )
-                new = str(symptom_val).strip()
+                new = str(_first(payload, "symptom", "name") or "").strip()
                 if new and new.lower() not in [str(s).strip().lower() for s in symptoms]:
                     symptoms.append(new)
 
             case "DEMOGRAPHIC":
                 demo = snapshot.setdefault("demographics", {})
-                demo.update(event.payload)
+                demo.update(payload)
 
             case "LAB_RESULT":
-                labs = snapshot.setdefault("lab_results", [])
-                labs.append(event.payload)
-                # Keep last 3 per lab type
-                lab_type = event.payload.get("lab_type", "")
-                if lab_type:
-                    # Group by lab_type, keep last 3 of each
-                    by_type: dict[str, list] = {}
-                    for lab in labs:
-                        lt = lab.get("lab_type", "")
-                        by_type.setdefault(lt, []).append(lab)
-                    for lt in by_type:
-                        by_type[lt] = by_type[lt][-3:]
-                    # Flatten back preserving insertion order
-                    snapshot["lab_results"] = [
-                        lab for lt_labs in by_type.values() for lab in lt_labs
-                    ]
-                else:
-                    snapshot["lab_results"] = labs[-3:]
+                labs = [*snapshot.get("lab_results", []), payload]
+                # Keep the last MAX_LABS_PER_TYPE results of each lab type, in
+                # chronological order (labs without a type form their own group).
+                seen: dict[str, int] = {}
+                kept_reversed: list[dict[str, Any]] = []
+                for lab in reversed(labs):
+                    key = _lab_key(lab)
+                    seen[key] = seen.get(key, 0) + 1
+                    if seen[key] <= MAX_LABS_PER_TYPE:
+                        kept_reversed.append(lab)
+                snapshot["lab_results"] = list(reversed(kept_reversed))
 
         return snapshot

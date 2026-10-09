@@ -61,3 +61,22 @@ def test_json_log_emission_and_masking():
     assert log_data["authorization"] == "***MASKED***"
     assert "secret_key_123" not in log_content
     assert "Bearer xyz" not in log_content
+
+
+
+def test_pii_is_scrubbed_from_log_events():
+    log_output = io.StringIO()
+    configure_logging(json_format=True, log_level=logging.INFO)
+    handler = logging.StreamHandler(log_output)
+    handler.setFormatter(logging.getLogger().handlers[0].formatter)
+    logging.getLogger().handlers = [handler]
+
+    logger = structlog.get_logger("test_logger")
+    logger.info("user said my name is Rahul Sharma, email rahul@example.com",
+                note="BP 150/95 on Telma 40", prompt_tokens=120)
+
+    log_data = json.loads(log_output.getvalue())
+    assert log_data["event"] == "user said my name is [NAME], email [EMAIL]"
+    assert log_data["note"] == "BP 150/95 on Telma 40"  # clinical values untouched
+    assert log_data["prompt_tokens"] == 120  # token *counts* are not masked
+    assert "Rahul" not in log_output.getvalue()

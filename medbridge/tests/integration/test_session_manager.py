@@ -1,9 +1,9 @@
 """
 Integration tests for TASK-14: Database Session Manager.
 
-Tests session creation, state loading, counter increment/reset, and
-message history ordering against a live PostgreSQL database.
-Requires Docker Compose services to be running.
+Tests session creation (incl. the per-session data key), state loading,
+counter increment/reset, encrypted message history and ordering against the
+isolated PostgreSQL test database.
 """
 import os
 import uuid
@@ -17,7 +17,9 @@ os.environ.setdefault("POSTGRES_PASSWORD", "password")
 
 from medbridge.api.schemas.enums import ActionEnum
 from medbridge.db.connection import get_sessionmaker
+from medbridge.db.models import SessionKey
 from medbridge.state.session_manager import (
+    SessionErasedError,
     SessionNotFoundError,
     create_session,
     get_message_history,
@@ -26,6 +28,9 @@ from medbridge.state.session_manager import (
     reset_soft_ask_count,
     save_message,
 )
+from medbridge.state.turn_store import erase_session
+
+pytestmark = pytest.mark.postgres
 
 
 @pytest.fixture
@@ -189,3 +194,40 @@ async def test_empty_message_history(db_session: AsyncSession):
     session_id = await create_session(db_session)
     history = await get_message_history(db_session, session_id)
     assert history == []
+
+
+# ---------------------------------------------------------------------------
+# Encryption (ADL-031) and erasure (ADL-032)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_create_session_creates_wrapped_data_key(db_session: AsyncSession):
+    session_id = await create_session(db_session)
+    key = await db_session.get(SessionKey, session_id)
+    assert key is not None
+    assert key.wrapped_key.startswith("gAAAA")  # Fernet token of the wrapped key
+
+
+@pytest.mark.asyncio
+async def test_saved_messages_are_encrypted_at_rest(db_session: AsyncSession):
+    session_id = await create_session(db_session)
+    await save_message(db_session, session_id, role="user", content="My BP is 160/100")
+    raw = (await db_session.execute(
+        text("SELECT content FROM message_history WHERE session_id = :sid"),
+        {"sid": session_id},
+    )).scalar_one()
+    assert raw.startswith("enc:v1:") and "160/100" not in raw
+    history = await get_message_history(db_session, session_id)
+    assert history[0]["content"] == "My BP is 160/100"
+
+
+@pytest.mark.asyncio
+async def test_erased_session_cannot_be_loaded_or_written(db_session: AsyncSession):
+    session_id = await create_session(db_session)
+    await save_message(db_session, session_id, role="user", content="hello")
+    await erase_session(db_session, session_id)
+    with pytest.raises(SessionErasedError):
+        await load_session_state(db_session, session_id)
+    with pytest.raises(SessionErasedError):
+        await save_message(db_session, session_id, role="user", content="again")
+    assert await get_message_history(db_session, session_id) == []

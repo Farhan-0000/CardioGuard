@@ -1,0 +1,978 @@
+{
+  "meta": {
+    "generated_at": "2026-10-09T10:57:59+00:00",
+    "testset": "tests/privacy/pii_testset.json",
+    "testset_version": "1.1",
+    "reference_date": "2026-10-09",
+    "python": "3.11.15",
+    "machine": "arm64"
+  },
+  "results": {
+    "all": {
+      "n_examples": 240,
+      "n_positive_examples": 150,
+      "n_negative_examples": 90,
+      "overall_strict": {
+        "tp": 176,
+        "fp": 0,
+        "fn": 7,
+        "precision": 1.0,
+        "recall": 0.9617,
+        "f1": 0.9805,
+        "support": 183
+      },
+      "overall_overlap": {
+        "tp": 176,
+        "fp": 0,
+        "fn": 7,
+        "precision": 1.0,
+        "recall": 0.9617,
+        "f1": 0.9805,
+        "support": 183
+      },
+      "per_category_strict": {
+        "AADHAAR": {
+          "tp": 8,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 8
+        },
+        "ADDRESS": {
+          "tp": 14,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 14
+        },
+        "AGE": {
+          "tp": 13,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 13
+        },
+        "EMAIL": {
+          "tp": 11,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 11
+        },
+        "INSURANCE_ID": {
+          "tp": 13,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 13
+        },
+        "IP": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "MRN": {
+          "tp": 13,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 13
+        },
+        "NAME": {
+          "tp": 44,
+          "fp": 0,
+          "fn": 5,
+          "precision": 1.0,
+          "recall": 0.898,
+          "f1": 0.9462,
+          "support": 49
+        },
+        "PAN": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "PHONE": {
+          "tp": 20,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1.0,
+          "recall": 0.9524,
+          "f1": 0.9756,
+          "support": 21
+        },
+        "PINCODE": {
+          "tp": 17,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1.0,
+          "recall": 0.9444,
+          "f1": 0.9714,
+          "support": 18
+        },
+        "SSN": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "URL": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 5
+        }
+      },
+      "per_category_overlap": {
+        "AADHAAR": {
+          "tp": 8,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 8
+        },
+        "ADDRESS": {
+          "tp": 14,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 14
+        },
+        "AGE": {
+          "tp": 13,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 13
+        },
+        "EMAIL": {
+          "tp": 11,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 11
+        },
+        "INSURANCE_ID": {
+          "tp": 13,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 13
+        },
+        "IP": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "MRN": {
+          "tp": 13,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 13
+        },
+        "NAME": {
+          "tp": 44,
+          "fp": 0,
+          "fn": 5,
+          "precision": 1.0,
+          "recall": 0.898,
+          "f1": 0.9462,
+          "support": 49
+        },
+        "PAN": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "PHONE": {
+          "tp": 20,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1.0,
+          "recall": 0.9524,
+          "f1": 0.9756,
+          "support": 21
+        },
+        "PINCODE": {
+          "tp": 17,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1.0,
+          "recall": 0.9444,
+          "f1": 0.9714,
+          "support": 18
+        },
+        "SSN": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "URL": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 5
+        }
+      },
+      "negatives_altered": [],
+      "protected_values_corrupted": [],
+      "mean_latency_ms": 0.0247,
+      "errors": [
+        {
+          "id": "P026",
+          "text": "Rahul and I both have high BP, mine is 150/90.",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "NAME@0:5",
+              "value": "Rahul"
+            }
+          ],
+          "redacted": "Rahul and I both have high BP, mine is 150/90."
+        },
+        {
+          "id": "P027",
+          "text": "Can Suresh take Telma 40 with his sugar tablets?",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "NAME@4:10",
+              "value": "Suresh"
+            }
+          ],
+          "redacted": "Can Suresh take Telma 40 with his sugar tablets?"
+        },
+        {
+          "id": "H001",
+          "text": "hey its me Rajesh Iyer again, bp 150/95 this am",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "NAME@11:22",
+              "value": "Rajesh Iyer"
+            }
+          ],
+          "redacted": "hey its me Rajesh Iyer again, bp 150/95 this am"
+        },
+        {
+          "id": "H003",
+          "text": "my husband's name is Arun Pillai, he takes Telma 40",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "NAME@21:32",
+              "value": "Arun Pillai"
+            }
+          ],
+          "redacted": "my husband's name is Arun Pillai, he takes Telma 40"
+        },
+        {
+          "id": "H005",
+          "text": "call me on +91 80 4123 4567 (office)",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "PHONE@11:27",
+              "value": "+91 80 4123 4567"
+            }
+          ],
+          "redacted": "call me on +91 80 4123 4567 (office)"
+        },
+        {
+          "id": "H022",
+          "text": "Sign: Meghna Bose",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "NAME@6:17",
+              "value": "Meghna Bose"
+            }
+          ],
+          "redacted": "Sign: Meghna Bose"
+        },
+        {
+          "id": "H029",
+          "text": "I live in Koramangala, Bangalore 560034",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "PINCODE@33:39",
+              "value": "560034"
+            }
+          ],
+          "redacted": "I live in Koramangala, Bangalore 560034"
+        }
+      ]
+    },
+    "dev": {
+      "n_examples": 185,
+      "n_positive_examples": 120,
+      "n_negative_examples": 65,
+      "overall_strict": {
+        "tp": 145,
+        "fp": 0,
+        "fn": 2,
+        "precision": 1.0,
+        "recall": 0.9864,
+        "f1": 0.9932,
+        "support": 147
+      },
+      "overall_overlap": {
+        "tp": 145,
+        "fp": 0,
+        "fn": 2,
+        "precision": 1.0,
+        "recall": 0.9864,
+        "f1": 0.9932,
+        "support": 147
+      },
+      "per_category_strict": {
+        "AADHAAR": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "ADDRESS": {
+          "tp": 11,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 11
+        },
+        "AGE": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 10
+        },
+        "EMAIL": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 10
+        },
+        "INSURANCE_ID": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 10
+        },
+        "IP": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 5
+        },
+        "MRN": {
+          "tp": 11,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 11
+        },
+        "NAME": {
+          "tp": 38,
+          "fp": 0,
+          "fn": 2,
+          "precision": 1.0,
+          "recall": 0.95,
+          "f1": 0.9744,
+          "support": 40
+        },
+        "PAN": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 5
+        },
+        "PHONE": {
+          "tp": 17,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 17
+        },
+        "PINCODE": {
+          "tp": 13,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 13
+        },
+        "SSN": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 5
+        },
+        "URL": {
+          "tp": 4,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        }
+      },
+      "per_category_overlap": {
+        "AADHAAR": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "ADDRESS": {
+          "tp": 11,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 11
+        },
+        "AGE": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 10
+        },
+        "EMAIL": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 10
+        },
+        "INSURANCE_ID": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 10
+        },
+        "IP": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 5
+        },
+        "MRN": {
+          "tp": 11,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 11
+        },
+        "NAME": {
+          "tp": 38,
+          "fp": 0,
+          "fn": 2,
+          "precision": 1.0,
+          "recall": 0.95,
+          "f1": 0.9744,
+          "support": 40
+        },
+        "PAN": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 5
+        },
+        "PHONE": {
+          "tp": 17,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 17
+        },
+        "PINCODE": {
+          "tp": 13,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 13
+        },
+        "SSN": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 5
+        },
+        "URL": {
+          "tp": 4,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        }
+      },
+      "negatives_altered": [],
+      "protected_values_corrupted": [],
+      "mean_latency_ms": 0.0247,
+      "errors": [
+        {
+          "id": "P026",
+          "text": "Rahul and I both have high BP, mine is 150/90.",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "NAME@0:5",
+              "value": "Rahul"
+            }
+          ],
+          "redacted": "Rahul and I both have high BP, mine is 150/90."
+        },
+        {
+          "id": "P027",
+          "text": "Can Suresh take Telma 40 with his sugar tablets?",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "NAME@4:10",
+              "value": "Suresh"
+            }
+          ],
+          "redacted": "Can Suresh take Telma 40 with his sugar tablets?"
+        }
+      ]
+    },
+    "heldout": {
+      "n_examples": 55,
+      "n_positive_examples": 30,
+      "n_negative_examples": 25,
+      "overall_strict": {
+        "tp": 31,
+        "fp": 0,
+        "fn": 5,
+        "precision": 1.0,
+        "recall": 0.8611,
+        "f1": 0.9254,
+        "support": 36
+      },
+      "overall_overlap": {
+        "tp": 31,
+        "fp": 0,
+        "fn": 5,
+        "precision": 1.0,
+        "recall": 0.8611,
+        "f1": 0.9254,
+        "support": 36
+      },
+      "per_category_strict": {
+        "AADHAAR": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 2
+        },
+        "ADDRESS": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        },
+        "AGE": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        },
+        "EMAIL": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "INSURANCE_ID": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        },
+        "IP": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "MRN": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 2
+        },
+        "NAME": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 3,
+          "precision": 1.0,
+          "recall": 0.6667,
+          "f1": 0.8,
+          "support": 9
+        },
+        "PAN": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "PHONE": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "PINCODE": {
+          "tp": 4,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1.0,
+          "recall": 0.8,
+          "f1": 0.8889,
+          "support": 5
+        },
+        "SSN": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "URL": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        }
+      },
+      "per_category_overlap": {
+        "AADHAAR": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 2
+        },
+        "ADDRESS": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        },
+        "AGE": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        },
+        "EMAIL": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "INSURANCE_ID": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        },
+        "IP": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "MRN": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 2
+        },
+        "NAME": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 3,
+          "precision": 1.0,
+          "recall": 0.6667,
+          "f1": 0.8,
+          "support": 9
+        },
+        "PAN": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "PHONE": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1.0,
+          "recall": 0.75,
+          "f1": 0.8571,
+          "support": 4
+        },
+        "PINCODE": {
+          "tp": 4,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1.0,
+          "recall": 0.8,
+          "f1": 0.8889,
+          "support": 5
+        },
+        "SSN": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "URL": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        }
+      },
+      "negatives_altered": [],
+      "protected_values_corrupted": [],
+      "mean_latency_ms": 0.0219,
+      "errors": [
+        {
+          "id": "H001",
+          "text": "hey its me Rajesh Iyer again, bp 150/95 this am",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "NAME@11:22",
+              "value": "Rajesh Iyer"
+            }
+          ],
+          "redacted": "hey its me Rajesh Iyer again, bp 150/95 this am"
+        },
+        {
+          "id": "H003",
+          "text": "my husband's name is Arun Pillai, he takes Telma 40",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "NAME@21:32",
+              "value": "Arun Pillai"
+            }
+          ],
+          "redacted": "my husband's name is Arun Pillai, he takes Telma 40"
+        },
+        {
+          "id": "H005",
+          "text": "call me on +91 80 4123 4567 (office)",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "PHONE@11:27",
+              "value": "+91 80 4123 4567"
+            }
+          ],
+          "redacted": "call me on +91 80 4123 4567 (office)"
+        },
+        {
+          "id": "H022",
+          "text": "Sign: Meghna Bose",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "NAME@6:17",
+              "value": "Meghna Bose"
+            }
+          ],
+          "redacted": "Sign: Meghna Bose"
+        },
+        {
+          "id": "H029",
+          "text": "I live in Koramangala, Bangalore 560034",
+          "errors": [
+            {
+              "kind": "FN",
+              "span": "PINCODE@33:39",
+              "value": "560034"
+            }
+          ],
+          "redacted": "I live in Koramangala, Bangalore 560034"
+        }
+      ]
+    }
+  }
+}

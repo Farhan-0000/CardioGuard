@@ -1,21 +1,27 @@
 """
 Integration Tests for REST Route Handlers (TASK-29, Module M-04).
 
-Tests all 4 endpoints:
-- POST /api/sessions: Create session (HTTP 201)
-- GET /api/sessions/{session_id}/history: Retrieve message history (HTTP 200 / 404)
-- POST /api/sessions/{session_id}/messages: Process clinical query (HTTP 200 / 404 / 422)
-- GET /health: Health check (HTTP 200 / 503)
+- POST   /api/sessions                      → 201 + signed session token
+- GET    /api/sessions/{session_id}/history → 200 (token) / 401 / 403 / 404 / 410 / 422
+- DELETE /api/sessions/{session_id}         → 204 crypto-shred (token)
+- POST   /api/sessions/{session_id}/messages → 200 / 404 / 422 (pipeline mocked)
+- GET    /health                            → 200 / 503
+
+Hermetic: the persistence layer and the orchestrator are mocked.
 """
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
 import uuid
+from datetime import UTC, datetime
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from medbridge.api.middleware.error_handler import register_error_handlers
-from medbridge.api.routes import api_router, health_router
+from medbridge.api.routes.health import health_router
+from medbridge.api.routes.messages import messages_router
+from medbridge.api.routes.sessions import sessions_router
 from medbridge.api.schemas.enums import ActionEnum
 from medbridge.api.schemas.responses import (
     CitationResponse,
@@ -26,72 +32,52 @@ from medbridge.api.schemas.responses import (
 )
 from medbridge.core.orchestrator import PipelineOrchestrator, get_orchestrator
 from medbridge.db.connection import get_session
-from medbridge.db.models import MessageHistory, Session as SessionModel
+from medbridge.db.models import Session as SessionModel
+from medbridge.privacy.tokens import issue_session_token, verify_session_token
+from medbridge.state import turn_store
+from medbridge.state.session_manager import SessionNotFoundError
+from medbridge.state.turn_store import HistoryRow, SessionState
+
+
+def _auth(session_id: uuid.UUID) -> dict[str, str]:
+    token, _ = issue_session_token(session_id)
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
-def mock_db_session():
-    """Mock database session that handles Session and MessageHistory entities."""
-    db = AsyncMock()
+def mock_db_session() -> MagicMock:
+    """Mock AsyncSession that knows about Session rows (used by the messages route)."""
     sessions_store: dict[uuid.UUID, SessionModel] = {}
-    messages_store: dict[uuid.UUID, list[MessageHistory]] = {}
-
-    async def mock_get(entity_cls, entity_id):
-        if entity_cls == SessionModel:
-            return sessions_store.get(entity_id)
-        return None
-
-    def mock_add(entity):
-        if isinstance(entity, SessionModel):
-            sessions_store[entity.session_id] = entity
-        elif isinstance(entity, MessageHistory):
-            messages_store.setdefault(entity.session_id, []).append(entity)
-
-    async def mock_execute(stmt):
-        from unittest.mock import MagicMock
-        mock_result = MagicMock()
-        mock_scalars = MagicMock()
-        rows = []
-        for sid, msgs in messages_store.items():
-            rows.extend(msgs)
-        mock_scalars.all.return_value = rows
-        mock_result.scalars.return_value = mock_scalars
-        return mock_result
-
-    from unittest.mock import MagicMock
-    db.get = AsyncMock(side_effect=mock_get)
-    db.add = MagicMock(side_effect=mock_add)
-    db.execute = AsyncMock(side_effect=mock_execute)
+    db = MagicMock()
+    db.info = {}
+    db.get = AsyncMock(side_effect=lambda model, key: (
+        sessions_store.get(key) if model is SessionModel else None
+    ))
+    db.add = MagicMock()
+    db.execute = AsyncMock()
     db.flush = AsyncMock()
     db.commit = AsyncMock()
     db.rollback = AsyncMock()
-
     db._sessions_store = sessions_store
-    db._messages_store = messages_store
     return db
 
 
 @pytest.fixture
-def mock_orchestrator():
-    """Mock PipelineOrchestrator returning valid MessageResponse."""
+def mock_orchestrator() -> AsyncMock:
+    """Mock PipelineOrchestrator returning a valid MessageResponse."""
     orch = AsyncMock(spec=PipelineOrchestrator)
 
-    async def mock_process(session_id, message, db=None):
+    async def mock_process(session_id: uuid.UUID, message: str, db: Any = None,
+                           **_: Any) -> MessageResponse:
         return MessageResponse(
             session_id=session_id,
-            response_text="Based on ACC/AHA guidelines [1], your blood pressure target is <130/80 mmHg.",
+            response_text="Based on ACC/AHA guidelines [1], your BP target is <130/80 mmHg.",
             action=ActionEnum.ANSWER,
-            citations=[
-                CitationResponse(
-                    marker="[1]",
-                    chunk_id="aha_2025_s8_c1",
-                    source="AHA/ACC 2025",
-                    section="Section 8.1",
-                    excerpt="Target BP is <130/80 mmHg for patients with hypertension.",
-                )
-            ],
+            citations=[CitationResponse(marker="[1]", chunk_id="aha_2025_s8_c1",
+                                        source="AHA/ACC 2025", section="Section 8.1",
+                                        excerpt="Target BP is <130/80 mmHg.")],
             soft_ask_count=0,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
     orch.process_message.side_effect = mock_process
@@ -99,22 +85,18 @@ def mock_orchestrator():
 
 
 @pytest.fixture
-def test_client(mock_db_session, mock_orchestrator):
-    """FastAPI TestClient with injected dependencies and mounted routes."""
+def test_client(mock_db_session: MagicMock, mock_orchestrator: AsyncMock) -> TestClient:
     app = FastAPI()
     register_error_handlers(app)
-
-    # Mount API routes
-    app.include_router(api_router, prefix="/api")
+    for router in (sessions_router, messages_router):
+        app.include_router(router, prefix="/api")
     app.include_router(health_router)
 
-    # Dependency overrides
-    async def override_get_session():
+    async def override_get_session() -> Any:
         yield mock_db_session
 
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[get_orchestrator] = lambda: mock_orchestrator
-
     return TestClient(app, raise_server_exceptions=False)
 
 
@@ -122,122 +104,140 @@ def test_client(mock_db_session, mock_orchestrator):
 # 1. POST /api/sessions
 # ===========================================================================
 
-def test_create_session_success(test_client: TestClient, mock_db_session) -> None:
-    """POST /api/sessions should create session and return 201 with UUID."""
-    response = test_client.post("/api/sessions")
+def test_create_session_returns_signed_token(test_client: TestClient) -> None:
+    sid = uuid.uuid4()
+    with patch("medbridge.api.routes.sessions.create_session",
+               AsyncMock(return_value=sid)) as create:
+        response = test_client.post("/api/sessions")
     assert response.status_code == 201
-
-    data = response.json()
-    assert "session_id" in data
-    assert "created_at" in data
-
-    # Verify UUID format and model validation
-    session_uuid = uuid.UUID(data["session_id"])
-    parsed = SessionResponse.model_validate(data)
-    assert parsed.session_id == session_uuid
-    assert session_uuid in mock_db_session._sessions_store
+    create.assert_awaited_once()
+    parsed = SessionResponse.model_validate(response.json())
+    assert parsed.session_id == sid
+    assert parsed.session_token and verify_session_token(parsed.session_token, sid)
+    assert parsed.expires_at is not None and parsed.expires_at > datetime.now(UTC)
 
 
 # ===========================================================================
 # 2. GET /api/sessions/{session_id}/history
 # ===========================================================================
 
-def test_get_history_empty_session(test_client: TestClient, mock_db_session) -> None:
-    """GET /api/sessions/{id}/history for new session returns 200 with empty list."""
+def test_get_history_empty_session(test_client: TestClient,
+                                   monkeypatch: pytest.MonkeyPatch) -> None:
     sid = uuid.uuid4()
-    mock_db_session._sessions_store[sid] = SessionModel(session_id=sid)
-
-    response = test_client.get(f"/api/sessions/{sid}/history")
+    monkeypatch.setattr(turn_store, "load_session_state", AsyncMock(return_value=SessionState()))
+    monkeypatch.setattr(turn_store, "get_history", AsyncMock(return_value=[]))
+    response = test_client.get(f"/api/sessions/{sid}/history", headers=_auth(sid))
     assert response.status_code == 200
-
-    data = response.json()
-    parsed = HistoryResponse.model_validate(data)
-    assert parsed.session_id == sid
-    assert parsed.messages == []
+    parsed = HistoryResponse.model_validate(response.json())
+    assert parsed.session_id == sid and parsed.messages == []
 
 
-def test_get_history_with_messages(test_client: TestClient, mock_db_session) -> None:
-    """GET /api/sessions/{id}/history returns messages in chronological order."""
-    sid = uuid.uuid4()
-    mock_db_session._sessions_store[sid] = SessionModel(session_id=sid)
-
-    now = datetime.now(timezone.utc)
-    mock_db_session._messages_store[sid] = [
-        MessageHistory(
-            message_id=uuid.uuid4(),
-            session_id=sid,
-            role="user",
-            content="What is my BP target?",
-            action=None,
-            citations=[],
-            created_at=now,
-        ),
-        MessageHistory(
-            message_id=uuid.uuid4(),
-            session_id=sid,
-            role="assistant",
-            content="Target is <130/80.",
-            action=ActionEnum.ANSWER,
-            citations=[
-                {
-                    "marker": "[1]",
-                    "chunk_id": "aha_c1",
-                    "source": "AHA 2025",
-                    "section": "S1",
-                    "excerpt": "Guideline excerpt",
-                }
-            ],
-            created_at=now,
-        ),
+def test_get_history_with_messages_ids_and_explanations(
+    test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sid, user_id, assistant_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    now = datetime.now(UTC)
+    rows = [
+        HistoryRow(message_id=user_id, role="user", content="What is my BP target?",
+                   action=None, citations=[], created_at=now),
+        HistoryRow(message_id=assistant_id, role="assistant", content="Target is <130/80.",
+                   action="ANSWER",
+                   citations=[{"marker": "[1]", "chunk_id": "aha_c1", "source": "AHA 2025",
+                               "section": "S1", "excerpt": "Guideline excerpt", "page": 12},
+                              {"marker": "[2]", "source": "legacy row without fields"}],
+                   created_at=now,
+                   trace={"gate1": {"action": "PROCEED", "rationale": "enough context"},
+                          "total_ms": 812.0}),
     ]
-
-    response = test_client.get(f"/api/sessions/{sid}/history")
+    monkeypatch.setattr(turn_store, "load_session_state", AsyncMock(return_value=SessionState()))
+    monkeypatch.setattr(turn_store, "get_history", AsyncMock(return_value=rows))
+    response = test_client.get(f"/api/sessions/{sid}/history", headers=_auth(sid))
     assert response.status_code == 200
+    parsed = HistoryResponse.model_validate(response.json())
+    assert [m.role for m in parsed.messages] == ["user", "assistant"]
+    assert [m.message_id for m in parsed.messages] == [user_id, assistant_id]
+    assistant = parsed.messages[1]
+    assert assistant.action == ActionEnum.ANSWER
+    assert [c.marker for c in assistant.citations] == ["[1]", "[2]"]
+    assert assistant.citations[0].page == 12
+    assert assistant.explanation is not None
+    assert assistant.explanation.gate1.rationale == "enough context"
+    assert assistant.explanation.total_ms == 812.0
+    assert parsed.messages[0].explanation is None
 
-    data = response.json()
-    parsed = HistoryResponse.model_validate(data)
-    assert len(parsed.messages) == 2
-    assert parsed.messages[0].role == "user"
-    assert parsed.messages[1].role == "assistant"
-    assert parsed.messages[1].action == ActionEnum.ANSWER
-    assert len(parsed.messages[1].citations) == 1
+
+def test_get_history_requires_a_valid_token(test_client: TestClient) -> None:
+    sid = uuid.uuid4()
+    assert test_client.get(f"/api/sessions/{sid}/history").status_code == 401
+    other = test_client.get(f"/api/sessions/{sid}/history", headers=_auth(uuid.uuid4()))
+    assert other.status_code == 403
+    assert other.json()["error_code"] == "FORBIDDEN"
 
 
-def test_get_history_missing_session_returns_404(test_client: TestClient) -> None:
-    """GET /api/sessions/{id}/history for non-existent session returns 404."""
+def test_get_history_missing_session_returns_404(test_client: TestClient,
+                                                 monkeypatch: pytest.MonkeyPatch) -> None:
     unknown_id = uuid.uuid4()
-    response = test_client.get(f"/api/sessions/{unknown_id}/history")
+    monkeypatch.setattr(turn_store, "load_session_state",
+                        AsyncMock(return_value=SessionState(exists=False)))
+    response = test_client.get(f"/api/sessions/{unknown_id}/history", headers=_auth(unknown_id))
     assert response.status_code == 404
-
     data = response.json()
     assert data["error_code"] == "SESSION_NOT_FOUND"
     assert str(unknown_id) in data["message"]
 
 
+def test_get_history_erased_session_returns_410(test_client: TestClient,
+                                                monkeypatch: pytest.MonkeyPatch) -> None:
+    sid = uuid.uuid4()
+    monkeypatch.setattr(turn_store, "load_session_state",
+                        AsyncMock(return_value=SessionState(erased=True)))
+    response = test_client.get(f"/api/sessions/{sid}/history", headers=_auth(sid))
+    assert response.status_code == 410
+    assert response.json()["error_code"] == "SESSION_ERASED"
+
+
 def test_get_history_invalid_uuid_returns_422(test_client: TestClient) -> None:
-    """GET /api/sessions/{id}/history with invalid UUID string returns 422."""
     response = test_client.get("/api/sessions/not-a-valid-uuid/history")
     assert response.status_code == 422
-
-    data = response.json()
-    assert data["error_code"] == "VALIDATION_ERROR"
+    assert response.json()["error_code"] == "VALIDATION_ERROR"
 
 
 # ===========================================================================
-# 3. POST /api/sessions/{session_id}/messages
+# 3. DELETE /api/sessions/{session_id}
 # ===========================================================================
 
-def test_send_message_success(test_client: TestClient, mock_db_session, mock_orchestrator) -> None:
-    """POST /api/sessions/{id}/messages executes pipeline and returns 200 MessageResponse."""
+def test_delete_session_crypto_shreds(test_client: TestClient,
+                                      monkeypatch: pytest.MonkeyPatch) -> None:
+    sid = uuid.uuid4()
+    erase = AsyncMock()
+    monkeypatch.setattr(turn_store, "erase_session", erase)
+    assert test_client.delete(f"/api/sessions/{sid}").status_code == 401
+    response = test_client.delete(f"/api/sessions/{sid}", headers=_auth(sid))
+    assert response.status_code == 204 and response.content == b""
+    assert erase.await_args.args[1] == sid
+
+
+def test_delete_unknown_session_returns_404(test_client: TestClient,
+                                            monkeypatch: pytest.MonkeyPatch) -> None:
+    sid = uuid.uuid4()
+    monkeypatch.setattr(turn_store, "erase_session",
+                        AsyncMock(side_effect=SessionNotFoundError(sid)))
+    response = test_client.delete(f"/api/sessions/{sid}", headers=_auth(sid))
+    assert response.status_code == 404
+
+
+# ===========================================================================
+# 4. POST /api/sessions/{session_id}/messages
+# ===========================================================================
+
+def test_send_message_success(test_client: TestClient, mock_db_session: MagicMock) -> None:
     sid = uuid.uuid4()
     mock_db_session._sessions_store[sid] = SessionModel(session_id=sid)
-
-    payload = {"message": "My BP is 145/92 mmHg this morning."}
-    response = test_client.post(f"/api/sessions/{sid}/messages", json=payload)
+    response = test_client.post(f"/api/sessions/{sid}/messages",
+                                json={"message": "My BP is 145/92 mmHg this morning."},
+                                headers=_auth(sid))
     assert response.status_code == 200
-
-    data = response.json()
-    parsed = MessageResponse.model_validate(data)
+    parsed = MessageResponse.model_validate(response.json())
     assert parsed.session_id == sid
     assert parsed.action == ActionEnum.ANSWER
     assert len(parsed.citations) == 1
@@ -245,90 +245,74 @@ def test_send_message_success(test_client: TestClient, mock_db_session, mock_orc
 
 
 def test_send_message_missing_session_returns_404(test_client: TestClient) -> None:
-    """POST /api/sessions/{id}/messages with non-existent session returns 404."""
     unknown_id = uuid.uuid4()
-    payload = {"message": "Hello, is this working?"}
-    response = test_client.post(f"/api/sessions/{unknown_id}/messages", json=payload)
+    response = test_client.post(f"/api/sessions/{unknown_id}/messages",
+                                json={"message": "Hello, is this working?"},
+                                headers=_auth(unknown_id))
     assert response.status_code == 404
-
-    data = response.json()
-    assert data["error_code"] == "SESSION_NOT_FOUND"
+    assert response.json()["error_code"] == "SESSION_NOT_FOUND"
 
 
-def test_send_message_empty_message_returns_422(test_client: TestClient, mock_db_session) -> None:
-    """POST /api/sessions/{id}/messages with empty string fails Pydantic validation (422)."""
+def test_send_message_empty_message_returns_422(test_client: TestClient,
+                                                mock_db_session: MagicMock) -> None:
     sid = uuid.uuid4()
     mock_db_session._sessions_store[sid] = SessionModel(session_id=sid)
-
-    response = test_client.post(f"/api/sessions/{sid}/messages", json={"message": ""})
+    response = test_client.post(f"/api/sessions/{sid}/messages", json={"message": ""},
+                                headers=_auth(sid))
     assert response.status_code == 422
-
-    data = response.json()
-    assert data["error_code"] == "VALIDATION_ERROR"
+    assert response.json()["error_code"] == "VALIDATION_ERROR"
 
 
-def test_send_message_exceeds_max_length_returns_422(test_client: TestClient, mock_db_session) -> None:
-    """POST /api/sessions/{id}/messages exceeding 2000 chars returns 422."""
+def test_send_message_exceeds_max_length_returns_422(test_client: TestClient,
+                                                     mock_db_session: MagicMock) -> None:
     sid = uuid.uuid4()
     mock_db_session._sessions_store[sid] = SessionModel(session_id=sid)
-
-    response = test_client.post(f"/api/sessions/{sid}/messages", json={"message": "a" * 2001})
+    response = test_client.post(f"/api/sessions/{sid}/messages", json={"message": "a" * 2001},
+                                headers=_auth(sid))
     assert response.status_code == 422
-
     data = response.json()
     assert data["error_code"] == "VALIDATION_ERROR"
+    assert "a" * 100 not in response.text  # the offending input is not echoed back
 
 
 # ===========================================================================
-# 4. GET /health
+# 5. GET /health
 # ===========================================================================
 
 @patch("medbridge.api.routes.health.check_postgres_health", new_callable=AsyncMock)
 @patch("medbridge.api.routes.health.check_qdrant_health", new_callable=AsyncMock)
-def test_health_check_healthy(mock_qdrant, mock_pg, test_client: TestClient) -> None:
-    """GET /health returns 200 and healthy status when both dependencies pass."""
+def test_health_check_healthy(mock_qdrant: AsyncMock, mock_pg: AsyncMock,
+                              test_client: TestClient) -> None:
     mock_pg.return_value = True
     mock_qdrant.return_value = True
-
     response = test_client.get("/health")
     assert response.status_code == 200
-
-    data = response.json()
-    parsed = HealthResponse.model_validate(data)
+    parsed = HealthResponse.model_validate(response.json())
     assert parsed.status == "healthy"
-    assert parsed.postgres_connected is True
-    assert parsed.qdrant_connected is True
+    assert parsed.postgres_connected is True and parsed.qdrant_connected is True
 
 
 @patch("medbridge.api.routes.health.check_postgres_health", new_callable=AsyncMock)
 @patch("medbridge.api.routes.health.check_qdrant_health", new_callable=AsyncMock)
-def test_health_check_postgres_failure_returns_503(mock_qdrant, mock_pg, test_client: TestClient) -> None:
-    """GET /health returns 503 and unhealthy status when Postgres fails."""
+def test_health_check_postgres_failure_returns_503(mock_qdrant: AsyncMock, mock_pg: AsyncMock,
+                                                   test_client: TestClient) -> None:
     mock_pg.return_value = False
     mock_qdrant.return_value = True
-
     response = test_client.get("/health")
     assert response.status_code == 503
-
-    data = response.json()
-    parsed = HealthResponse.model_validate(data)
+    parsed = HealthResponse.model_validate(response.json())
     assert parsed.status == "unhealthy"
-    assert parsed.postgres_connected is False
-    assert parsed.qdrant_connected is True
+    assert parsed.postgres_connected is False and parsed.qdrant_connected is True
 
 
 @patch("medbridge.api.routes.health.check_postgres_health", new_callable=AsyncMock)
 @patch("medbridge.api.routes.health.check_qdrant_health", new_callable=AsyncMock)
-def test_health_check_qdrant_failure_returns_503(mock_qdrant, mock_pg, test_client: TestClient) -> None:
-    """GET /health returns 503 and unhealthy status when Qdrant fails."""
+def test_health_check_qdrant_failure_returns_503(mock_qdrant: AsyncMock, mock_pg: AsyncMock,
+                                                 test_client: TestClient) -> None:
     mock_pg.return_value = True
     mock_qdrant.return_value = False
-
     response = test_client.get("/health")
     assert response.status_code == 503
-
-    data = response.json()
-    parsed = HealthResponse.model_validate(data)
+    parsed = HealthResponse.model_validate(response.json())
     assert parsed.status == "unhealthy"
-    assert parsed.postgres_connected is True
-    assert parsed.qdrant_connected is False
+    assert parsed.postgres_connected is True and parsed.qdrant_connected is False

@@ -58,3 +58,25 @@ def test_enum_bind_and_result_processing():
     assert g1_bp(Gate1ActionEnum.SOFT_ASK) == "SOFT-ASK"
     assert g1_rp("SOFT-ASK") == Gate1ActionEnum.SOFT_ASK
 
+
+
+def test_privacy_models_and_columns():
+    """Privacy migration g1a7c3e9d2b4: keys, feedback, trace, erased_at."""
+    from medbridge.db.models import Feedback, SessionKey
+
+    assert SessionKey.__tablename__ == "session_keys"
+    assert Feedback.__tablename__ == "feedback"
+    assert SessionKey.__table__.c.session_id.primary_key
+    fk = next(iter(SessionKey.__table__.c.session_id.foreign_keys))
+    assert fk.column.table.name == "sessions" and fk.ondelete == "CASCADE"
+    assert not SessionKey.__table__.c.wrapped_key.nullable
+    assert Feedback.__table__.c.comment.nullable
+    assert not Feedback.__table__.c.rating.nullable
+    assert not Feedback.__table__.c.message_id.nullable
+    checks = [c for c in Feedback.__table__.constraints if c.name == "ck_feedback_rating"]
+    assert checks and "rating IN (-1, 1)" in str(checks[0].sqltext)
+    assert AuditLog.__table__.c.trace.nullable
+    assert Session.__table__.c.erased_at.nullable
+    assert AuditLog.__table__.c.created_at.index
+    mapper = inspect(Session)
+    assert "session_key" in mapper.relationships and "feedback" in mapper.relationships

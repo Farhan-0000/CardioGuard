@@ -8,6 +8,8 @@ os.environ["GROQ_API_KEY"] = "dummy"
 
 from medbridge.db.connection import get_engine, init_db, close_db, get_session
 
+pytestmark = pytest.mark.postgres
+
 @pytest.mark.asyncio
 async def test_db_connection_lifecycle():
     # 1. Test initialization
@@ -33,3 +35,8 @@ async def test_db_connection_lifecycle():
     # Ensure engine is properly disposed
     engine = get_engine()
     assert engine is not None
+
+
+def test_engine_hides_sql_parameters():
+    """Bound parameters (ciphertext / legacy text) never appear in error messages."""
+    assert get_engine().sync_engine.hide_parameters is True
