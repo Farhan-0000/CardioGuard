@@ -1,0 +1,102 @@
+{
+  "generated_at": "2026-10-10T07:22:47+00:00",
+  "command": "pytest -q -p no:cacheprovider --junitxml=/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/reports/tests/junit.xml --cov=medbridge --cov=evaluation --cov-report=json:/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/reports/tests/coverage.json --cov-report=term:skip-covered",
+  "exit_code": 0,
+  "wall_time_s": 80.1,
+  "python": "3.11.15",
+  "platform": "Darwin arm64",
+  "totals": {
+    "passed": 3050,
+    "collected": 3051,
+    "skipped": 1
+  },
+  "suites": {
+    "adversarial": {
+      "passed": 92,
+      "collected": 92
+    },
+    "evaluation": {
+      "passed": 273,
+      "collected": 273
+    },
+    "integration": {
+      "passed": 186,
+      "collected": 186
+    },
+    "privacy": {
+      "passed": 228,
+      "collected": 228
+    },
+    "report": {
+      "passed": 52,
+      "collected": 53,
+      "skipped": 1
+    },
+    "scripts": {
+      "passed": 20,
+      "collected": 20
+    },
+    "unit": {
+      "passed": 2199,
+      "collected": 2199
+    }
+  },
+  "coverage": {
+    "overall_percent": 93.0,
+    "covered_lines": 12717,
+    "statements": 13679,
+    "packages": {
+      "medbridge/core": {
+        "percent": 97.4,
+        "covered": 1364,
+        "statements": 1400
+      },
+      "medbridge/ai": {
+        "percent": 97.8,
+        "covered": 1330,
+        "statements": 1360
+      },
+      "medbridge/state": {
+        "percent": 96.2,
+        "covered": 562,
+        "statements": 584
+      },
+      "medbridge/privacy": {
+        "percent": 97.1,
+        "covered": 869,
+        "statements": 895
+      },
+      "medbridge/retrieval": {
+        "percent": 98.9,
+        "covered": 344,
+        "statements": 348
+      },
+      "medbridge/api": {
+        "percent": 97.8,
+        "covered": 860,
+        "statements": 879
+      },
+      "medbridge/nlp": {
+        "percent": 99.6,
+        "covered": 256,
+        "statements": 257
+      },
+      "medbridge/ingestion": {
+        "percent": 92.4,
+        "covered": 1455,
+        "statements": 1575
+      },
+      "medbridge/features": {
+        "percent": 97.7,
+        "covered": 215,
+        "statements": 220
+      },
+      "evaluation": {
+        "percent": 91.1,
+        "covered": 3844,
+        "statements": 4220
+      }
+    }
+  },
+  "note": "Default run excludes tests marked 'live'; postgres/qdrant/ollama-marked tests run only when those services are reachable."
+}

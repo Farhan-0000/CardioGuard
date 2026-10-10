@@ -36,3 +36,4 @@ node_modules/
 # Generated build artefacts (deliverables are committed explicitly at release)
 report/paper/build/
 report/build/
+reports/tests/
