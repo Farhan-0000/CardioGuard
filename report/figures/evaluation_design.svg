@@ -514,7 +514,7 @@ z
     <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="138.96" y="120.329707" transform="rotate(-0 138.96 120.329707)">DEV split</text>
    </g>
    <g id="text_11">
-    <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="138.96" y="129.396455" transform="rotate(-0 138.96 129.396455)">49 items · used only for calibration</text>
+    <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="138.96" y="129.396455" transform="rotate(-0 138.96 129.396455)">49 items · model selection and calibration only</text>
    </g>
    <g id="text_12">
     <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="401.76" y="120.329707" transform="rotate(-0 401.76 120.329707)">TEST split</text>
@@ -586,7 +586,7 @@ z
     <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="401.76" y="319.455624" transform="rotate(-0 401.76 319.455624)">python -m evaluation.run --split test</text>
    </g>
    <g id="text_35">
-    <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="401.76" y="328.175008" transform="rotate(-0 401.76 328.175008)">same app model, retrieval and prompts</text>
+    <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="401.76" y="328.174943" transform="rotate(-0 401.76 328.174943)">same app model, retrieval index and gate prompts</text>
    </g>
    <g id="text_36">
     <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="401.76" y="336.226943" transform="rotate(-0 401.76 336.226943)">LLM cache keyed by model digest · resumable</text>
@@ -598,7 +598,7 @@ z
     <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="401.76" y="352.332812" transform="rotate(-0 401.76 352.332812)">→ runs/&lt;COND&gt;.jsonl + manifest</text>
    </g>
    <g id="text_39">
-    <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #0f2f57" x="401.76" y="410.895624" transform="rotate(-0 401.76 410.895624)">Two independent judges</text>
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #0f2f57" x="401.76" y="410.895624" transform="rotate(-0 401.76 410.895624)">Two judges of different kinds</text>
    </g>
    <g id="text_40">
     <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="401.76" y="419.614943" transform="rotate(-0 401.76 419.614943)">LLM judge (gemma3:12b, T 0): atomic claims →</text>

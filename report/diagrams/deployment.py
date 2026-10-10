@@ -13,7 +13,7 @@ Facts and their sources:
   on CPU, ``retrieval/embedder.py``), cross-encoder reranker and the optional NLI
   verifier on cuda > mps > cpu (``retrieval/reranker.py``, ``ai/grounding_verifier.py``);
 * Ollama at ``OLLAMA_BASE_URL = http://127.0.0.1:11434``, default
-  ``LLM_MODEL = qwen3:8b``, ``LLM_KEEP_ALIVE = 30m`` (``config.py``); judge model
+  ``LLM_MODEL = qwen3.5:4b``, ``LLM_KEEP_ALIVE = 30m`` (``config.py``); judge model
   ``gemma3:12b`` (``evaluation/judges/llm_judge.py``);
 * Docker: ``postgres:16-alpine`` on ``127.0.0.1:5433→5432`` and ``qdrant/qdrant`` on
   ``127.0.0.1:6333`` / ``6334`` with named volumes (``docker-compose.yml``);
@@ -176,7 +176,7 @@ def build() -> list[Path]:
         "Ollama server · 127.0.0.1:11434",
         [
             "GPU: CUDA (RTX 4050) or Metal (Apple Silicon)",
-            "LLM_MODEL default qwen3:8b, keep_alive 30m",
+            "LLM_MODEL default qwen3.5:4b, keep_alive 30m",
             "study judge model: gemma3:12b",
         ],
         kind="llm",

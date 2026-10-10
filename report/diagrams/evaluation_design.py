@@ -105,7 +105,8 @@ def build() -> list[Path]:
         kind="storage",
         sub_size=6.8,
     )
-    dev = c.box(XL, 1.62, WL, 0.48, "DEV split", [f"{f['dev']} items · used only for calibration"])
+    dev_note = f"{f['dev']} items · model selection and calibration only"
+    dev = c.box(XL, 1.62, WL, 0.48, "DEV split", [dev_note])
     test = c.box(XR, 1.62, WR, 0.48, "TEST split", [f"{f['test']} items · every reported result"])
     c.arrow([(2.6, hb.bottom), (2.6, 1.17), (XL, 1.17), (XL, dev.top)])
     c.arrow([(4.8, hb.bottom), (4.8, 1.17), (XR, 1.17), (XR, test.top)])
@@ -157,7 +158,7 @@ def build() -> list[Path]:
         0.92,
         "python -m evaluation.run --split test",
         [
-            "same app model, retrieval and prompts",
+            "same app model, retrieval index and gate prompts",
             "LLM cache keyed by model digest · resumable",
             "degraded turns flagged and retried",
             "→ runs/<COND>.jsonl + manifest",
@@ -169,7 +170,7 @@ def build() -> list[Path]:
         5.82,
         WR,
         0.98,
-        "Two independent judges",
+        "Two judges of different kinds",
         [
             "LLM judge (gemma3:12b, T 0): atomic claims →",
             "SUPPORTED · UNSUPPORTED · CONTRADICTED",

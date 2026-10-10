@@ -454,7 +454,7 @@ z
     <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="171.737065" transform="rotate(-0 531.36 171.737065)">GPU: CUDA (RTX 4050) or Metal (Apple Silicon)</text>
    </g>
    <g id="text_30">
-    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="179.66897" transform="rotate(-0 531.36 179.66897)">LLM_MODEL default qwen3:8b, keep_alive 30m</text>
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="179.66897" transform="rotate(-0 531.36 179.66897)">LLM_MODEL default qwen3.5:4b, keep_alive 30m</text>
    </g>
    <g id="text_31">
     <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="187.597065" transform="rotate(-0 531.36 187.597065)">study judge model: gemma3:12b</text>
