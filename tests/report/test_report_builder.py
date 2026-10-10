@@ -497,6 +497,40 @@ def test_markup_parser_blocks(tmp_path: Path):
     assert any("recursive include" in w for w in ctx.warnings)
 
 
+def test_table_caption_options_set_widths_and_size(tmp_path: Path):
+    ctx = mk.ParseContext(content_dir=tmp_path)
+    text = (
+        "Table: Weighted {{a|pct}} {widths=1, 3,2; size=9}\n| x | y | z |\n|---|---|---|\n"
+        "| 1 | 2 | 3 |\n\n"
+        "Table: Wrong count {widths=1,2}\n| x | y | z |\n|---|---|---|\n| 1 | 2 | 3 |\n\n"
+        "Table: Bad values {widths=a,b; size=99}\n| x |\n|---|\n| 1 |\n\n"
+        "Table: Plain braces {not options}\n| x |\n|---|\n| 1 |\n\n"
+        "[[table:corpus|Generated {size=8}]]\n"
+    )
+    blocks = mk.parse_markup(text, ctx, source="t.md")
+    t1, t2, t3, t4 = [b for b in blocks if isinstance(b, mk.Table)]
+    assert t1.caption == "Weighted {{a|pct}}"
+    assert t1.col_widths == [1.0, 3.0, 2.0] and t1.font_size == 9.0
+    assert t2.caption == "Wrong count" and t2.col_widths is None  # must name every column
+    assert t3.caption == "Bad values" and t3.col_widths is None and t3.font_size is None
+    assert t4.caption == "Plain braces {not options}" and t4.col_widths is None
+    gen = next(b for b in blocks if isinstance(b, mk.GeneratedTable))
+    assert gen.caption == "Generated"  # options are never printed
+
+
+def test_column_widths_respect_weights_and_capitals():
+    from lib import docx_helpers as dh
+
+    widths = dh.compute_column_widths(
+        ["No.", "Comment", "Action"], [["1", "short", "long " * 20]], weights=[0.5, 1.5, 3.0]
+    )
+    assert abs(sum(widths) - dh.TEXT_WIDTH_IN) < 1e-6
+    assert widths[0] < widths[1] < widths[2]
+    caps = dh.compute_column_widths(["Action", "Text"], [["GENERALIZE", "x " * 200]])
+    lower = dh.compute_column_widths(["Action", "Text"], [["generalize", "x " * 200]])
+    assert caps[0] > lower[0]  # an all-caps label gets room so it does not split
+
+
 def test_inline_tokenizer():
     toks = mk.tokenize(
         "A **bold** *it* `c*d` [@a; @b] {{x.y|pct}} [TO BE FILLED: n [x]] "

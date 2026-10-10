@@ -263,8 +263,8 @@ def corpus(ctx: ResultsContext) -> Table | None:
         ["#", "Document", "Organisation", "Year", "Type", "Format", "Pages", "Chunks"],
         rows,
         align=["c", "l", "l", "c", "l", "c", "r", "r"],
-        font_size=9,
-        widths=[0.3, 2.3, 1.0, 0.45, 0.8, 0.55, 0.5, 0.55],
+        font_size=8,  # 27 one-line rows instead of two-line rows at 9 pt
+        widths=[0.25, 2.5, 0.95, 0.4, 0.7, 0.45, 0.42, 0.5],
         note=_src(ctx, "corpus") + " Pages counts HTML sections for HTML sources.",
     )
 

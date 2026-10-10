@@ -682,10 +682,15 @@ def compute_column_widths(
         # split on ordinary whitespace only: non-breaking spaces keep composites together
         return [w for t in texts for w in re.split(r"[ \t\r\n]+", str(t).replace("**", "")) if w]
 
+    def ems(word: str) -> float:
+        # capitals are wider than the 0.55 em average (Times caps are about 0.72 em), so an
+        # all-caps label such as GENERALIZE needs more room than its length suggests
+        return sum(1.3 if ch.isupper() else 1.0 for ch in word)
+
     mins = []
     for c in range(n):
         # very long tokens (paths, URLs) wrap anyway: they must not starve other columns
-        longest = min(max((len(w) for w in words(c)), default=1), 22)
+        longest = min(max((ems(w) for w in words(c)), default=1.0), 22.0)
         mins.append(min(longest * char_in + padding, total * 0.45))
     if weights and len(weights) == n:
         raw = [max(float(w), 0.05) for w in weights]

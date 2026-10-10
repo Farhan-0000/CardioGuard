@@ -25,7 +25,9 @@ if [ -z "${EVAL_DATABASE_URL:-}" ] && [ -f .env ]; then
   EVAL_DATABASE_URL="$(grep -E '^EVAL_DATABASE_URL=' .env | cut -d= -f2- || true)"
 fi
 export EVAL_DATABASE_URL
-# Judge calls on a 12B model with parallel slots can exceed the app timeout.
+# The GPU is shared by parallel workers (and possibly other jobs): wait for the model rather
+# than failing fast; failed calls would only become degraded turns to re-run.
+export LLM_TIMEOUT="${LLM_TIMEOUT:-900}"
 JUDGE_TIMEOUT="${JUDGE_TIMEOUT:-900}"
 
 log() { printf '\n[%s] === %s ===\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }

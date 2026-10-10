@@ -8,7 +8,9 @@ Block level
 ``#* Title``                unnumbered heading (front matter, or any unnumbered heading)
 ``- item`` / ``1. item``    bullet / numbered list (indent by 2+ spaces to nest)
 ``> text``                  block quote
-``Table: Caption``          caption for the pipe table (or ``[[table:KEY]]``) that follows
+``Table: Caption``          caption for the pipe table (or ``[[table:KEY]]``) that follows;
+                            a trailing ``{widths=1,3,2; size=9}`` sets the pipe table's relative
+                            column widths and font size (pt) and is not printed
 ``| a | b |``               pipe table (``|---|:---:|---:|`` row sets alignment)
 ``[[figure:path|Caption|width=6.0]]``   figure (path relative to the repo root)
 ``[[table:KEY]]`` / ``[[table:KEY|Caption]]``   generated data table (report/lib/tables.py)
@@ -145,6 +147,7 @@ _BULLET = re.compile(r"^(\s*)[-*+]\s+(.*)$")
 _ORDERED = re.compile(r"^(\s*)\d+[.)]\s+(.*)$")
 _DIRECTIVE = re.compile(r"^\[\[\s*(figure|table|include)\s*:(.*)\]\]\s*$", re.IGNORECASE)
 _TABLE_CAPTION = re.compile(r"^Table\s*:\s*(.+)$")
+_TABLE_OPTIONS = re.compile(r"\s*(?<!\{)\{\s*((?:widths|size)\s*=[^{}]*)\}\s*$")
 _PAGEBREAK = re.compile(r"^\\(pagebreak|newpage|clearpage)\s*$")
 PLACEHOLDER_MARK = re.compile(r"^\s*<!--\s*placeholder\b", re.IGNORECASE)
 
@@ -208,7 +211,35 @@ def _alignment(cells: list[str]) -> list[str]:
     return out
 
 
+def split_table_options(caption: str | None) -> tuple[str | None, list[float] | None, float | None]:
+    """Strip a trailing ``{widths=1,3,2; size=9}`` from a table caption.
+
+    Returns the caption without the options, the relative column widths and the font size.
+    Malformed values are ignored, so a typo never breaks the build.
+    """
+    if not caption:
+        return caption, None, None
+    m = _TABLE_OPTIONS.search(caption)
+    if not m:
+        return caption, None, None
+    widths: list[float] | None = None
+    size: float | None = None
+    for part in re.split(r"[;\s]+(?=[a-z]+\s*=)", m.group(1).strip()):
+        key, _, value = part.partition("=")
+        key, value = key.strip().lower(), value.strip().strip(";").strip()
+        try:
+            if key == "widths":
+                parsed = [float(v) for v in re.split(r"[,\s]+", value) if v]
+                widths = parsed if parsed and all(w > 0 for w in parsed) else None
+            elif key == "size":
+                size = float(value) if 6.0 <= float(value) <= 14.0 else None
+        except ValueError:
+            continue
+    return caption[: m.start()].rstrip() or None, widths, size
+
+
 def parse_pipe_table(lines: list[str], caption: str | None) -> Table:
+    caption, widths, size = split_table_options(caption)
     rows = [_split_row(line) for line in lines]
     header = rows[0] if rows else []
     body = rows[1:]
@@ -220,7 +251,17 @@ def parse_pipe_table(lines: list[str], caption: str | None) -> Table:
     header = header + [""] * (width - len(header))
     body = [r + [""] * (width - len(r)) for r in body]
     align = (align + ["l"] * width)[:width]
-    return Table(caption=caption, header=header, rows=body, align=align, markup=True)
+    if widths is not None and len(widths) != width:
+        widths = None  # a width list must name every column
+    return Table(
+        caption=caption,
+        header=header,
+        rows=body,
+        align=align,
+        markup=True,
+        font_size=size,
+        col_widths=widths,
+    )
 
 
 # ----------------------------------------------------------------------
@@ -371,6 +412,7 @@ def parse_markup(
             elif kind == "table":
                 key = args[0].strip() if args else ""
                 tcaption = args[1] if len(args) > 1 and args[1] else pending_caption
+                tcaption = split_table_options(tcaption)[0]  # options apply to pipe tables only
                 pending_caption = None
                 blocks.append(GeneratedTable(key=key, caption=tcaption, source=source))
             else:  # include
