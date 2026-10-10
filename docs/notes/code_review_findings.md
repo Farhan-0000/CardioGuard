@@ -1,0 +1,44 @@
+# Adversarial code review (2026-10-09): 37 confirmed findings, all fixed in 10aef5e
+
+- **invariants-1** (medium, 3/3 skeptics): Regenerate starts from the soft-ask counter saved after the turn, so it double-counts SOFT-ASKs and undoes the loop-breaker — medbridge/core/orchestrator.py:639
+- **invariants-2** (medium, 3/3 skeptics): Two turns on the same session can overwrite each other's snapshot, so the snapshot drops facts that are in clinical_events — medbridge/core/orchestrator.py:701
+- **invariants-3** (low, 3/3 skeptics): V1: when every evidence-gate vote fails, the result is reported as a calibrated decision instead of the spec fallback — medbridge/core/orchestrator.py:951
+- **ablation-study-validity-1** (high, 3/3 skeptics): Degraded turns (LLM failure fallbacks, lost multi-turn state, unavailable Gate 3) are recorded as valid outcomes, skipped by --resume and scored as non-hallucinated — evaluation/run.py:377
+- **ablation-study-validity-2** (high, 3/3 skeptics): A Qdrant or embedder outage is logged as successful retrieval and biases the study toward the gated conditions — medbridge/retrieval/hybrid_retriever.py:223
+- **ablation-study-validity-3** (medium, 3/3 skeptics): V1 is run before calibration and never re-run with the calibrated thresholds; --resume cannot fix this and nothing checks it — evaluation/run.py:72
+- **ablation-study-validity-4** (medium, 3/3 skeptics): C1 'Vanilla RAG' already uses the production safety-instructed prompt, so C2 adds only one sentence — medbridge/core/pipeline_types.py:122
+- **ablation-study-validity-5** (low, 3/3 skeptics): Request-cache key identifies the model by tag only, so cached outputs from older weights are reused after a re-pull — medbridge/ai/llm_wrapper.py:115
+- **statistics-judges-1** (high, 3/3 skeptics): Deterministic 'non-clinical' filter drops real clinical claims (incl. false, fabricated-drug and dose claims) before labelling — evaluation/judges/common.py:123
+- **statistics-judges-2** (medium, 3/3 skeptics): NLI judgment is never refreshed for a re-run item whose claims are unchanged, so analysis silently drops its NLI outcome — evaluation/judge.py:185
+- **statistics-judges-3** (medium, 3/3 skeptics): Documented protocol runs V1 before its thresholds are calibrated, and nothing checks that V1 used the dev-calibrated values — evaluation/README.md:18
+- **statistics-judges-4** (low, 3/3 skeptics): Item-level sensitivity McNemar compares different turn subsets when a turn is missing in one condition — evaluation/analyze.py:353
+- **statistics-judges-5** (low, 3/3 skeptics): Truncated (length-capped) claim decomposition is silently 'repaired' into a partial claim list instead of being recorded as a failure — evaluation/judges/llm_judge.py:367
+- **statistics-judges-6** (low, 3/3 skeptics): Citation validity mixes units: distinct valid chunks vs stripped marker occurrences — evaluation/analyze.py:325
+- **statistics-judges-7** (low, 3/3 skeptics): summary reports NLI thresholds as 'calibrated' whenever calibration.json exists, even when NLI calibration is absent (defaults 0.5 used) — evaluation/analyze.py:1031
+- **statistics-judges-8** (low, 3/3 skeptics): 'Citation precision' never checks that the cited chunk supports the sentence — evaluation/analyze.py:182
+- **privacy-security-1** (medium, 3/3 skeptics): ADDRESS continuation can stop inside a word, leaving locality, city and PIN/postcode in the redacted text — medbridge/privacy/redaction.py:222
+- **privacy-security-2** (medium, 3/3 skeptics): Erasure stops working once the 7-day session token expires, and the UI then tells the user the server no longer has the data — medbridge/privacy/deps.py:43
+- **privacy-security-3** (low, 3/3 skeptics): Rows written before the privacy migration stay plaintext; crypto-shredding and retention never cover them — alembic/versions/g1a7c3e9d2b4_privacy_trace_feedback.py:33
+- **privacy-security-4** (low, 3/3 skeptics): A non-ASCII bearer or X-Session-Token value causes an HTTP 500 instead of 401/403 on every protected route — medbridge/privacy/tokens.py:82
+- **persistence-db-1** (high, 3/3 skeptics): Snapshot read-modify-write has no locking: overlapping writers silently drop events from the snapshot (snapshot != fold(events)) — medbridge/state/turn_store.py:358
+- **persistence-db-2** (medium, 3/3 skeptics): Regenerate re-applies the soft-ask counter transition: it can undo the loop-breaker (third consecutive SOFT-ASK) or trigger it early — medbridge/state/turn_store.py:359
+- **persistence-db-3** (medium, 3/3 skeptics): Regenerated reply is attached to whichever user message is newest at persist time, not the one that was re-run — medbridge/state/turn_store.py:337
+- **persistence-db-4** (low, 3/3 skeptics): Feedback 'one rating per message' is not enforced: no unique constraint, and the delete-then-insert races — medbridge/state/turn_store.py:479
+- **llm-prompts-01** (high, 3/3 skeptics): BP parser labels questions about target or threshold values as readings, and the extractor records them as fake BP_READING events — medbridge/nlp/bp_parse.py:40
+- **llm-prompts-02** (medium, 3/3 skeptics): Gate 3 (V2) never checks claims in bold or heading lines, or in sentences with boilerplate words; those claims survive and are not counted — medbridge/ai/grounding_verifier.py:186
+- **llm-prompts-03** (medium, 3/3 skeptics): Truncated LLM output (done_reason=length) is 'repaired' into a valid result and shown to the patient (and cached) — medbridge/ai/llm_wrapper.py:567
+- **llm-prompts-04** (medium, 3/3 skeptics): Gate few-shot examples contain a HalluBench test item's fabricated drug ('Cardiozepam'), biasing the gate conditions — medbridge/ai/evidence_gate.py:84
+- **llm-prompts-06** (medium, 3/3 skeptics): Raw patient message is placed in <question_intent> outside <untrusted_user_input> (breaks NON-NEGOTIABLE #5) — medbridge/ai/context_gate.py:97
+- **llm-prompts-07** (medium, 3/3 skeptics): Free-text drug scanner turns '<brand> at/am/h' into combination products; 'sacubitril' alone and 'valsartan/sacubitril' not recognised — medbridge/nlp/drugs.py:550
+- **llm-prompts-08** (low, 3/3 skeptics): LOCAL_ONLY_MODE does not enforce a local Ollama endpoint; a non-loopback OLLAMA_BASE_URL only logs a warning — medbridge/ai/llm_wrapper.py:242
+- **llm-prompts-10** (low, 3/3 skeptics): neutralize_tags misses other invisible characters (U+034F, U+FE0F, U+180E, U+061C, U+E0020…) between '<' and the tag name — medbridge/ai/prompt_utils.py:36
+- **web-ui-1** (medium, 3/3 skeptics): Delete / Clear my data with an expired or rejected token (403/401) reports success, drops the only token, and leaves the server data readable — medbridge/web/js/app.js:490
+- **web-ui-2** (medium, 3/3 skeptics): UI allows concurrent writes to one session (BP form during a stream, new message after Stop); the turn's precomputed snapshot overwrites them — medbridge/state/turn_store.py:358
+- **web-ui-3** (low, 3/3 skeptics): Regenerate on a SOFT-ASK answer increments soft_ask_count again, so the loop-breaker fires early — medbridge/core/orchestrator.py:639
+- **web-ui-4** (low, 3/3 skeptics): Unredacted first message becomes document.title and lingers in browser history after erasure — medbridge/web/js/app.js:125
+- **web-ui-5** (low, 3/3 skeptics): 429 / 409 / 422 errors show the generic emergency fallback text instead of the server's actionable message — medbridge/web/js/app.js:353
+
+Rejected (3):
+- persistence-db-5: Downgrading g1a7c3e9d2b4 silently destroys all data keys and erasure markers; after re-upgrade, sessions are lazily re-keyed and look live but are unreadable (0/3)
+- llm-prompts-05: Evidence Gate drops the normalised clinical query, so brand names look absent from the evidence and trigger rule 2c (ABSTAIN) (1/3)
+- llm-prompts-09: C1 'Vanilla RAG' uses the full safety-laden grounded prompt, so C1 and C2 differ by one sentence (0/3)

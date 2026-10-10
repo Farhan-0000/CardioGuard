@@ -1,9 +1,11 @@
 # MedBridge — Architecture Decision Log
 
-> **Review Date:** 2026-08-15
+> **Review Date:** 2026-08-15 (ADL-001 – ADL-026, design review) · 2026-10-10 (ADL-027 – ADL-058, implementation review)
 > **Reviewer Role:** Principal Systems Architect
-> **Artifacts Reviewed:** Requirements Document, High-Level Architecture, System Architecture, AI & Retrieval Pipeline, Data Flow / Sequence Diagram, Deployment Diagram
-> **Total Entries:** 26
+> **Artifacts Reviewed:** Requirements Document, High-Level Architecture, System Architecture, AI & Retrieval Pipeline, Data Flow / Sequence Diagram, Deployment Diagram; for ADL-027 onward also the implemented codebase, the work-stream reports of the 2026-10 finalization, the adversarial code review of 2026-10-09 and the measurement files under `evaluation/results/` and `reports/`
+> **Total Entries:** 58
+
+> **How to read ADL-027 – ADL-058.** These entries record the decisions taken while finishing the system for Reviews 4 and 5. Their scope was approved beforehand in `docs/finalization_plan.md` and the project brief; each entry states the problem, the decision, how it was implemented (repo-relative file paths) and why the architecture of ADL-001 – ADL-026 is preserved. Measured values are quoted only together with their source (a results or measurement file, a review presentation, or a reproducible check described in the entry); configuration values are the defaults in the code. Hallucination-study results do not exist yet and are marked *pending*. Some source docstrings cite provisional ADL numbers that differ from the final numbering; see [Numbering Reconciliation](#numbering-reconciliation-provisional-references-in-code).
 
 ---
 
@@ -14,6 +16,8 @@
 | 🔴 **CRITICAL** | Blocks correct implementation or creates a runtime failure path |
 | 🟠 **HIGH** | Will cause significant bugs, security exposure, or architectural drift if unaddressed |
 | 🟡 **MEDIUM** | Inconsistency or ambiguity that risks confusion during implementation |
+
+For ADL-027 onward the same scale rates the gap or defect that the decision closes (for example, a documented algorithm that was not actually implemented is 🟠, a missing safeguard for patient data is 🔴).
 
 ---
 
@@ -464,33 +468,597 @@ Document these parameters as mandatory configuration in the orchestrator pipelin
 
 ---
 
+## Category 8 — Pipeline Runtime Optimisation & Routing Refinements
+
+---
+
+### ADL-027 · Speculative Retrieval Concurrent with the Context Gate 🟡 MEDIUM
+
+**Issue:**
+The Review-3 presentation (`CardioGuard.pdf`, kept in the project folder next to this repository) reported end-to-end latencies of 25.2 s for an ABSTAIN turn and 35.8 s for a GENERALIZE turn. Part of the cost is structural: retrieval waits for Gate 1 to finish, although retrieval depends only on the extractor's `search_query` and not on Gate 1's decision.
+
+**Decision:**
+Retrieval may run while Gate 1 is still deciding, provided Gate 1 keeps sole authority over whether the results are used. Evidence that Gate 1 has not allowed must never reach Gate 2 or the generator.
+
+**Resolution:**
+Behind `SPECULATIVE_RETRIEVAL` (default `true`, `medbridge/config.py`), `_stage_context_gate` in `medbridge/core/orchestrator.py` starts hybrid search and reranking as an `asyncio` task immediately after extraction. On SOFT-ASK below the loop-breaker threshold the task is cancelled and logged as `discarded`; on PROCEED, or on the loop-breaker's forced GENERALIZE, the task is awaited and the overlap with Gate 1 is recorded as `saved_ms` in `explanation.speculative_retrieval`. The flag has no effect for ablation presets without retrieval. Unit tests in `medbridge/tests/unit/test_orchestrator.py` show that SOFT-ASK discards the results, PROCEED uses them, and the response is identical with the flag on or off.
+
+**Why the architecture is preserved:** Only the moment at which retrieval starts changes. Gate 1 still decides SOFT-ASK vs PROCEED before any evidence is used, Gate 2 and the generator see the same inputs in the same order, and the five actions and the loop-breaker are untouched.
+
+---
+
+### ADL-028 · Server-Side Citation Validation and ANSWER → GENERALIZE Downgrade 🟠 HIGH
+
+**Issue:**
+ADL-016 required inline markers that resolve to evidence chunks, but the implementation trusted the citation objects written by the model. Small local models produce markers that point to no chunk, mangle chunk IDs and paraphrase "excerpts" that do not exist in the evidence. This is an unmonitored hallucination channel and conflicts with Constitution §7.6 (uncited clinical claims are critical defects).
+
+**Decision:**
+Citations are derived by the server from the evidence actually shown to the generator, never accepted from the model. An ANSWER that ends up with no valid citation must not be presented as an evidence-grounded answer.
+
+**Resolution:**
+`medbridge/core/citations.py::validate_citations` maps `[n]` to the n-th chunk given to the generator, removes markers that map to nothing, renumbers the remaining markers in order of first appearance and rebuilds each citation from chunk metadata (source "ORG YEAR", section, page, URL and the first ~350 characters of the chunk text). With `CITATION_VALIDATION_ENABLED` (default `true`) and the Evidence Gate active, an ANSWER with zero valid citations is relabelled GENERALIZE. The audit trace keeps both decisions (Gate 2 = ANSWER, final = GENERALIZE) together with the valid, stripped and downgrade counts.
+
+**Why the architecture is preserved:** It is a post-generation check that can only lower the action. Gate 2's decision and rationale stay in the immutable audit row, and the ABSTAIN/ESCALATE template bypass is unaffected.
+
+---
+
+### ADL-029 · Deterministic Small-Talk Handling 🟡 MEDIUM
+
+**Issue:**
+Greetings and thanks ("hi", "thanks!") were pushed through extraction, both gates and retrieval: four LLM calls for a message without clinical content, usually ending in an ABSTAIN template that reads like a refusal to say hello.
+
+**Decision:**
+Answer a narrow, conservative set of purely social messages deterministically with fixed, claim-free text, without introducing a new action.
+
+**Resolution:**
+`medbridge/core/smalltalk.py::is_small_talk` runs after the emergency fast-path (stage 2b). The whole normalised message must match one of a few fixed patterns (greeting, thanks, goodbye, "who are you / what can you do", acknowledgement), be at most 8 words and 60 characters, and contain no digits or clinical vocabulary. "Yes" and "no" are never treated as small talk because they often answer a SOFT-ASK. A match returns a fixed template under action GENERALIZE; both gates are recorded with source `rule`; no LLM is called and the loop-breaker counter is not changed. `SMALL_TALK_ENABLED` switches the stage off. Known limitation: an "ok" sent directly after a SOFT-ASK is answered by the template and does not continue the follow-up chain of ADL-043.
+
+**Why the architecture is preserved:** GENERALIZE without clinical claims is an existing action. Any message that contains clinical content, or that is in doubt, still passes through both gates, and emergencies are caught earlier by the fast-path.
+
+---
+
+## Category 9 — Privacy & Security
+
+---
+
+### ADL-030 · PII/PHI Redaction Before Any LLM Call, Log Line or Write 🔴 CRITICAL
+
+**Issue:**
+ADL-017 found that patient identifiers reach LLM prompts and storage unredacted and deferred the anonymization layer. The Review-1 presentation (`PPT-1.pdf`, project folder) listed "PII anonymization layer deferred" as a limitation.
+
+**Decision:**
+Redact direct identifiers once, at the very start of each turn, with a deterministic detector that needs no network or model download. Every later stage sees only the redacted text; the deterministic emergency classifier alone receives the raw message, because recall matters most there and it neither logs nor stores its input.
+
+**Resolution:**
+`medbridge/privacy/redaction.py::redact` is a regex/rule detector that replaces names introduced by strong cues, phone numbers, e-mail addresses, street addresses, PIN/ZIP codes, Aadhaar, PAN, SSN, MRN and insurance numbers, URLs and IP addresses with typed placeholders, and turns an exact date of birth into `[AGE: N]`. Clinical values (BP readings, lab values, doses, drug names, numeric ages, dates of readings) are protected by construction, a name cue never consumes a known drug name, and address spans never start or end inside a word. Orchestrator stage 0 (`_stage_privacy`) redacts first; the redacted text is used for every LLM call, retrieval query, log line and persisted row, and a redaction failure fails closed. Evaluation (`scripts/pii_eval.py` → `reports/privacy_redaction_metrics.md`): the detector was developed on `tests/privacy/pii_testset.json`, frozen with its SHA-256 recorded, and scored once on a blind held-out set written by an author who never saw the detector (`tests/privacy/pii_testset_blind_v2.json`). The frozen detector reached strict precision 0.944, recall 0.744 and F1 0.832 on the blind set with 0 protected clinical values corrupted; development-set figures are in-sample, and post-hoc fixes are reported separately as optimistic. Names without an introducing cue are the main gap; closing it would need an NER model or gazetteer, i.e. a new dependency requiring its own ADL entry.
+
+**Why the architecture is preserved:** The emergency fast-path still runs on the raw message before any LLM call. No gate, action or routing rule changes; only the text that the gates and the generator see is redacted, and XML isolation of untrusted input is unchanged.
+
+---
+
+### ADL-031 · Envelope Encryption of Session Data at Rest 🟠 HIGH
+
+**Issue:**
+Message text, gate rationales, clinical event payloads and snapshots were stored in plaintext in PostgreSQL. Because `clinical_events` and `audit_logs` are immutable (Non-Negotiable 2), plaintext rows in them could never be removed later (see ADL-032).
+
+**Decision:**
+Encrypt patient-derived content with a per-session key hierarchy, keep routing metadata in plaintext so that metrics still work, and leave the ORM semantics and the event-sourcing projection unchanged.
+
+**Resolution:**
+In `medbridge/privacy/crypto.py` the environment-supplied `ENCRYPTION_MASTER_KEY` (never stored in the database) wraps one random Fernet data key per session, kept in the new `session_keys` table (migration `alembic/versions/g1a7c3e9d2b4_privacy_trace_feedback.py`). Message text, audit request/response text and rationales, event payloads, the snapshot, feedback comments and the PHI-bearing part of the trace are encrypted (`enc:v1:<token>` in text columns, `{"enc": "v1", "ct": …}` in JSONB columns). Actions, chunk IDs, latencies and a PHI-free trace (`audit_logs.trace`, separated by `turn_store.split_trace`) stay plaintext for `/api/metrics`. Readers decrypt transparently and still accept legacy plaintext rows.
+
+**Why the architecture is preserved:** The snapshot is still a pure deterministic fold over the events, merely stored encrypted. The append-only rules are untouched, and encryption lives entirely in the persistence layer.
+
+---
+
+### ADL-032 · Right to Erasure by Crypto-Shredding (Append-Only Preserved) 🟠 HIGH
+
+**Issue:**
+A right to erasure collides with Non-Negotiable 2: `clinical_events` and `audit_logs` may never be updated or deleted, and their database rules silently ignore DELETE statements.
+
+**Decision:**
+Erase a session by destroying its data key rather than its rows. Ciphertext in the append-only tables becomes permanently unreadable while those rows remain byte-identical.
+
+**Resolution:**
+`DELETE /api/sessions/{id}` calls `turn_store.erase_session`, which deletes the `session_keys` row and the mutable rows (`message_history`, `context_snapshots`, `feedback`) and stamps `sessions.erased_at`. `clinical_events` and `audit_logs` are never touched (their rules are re-verified by tests). Session rows are kept because the foreign keys from the rule-protected tables would otherwise cascade. Every session route answers 410 `SESSION_ERASED` for an erased session before any pipeline or LLM work. Limitations: rows written before encryption existed, or with `ENCRYPTION_ENABLED=false`, are plaintext and cannot be rewritten; erasure counts them into `sessions.legacy_plaintext_rows` (migration `h2b8d4f6a1c3`), every reader hides them, and such databases must be reset (`medbridge/privacy/README.md`). Losing `ENCRYPTION_MASTER_KEY` makes every session unreadable, and key rotation is not implemented.
+
+**Why the architecture is preserved:** No UPDATE or DELETE is ever issued against the immutable tables, every turn keeps its audit row, and erasure is a key-management action outside the pipeline.
+
+---
+
+### ADL-033 · Signed, Expiring Session Tokens 🟠 HIGH
+
+**Issue:**
+The Review-1 deck listed "No authentication (session ID only)" as a limitation, and ASM-01 accepted that anyone who knows a session UUID can read and continue that conversation.
+
+**Decision:**
+Tie every session route to a bearer token that proves possession of exactly that session, without keeping token state on the server.
+
+**Resolution:**
+`medbridge/privacy/tokens.py` issues `v1.<payload>.<signature>` tokens, HMAC-SHA256-signed with `SESSION_TOKEN_SECRET`, with payload `{typ, sid, exp}` and lifetime `SESSION_TOKEN_TTL_SECONDS` (default 7 days). Signatures are compared in constant time, and malformed or non-ASCII tokens are rejected as invalid rather than raising. `POST /api/sessions` returns the token; with `AUTH_REQUIRED` (default `true`) every `/api/sessions/{id}/*` route requires it (`medbridge/privacy/deps.py`: missing → 401; invalid, expired or issued for another session → 403). One exception keeps erasure possible: `DELETE /api/sessions/{id}` accepts the session's own correctly signed token for up to max(90 days, `DATA_RETENTION_DAYS`) after expiry (`require_session_erasure_access`); all other routes keep strict expiry. Tokens are stateless, so erasure does not revoke them; the erased session simply answers 410.
+
+**Why the architecture is preserved:** This is an access-control layer in front of the API; the pipeline, the gates and persistence are unchanged.
+
+---
+
+### ADL-034 · Admin Authentication and HTTP Security Middleware 🟠 HIGH
+
+**Issue:**
+The new dashboard and metrics endpoints (ADL-055) expose aggregate audit data. The API had no rate limits, no request-size limit other than the 2,000-character message field, no security headers and no CSP. Starlette's `BaseHTTPMiddleware` buffers streamed responses, which would break SSE (ADL-054).
+
+**Decision:**
+Protect the dashboard with a separate admin login, and add defence-in-depth HTTP layers implemented as pure ASGI middleware outside the pipeline.
+
+**Resolution:**
+Admin (`medbridge/api/routes/admin.py`): the dashboard is disabled (403) while `ADMIN_PASSWORD` is empty; the password is compared as SHA-256 digests in constant time, login is limited to 5 attempts per minute per IP, and an 8-hour admin token is issued. `/api/metrics` and `/api/admin/audit` require it, and the audit feed shows previews that are decrypted and then redacted, or `[erased]`. Middleware (`medbridge/privacy/middleware.py`, pure ASGI): a strict CSP (`default-src 'self'; script-src 'self'; frame-ancestors 'none'`, …) with a relaxed policy only for `/docs` and `/redoc`; `nosniff`, `no-referrer`, frame denial, Permissions-Policy and COOP headers; `Cache-Control: no-store` on `/api/*`; CORS restricted to `CORS_ORIGINS` without credentials; bodies larger than `MAX_REQUEST_BYTES` → 413; per-IP sliding-window limits (message/stream/regenerate at `RATE_LIMIT_PER_MINUTE`, session creation 10/min, admin login 5/min) → 429 with `Retry-After`. Limits: the limiter is in-memory per process and deliberately ignores `X-Forwarded-For`; responses produced by Starlette's outermost server-error middleware carry no security headers.
+
+**Why the architecture is preserved:** These layers sit in front of the routes and touch no gate or routing logic; SSE responses stream unbuffered (tested).
+
+---
+
+### ADL-035 · PII Log Scrubbing and Data-Retention Purge 🟡 MEDIUM
+
+**Issue:**
+Constitution §8.4 required secrets to be scrubbed from logs, but patient text could still appear in log events, formatted exceptions and SQL error messages. Data minimisation (India's DPDP Act 2023, HIPAA principles) also argues against keeping inactive conversations indefinitely.
+
+**Decision:**
+Run the same deterministic redactor over every log event, keep bound SQL parameters out of error messages, and purge inactive sessions through exactly the user-initiated erasure path.
+
+**Resolution:**
+`medbridge/privacy/log_scrub.py` adds a structlog processor that redacts every string value of an event, including nested values and exception text, with bounded size and depth, next to the existing secret masking (`medbridge/logging_config.py`). The database engine uses `hide_parameters=True` (`medbridge/db/connection.py`), and validation errors drop the echoed `input` before they are logged or returned (`medbridge/api/middleware/error_handler.py`). `medbridge/privacy/retention.py` is started by the FastAPI lifespan, runs about 30 s after start-up and then hourly, crypto-shreds sessions inactive for longer than `DATA_RETENTION_DAYS` (default 30) via `erase_session`, survives database outages and stops on shutdown.
+
+**Why the architecture is preserved:** Logging and retention are operational concerns outside the request path. Retention reuses the erasure of ADL-032, so the append-only tables are never modified.
+
+---
+
+## Category 10 — Orchestration, Persistence & Concurrency
+
+---
+
+### ADL-036 · Orchestrator Decomposition into Traced Stages with Single-Flush Persistence 🟠 HIGH
+
+**Issue:**
+The original `_execute_pipeline` was one method of roughly 540 lines; persisting a turn took five or more separate flushes; evidence chunks were deep-copied; no per-stage timing existed. Fallback paths could only be tested end to end, and a failure in the middle of persistence could leave a partially written turn.
+
+**Decision:**
+Split the turn into explicit stage methods over a shared per-turn context, record a per-stage trace, and persist each turn atomically in one call, without changing the stage order, the outputs or the fallbacks.
+
+**Resolution:**
+`medbridge/core/orchestrator.py` runs privacy → emergency → load_state → small_talk → extraction → context_gate → retrieval/rerank → evidence_gate → generation → verification → persistence as `_stage_*` methods over a `TurnContext`. Each stage emits a `PipelineEvent` (consumed by SSE, ADL-054) and a `StageTiming`; the `Explanation` model (`medbridge/api/schemas/responses.py`) is always filled, and its PHI-free part is stored in the new `audit_logs.trace` JSONB column. `medbridge/state/turn_store.py::persist_turn(TurnRecord)` performs all reads first, then adds the events, snapshot, soft-ask counter, both messages, one audit row and `last_active_at`, and calls `db.flush()` exactly once (asserted in a test); the caller commits. A retrieval infrastructure failure now raises `RetrievalError`; the orchestrator records `retrieval_status = "failed"` and lets Gate 2 decide on empty evidence, so an outage is visible instead of passing as a normal turn. If the extractor fails, the retrieval query is the deterministic expansion of the redacted message and no events are written. `process_message` keeps its top-level never-throw guard.
+
+**Why the architecture is preserved:** The same stages run in the same order with the same outputs; both gates remain separate decision points; the spec fallbacks (Gate 1 → PROCEED, Gate 2 → GENERALIZE, generator → pre-vetted template) and the never-throw guarantee are unchanged; only the turn store writes `clinical_events` and `audit_logs`, which stay append-only.
+
+---
+
+### ADL-037 · Regenerate Restarts from the Pre-Turn Loop-Breaker Counter 🟠 HIGH
+
+**Issue:**
+The new regenerate action (re-run the last user message) started Gate 1 from the counter stored *after* the original turn. Regenerating a SOFT-ASK therefore counted it twice and could trigger the loop-breaker early, and regenerating a loop-breaker answer could undo it. A regenerated reply could also be attached to a newer user message. (Code-review findings invariants-1, persistence-db-2, persistence-db-3 and web-ui-3, `docs/notes/code_review_findings.md`.)
+
+**Decision:**
+A regenerate is an idempotent re-run of the original decision point: it starts from the counter that held before that turn, and it may only replace the reply to the message it re-ran.
+
+**Resolution:**
+Every turn records `explanation.soft_ask_count_before` and `trace.user_message_id` in the public, PHI-free audit trace. On regenerate, `_stage_load_state` reads the value from the first audit row of the re-run message (`turn_store.get_soft_ask_count_before`) and Gate 1 restarts from it; older rows without the value use a documented fallback rule. Regenerate runs extraction only to obtain the search query and stores no new clinical events and no new user message. Under the row lock of ADL-038, `persist_turn` checks `TurnRecord.regenerated_user_message_id`: if that message is no longer the latest user message it raises `RegenerateConflictError` and stores nothing, and the answer is still returned without a `message_id`. `get_recent_turns` drops superseded regenerated replies from the history window.
+
+**Why the architecture is preserved:** Non-Negotiable 4 (limit 2, then forced GENERALIZE) now holds for regenerate exactly as for a normal turn, repeated regenerates give the same counter, and no new action or routing rule is introduced.
+
+---
+
+### ADL-038 · Snapshot Row Locking and Per-Session Turn Serialisation 🟠 HIGH
+
+**Issue:**
+Snapshot writes were unlocked read-modify-write cycles. Two overlapping writers on one session (two turns, or the manual BP form of ADL-055 during a streamed turn) could overwrite each other's snapshot, so the stored snapshot lost facts that exist in `clinical_events`. This breaks Constitution §3.3 (the snapshot is a projection of the event log). (Findings invariants-2, persistence-db-1 and web-ui-2.)
+
+**Decision:**
+Serialise the turns of one session in-process, and make every snapshot writer re-project its own delta events onto the current, row-locked snapshot, so correctness does not depend on the in-process lock alone.
+
+**Resolution:**
+`PipelineOrchestrator` holds a per-session `asyncio` lock (`SessionTurnLocks`) from `load_state` to persistence. Messages that trigger the emergency fast-path are classified before the lock, never wait, and change neither the counter nor the snapshot (`TurnRecord.update_soft_ask_count=False`). `persist_turn` and `append_manual_events` take `SELECT … FOR UPDATE` (with `populate_existing`) on the session's `context_snapshots` row, create it race-free when missing, and fold only their own events onto the locked row; `TurnRecord.new_snapshot` is just the in-memory projection used by the gates. PostgreSQL tests check that the stored snapshot equals `reconstruct_from_events` after concurrent and stale writers (`medbridge/tests/integration/test_turn_concurrency.py`). Related hardening in migration `h2b8d4f6a1c3`: `UNIQUE (session_id, message_id)` on `feedback`, written with an upsert. Limit: across several worker processes `soft_ask_count` remains last-write-wins; the deployment is single-worker by design.
+
+**Why the architecture is preserved:** Event sourcing is strengthened, not changed: the snapshot is still produced only by the deterministic projector, the event log stays append-only, and the emergency fast-path is never delayed by the lock.
+
+---
+
+## Category 11 — AI Layer & Deterministic NLP
+
+---
+
+### ADL-039 · Native Ollama Structured Outputs, Thinking Control, keep_alive and Per-Role Models 🟠 HIGH
+
+**Issue:**
+The prototype called Groq, and later Ollama's OpenAI-compatible endpoint, in free-form JSON mode. Small local models still produced malformed or truncated JSON (ADL-004), every cold model paid a load delay on its first call (part of the Review-3 latencies), and all four roles had to share one model.
+
+**Decision:**
+Use Ollama's native chat API with grammar-constrained structured output, explicit sampling options, model residency and per-role model selection, while keeping the wrapper's retry contract and the spec fallbacks.
+
+**Resolution:**
+`medbridge/ai/llm_wrapper.py` calls `POST /api/chat` with `format` set to the JSON schema of the role's Pydantic output model (fields ordered rationale-first so the gates state their reasoning before the label), options `{temperature, seed, num_ctx, num_predict, top_p}`, `keep_alive` (`LLM_KEEP_ALIVE`, default 30m) and `think` only for models whose `/api/show` capabilities include thinking (`LLM_THINK`, default off). Every call names its model explicitly: the extractor and both gates use `settings.gates_model` (`LLM_MODEL_GATES`), the generator uses `settings.generator_model` (`LLM_MODEL_GENERATOR`), and both fall back to `LLM_MODEL`. Output cut off at the token limit (`done_reason`/`finish_reason == "length"`) counts as a failed attempt: it is retried once with twice the token budget and is never parsed, repaired or cached; structurally incomplete JSON is never "repaired" into a valid object. Unchanged: three attempts with exponential backoff and `None` → spec fallback. An optional request cache keyed by the SHA-256 of the canonical request (`set_request_cache`, inactive in production) serves the evaluation (ADL-056). Groq and OpenAI remain optional providers (ADL-040).
+
+**Why the architecture is preserved:** The same four LLM calls run in the same order through the single `ResilientLLMWrapper`; the gates keep temperature 0.0, seed 42 and top_p 1.0, and the generator 0.3 with top_p 0.95 (ADL-026). Only the decoding mechanism and the weights serving each role can differ.
+
+---
+
+### ADL-040 · LOCAL_ONLY_MODE: Fail-Closed Local Inference 🟠 HIGH
+
+**Issue:**
+ADL-017 and Constitution §8.3 forbid sending PHI to external LLM APIs, yet the approved stack (Constitution §5) named Groq as the primary provider. The Review-1 deck listed dependence on external LLM APIs as a limitation, and the final demonstration laptop (Windows 11, RTX 4050 with 6 GB VRAM) must run fully offline.
+
+**Decision:**
+Default to local inference and turn "no patient text leaves the machine" into an enforced guarantee rather than a configuration habit.
+
+**Resolution:**
+With `LOCAL_ONLY_MODE` (default `true`, `medbridge/config.py`) the wrapper builds only the Ollama provider, logs an error if `LLM_PROVIDER` names a remote provider, and refuses remote sends again at send time. The Ollama host must be a loopback address (`localhost`, `127.0.0.0/8`, `::1`; `host.docker.internal` is not accepted), and cloud-offloaded Ollama tags (`-cloud`, `:cloud`) are refused. A blocked configuration sends no request at all: every call returns `None` so the spec fallbacks apply, warm-up reports failure, and `health()` reports the reason. `LOCAL_ONLY_MODE=false` re-enables Groq/OpenAI and LAN hosts. Open point: `/api/health` and `/api/config/public` report the configured flag rather than the effective block state.
+
+**Why the architecture is preserved:** All LLM traffic still passes through the single wrapper (Constitution §10.1), the fallback contract is the existing one, and the gate logic is untouched.
+
+---
+
+### ADL-041 · Prompt Redesign: Cardiology Scope, Rule-Based Few-Shot Gates and Decontamination 🟠 HIGH
+
+**Issue:**
+The original prompts (Technical Specification Part III §3.3 – §3.8) were short, hypertension-only and without examples. The brief widened the scope to cardiology centred on hypertension and required explicit handling of false premises, fabricated drugs or treatments, dose questions the guidelines do not answer, and paediatric or pregnancy cases. Development runs showed Gate 1 asking too often and Gate 2 abstaining too often. The code review found few-shot examples that overlapped HalluBench test items, including a fabricated drug name, which biased the gated conditions (llm-prompts-04), and found the extractor's intent summary placed outside `<untrusted_user_input>` (llm-prompts-06, a breach of Non-Negotiable 5).
+
+**Decision:**
+Rewrite all four prompts around ordered, auditable rules and few-shot examples taken from topics that the benchmark does not contain; keep labels and sampling settings unchanged; enforce XML isolation and decontamination with tests.
+
+**Resolution:**
+Extractor (`medbridge/ai/context_extractor.py`): three examples; it receives the last `EXTRACTOR_HISTORY_TURNS` (default 4) turns only to resolve references such as "the other one". Gate 1 (`medbridge/ai/context_gate.py`): eight examples; SOFT-ASK only when the question concerns the patient's own cardiovascular care, a specific personal fact would change the safe answer, and that fact is unknown; always PROCEED for general, out-of-domain, possibly fabricated, false-premise and otherwise unanswerable questions, and for continuing, stopping or combining a named medicine; `missing_fields` limited to a fixed 12-field vocabulary (`medbridge/ai/schemas/context_gate.py`). Gate 2 (`medbridge/ai/evidence_gate.py`): seven examples and ordered rules (an emergency happening now → ESCALATE; out-of-domain questions, specific named products absent from the evidence, doses or numbers the evidence does not state, paediatric dosing and pregnancy decisions → ABSTAIN; false premises → GENERALIZE so that the answer corrects them). Gate 2 and the generator receive the redacted patient message as well as the extractor's search query, so premises and unknown drugs are judged on the patient's own words. Generator (`medbridge/ai/response_generator.py`): patient-friendly markdown in which every clinical sentence ends with `[n]`; it never invents numbers or drugs and never prescribes; SOFT-ASK asks only for the missing fields. All patient-derived text (message, intent, earlier turns) sits inside `<untrusted_user_input>`, and `medbridge/ai/prompt_utils.py::neutralize_tags` escapes tag-like text, including unterminated openers, Unicode look-alike brackets and invisible characters, so injected text cannot close an isolation block. `medbridge/tests/unit/test_prompts_contamination.py` compares every example with every HalluBench turn (fabricated names, token similarity, rare and distinctive word overlap), and `test_prompts_contract.py` asserts that no patient text appears outside an isolation block.
+
+**Why the architecture is preserved:** Both gates keep their position, inputs and output label sets at temperature 0.0 / seed 42; Gate 1 still decides before retrieval and Gate 2 chooses among four actions after it; XML isolation is strengthened, not relaxed.
+
+---
+
+### ADL-042 · Index-Based Citation Markers 🟡 MEDIUM
+
+**Issue:**
+ADL-016 and ADL-025 had the generator return citation objects with chunk IDs, sources and excerpts. Local models copy long identifiers and URLs unreliably, and model-written excerpts cannot be trusted (ADL-028).
+
+**Decision:**
+The model cites a small integer index only; the server owns all citation metadata.
+
+**Resolution:**
+Chunks are rendered as `<chunk index="n" source="ORG YEAR — title" section="…" page="…">` (attribute values HTML-escaped after folding look-alike characters) and the model writes `[n]`. `ResponseGeneratorOutput.citations` is optional and left out of the requested JSON schema; the server rebuilds the citations from the markers (ADL-028). For HTML sources the citation carries `page = None` and a section label of the form "title (section N)". The generator's output-format example itself contains `[n]` markers; without it, a local model emitted none during integration testing and every ANSWER was downgraded.
+
+**Why the architecture is preserved:** Generation is still grounded in the `<clinical_evidence>` block with inline citations (ADL-016, ADL-025); only the marker format is simpler, and the ANSWER → GENERALIZE downgrade still applies.
+
+---
+
+### ADL-043 · Effective Question for Multi-Turn Follow-Ups after SOFT-ASK 🟠 HIGH
+
+**Issue:**
+After a SOFT-ASK the patient's next message usually supplies facts ("I had a stroke two years ago") instead of repeating the question. Gate 1, Gate 2 and the generator judged that reply on its own, found no question in it, and drifted to ABSTAIN or another SOFT-ASK; the loop-breaker's GENERALIZE then answered a non-question.
+
+**Decision:**
+When the previous reply was a SOFT-ASK, the decision points judge the original question together with the follow-up facts, while state extraction and the emergency check keep seeing only the current message.
+
+**Resolution:**
+`_stage_load_state` builds an effective patient message from the stored, redacted user messages: `Original question: …` followed by one `Follow-up details from the patient: …` line per follow-up (after one or more consecutive SOFT-ASKs, up to `SOFT_ASK_MAX_COUNT`), the current message last. It reaches Gate 1, Gate 2 (plain and V1) and the generator through their existing `message=` parameters, and is also used for the evidence features and for the fallback query when the extractor fails. Both gate prompts contain a rule to judge the original question in this format (ADL-041). The emergency classifier, the extractor and the stored user message see only the current message, and the trace records counts only (`explanation.effective_question`), never text.
+
+**Why the architecture is preserved:** No new stage, input or action is introduced and the gate signatures are unchanged. The loop-breaker still fires at 2 and still forces GENERALIZE; it now answers the question the patient actually asked.
+
+---
+
+### ADL-044 · Deterministic NLP: Drug Normalisation, Query Expansion and BP-Reading Parser 🟡 MEDIUM
+
+**Issue:**
+Patients use brand names ("Telma 40", "Amlong") and lay terms ("water pill") while guidelines use generic names and clinical vocabulary, so retrieval missed relevant passages and the snapshot could list one drug twice under two names (the brand/generic robustness problem probed by RABBITS). The extractor also recorded target or hypothetical values ("is 130/80 my target?") as BP readings, polluting the event log (finding llm-prompts-01).
+
+**Decision:**
+Add pure, deterministic post-processing around the extractor and the retriever (never an LLM), and keep the snapshot produced only by the projector.
+
+**Resolution:**
+`medbridge/nlp/drugs.py` maps 189 brand names (65 of them Indian brands) to generics and 94 generics to drug classes, ignoring case, hyphens, strengths, salt names and release suffixes, with fuzzy matching at a similarity of at least 0.88 for names of five or more characters; it is applied to MEDICATION_ADDED/STOPPED events (canonical generic name, brand and class kept) and to query expansion. `medbridge/nlp/query_expansion.py` appends lay-to-clinical synonyms and the generics/classes of mentioned brands in an additive, duplicate-free, length-bounded way, keeping the original query text. `medbridge/nlp/bp_parse.py` counts a number pair as a reading only when the text ties it to the patient ("my bp", a time word such as "this morning"); targets, thresholds and hypothetical values are labelled as such, never written as BP_READING, and an LLM BP event for such a value is dropped. Projector refinement (`medbridge/state/projector.py`): MEDICATION_ADDED for a drug already listed is a dose change that keeps the previous dose in a history list, and DEMOGRAPHIC conditions are merged as an order-preserving union. The brand mappings were compiled without an external drug database and should be spot-checked before they are cited.
+
+**Why the architecture is preserved:** These are pure functions on the extractor output and the query string. The snapshot is still a deterministic fold over typed events, and the dense + sparse → RRF(k=60) → cross-encoder pipeline is unchanged.
+
+---
+
+## Category 12 — Emergency Fast-Path
+
+---
+
+### ADL-045 · Natural-Language Emergency Classifier with Negation, Typos and Hinglish 🟠 HIGH
+
+**Issue:**
+The original fast-path was a short list of regular expressions (Technical Specification Part III §3.2). It missed colloquial phrasing ("my chest feels tight", "can't move my arm", "150 over 95"), escalated negated or purely informational mentions ("no chest pain", "what are the symptoms of a stroke?"), tolerated no typos, and missed the Roman-script Hindi that Indian patients use ("seene mein dard", "saans nahi aa rahi").
+
+**Decision:**
+Keep a single deterministic rules engine (no LLM, no model, no network, no randomness), but teach it clause-level negation, informational and historical context, typo tolerance and Hinglish, and let it escalate whenever it is unsure.
+
+**Resolution:**
+`medbridge/core/emergency_classifier.py` normalises the text (NFKC, unified apostrophes, collapsed letter runs, a fixed misspelling map and a one-edit matcher for red-flag keywords with a stop-list of real English words), extracts BP readings, matches 26 English rule IDs and 14 Hinglish rule IDs (`HINGLISH_RULE_IDS`), and then filters per clause. A negation cue must precede the symptom in the same clause with no affirmation in between; only explicit educational question frames and explicitly anchored historical mentions are suppressed, and any first-person or present-time marker cancels the suppression; a negated symptom never suppresses a stated BP crisis. Hindi post-position negation ("nahi"), spelling-variant canonicalisation and Hindi wording for the informational, historical and threshold filters are included, and every Hinglish pattern requires a Hindi word or an Indian-English idiom so that English behaviour is unchanged. `classify()` keeps its signature; `classify_detailed()` explains each decision (matched, negated and suppressed rule IDs and the decisive BP reading), and that explanation, without evidence spans, is stored encrypted in the private trace. Tests restrict the module's imports to the standard library and the action enum and enforce the latency budget (under 5 ms average for typical messages, under 10 ms median at the 2,000-character maximum). The benchmark vignettes were aligned with this behaviour (CONTRA-025 is gold ESCALATE because a systolic reading of 180 or more triggers the fast-path before any LLM call; a unit test enforces the agreement). Accepted false positives: side-effect questions that name a red flag and some Hinglish idioms escalate; spelled-out numbers and cmHg readings are not parsed. The development case files (`tests/data/emergency_cases.json`, `tests/data/emergency_cases_hinglish.json`) were written alongside the rules and are not an independent estimate; the held-out estimate is the HalluBench emergency subset (results pending).
+
+**Why the architecture is preserved:** Non-Negotiable 1 holds: the classifier is deterministic, runs on the raw message before any LLM call and returns the ESCALATE template, with the same position and output type as before.
+
+---
+
+## Category 13 — Knowledge Base & Retrieval
+
+---
+
+### ADL-046 · Curated Corpus Expansion Beyond the Three-Source Rule 🟠 HIGH
+
+**Issue:**
+The specification fixed the knowledge base at three sources: AHA/ACC 2025, ESC 2024 and MedlinePlus (Technical Specification Part V §6, ASM-04, CON-05). Once the scope widened to cardiology centred on hypertension (heart failure, atrial fibrillation, coronary disease, lipids, CKD, pregnancy, emergencies and lay questions), three hypertension documents left most in-scope questions without evidence and pushed Gate 2 towards GENERALIZE or ABSTAIN on answerable questions. The original proposal warned that unvetted scraping, for example of PubMed, invites RAG poisoning.
+
+**Decision:**
+Expand the corpus, but only with authoritative, curated, licence-compatible sources that are individually listed, pinned and auditable. The three-source rule is superseded by a manifest-only rule.
+
+**Resolution:**
+The index now holds 27 documents (13 PDF, 14 HTML) from 11 organisations and 2,747 chunks (`reports/corpus_stats.md`): clinical-society and government guidelines (AHA/ACC, ESC, ISH, WHO, KDIGO, NICE), society scientific statements and a position paper, one CC BY peer-reviewed review, and US Government patient pages (MedlinePlus, NHLBI). A document is indexed only if it is listed in `data/corpus_manifest.json` with organisation, year, canonical URL, the publisher's licence text and a SHA-256 pin, and every chunk carries `doc_sha256`, so the index is versioned and auditable. Nothing is scraped, publisher bot checks were not bypassed, and a source whose terms prohibit text-and-data mining (ADA Standards of Care 2026) was excluded (`data/README.md`). Decisions left to the team: the ESC 2024 PDF, one of the original three sources, reserves text-and-data-mining rights, and the ISH 2020 copy comes from an institutional repository; both are flagged in the manifest and `data/README.md`. Heart failure remains the thinnest topic (2 documents).
+
+**Why the architecture is preserved:** Retrieval remains hybrid dense + sparse → RRF(k=60) → cross-encoder top-5, both gates are unchanged, and ingestion remains the only writer to Qdrant (Constitution §6.4). Gate 2 simply receives better evidence coverage.
+
+---
+
+### ADL-047 · Tokenizer-Measured 400-Token Chunks, Table-Aware Chunking and Incremental Ingestion 🟠 HIGH
+
+**Issue:**
+The original chunker produced 512 whitespace words with 64 words of overlap (Technical Specification Part V §3.3). Sub-word tokenisation yields more tokens than words, so many chunks exceeded the 512-token input limit of both `bge-small-en-v1.5` and `ms-marco-MiniLM-L-6-v2`; the excess text was silently truncated and never embedded or reranked. Tables (BP categories, recommendation classes) were flattened into prose, raw reference lists and running headers competed in retrieval, and every change required a full re-index.
+
+**Decision:**
+Measure chunk length with the embedder's own tokenizer and leave room for the query in the reranker's window; keep tables as units; strip structural noise; make ingestion incremental and fingerprinted.
+
+**Resolution:**
+`medbridge/ingestion/chunker.py` and `tokenizer.py` default to 400 tokens with 60 tokens of overlap, counted with the bge-small WordPiece tokenizer, so a chunk plus a query fits the reranker's 512-token window; the current index has a maximum chunk length of 400 tokens and no chunk above 512 (`reports/corpus_stats.md`). Table-aware chunking (PyMuPDF `find_tables()` for PDFs, `<table>` elements via `html_parser.py`) turns tables into markdown chunks with `content_type = "table"` (505 of 2,747 chunks), repeats header rows when a table is split and attaches captions. Cleaning strips running headers and footers, margin watermarks and page numbers, cuts the reference section, drops bibliography and table-of-contents lines and duplicate chunks, and qualifies generic headings with their parent heading. Incremental ingestion (`state.py`, `pipeline.py`): Qdrant is the source of truth for document versions (`guideline_id` + `doc_sha256`), and `data/.ingest_state.json` stores the chunking fingerprint (size, overlap, tokenizer, `INGEST_VERSION = 3`); unchanged documents are skipped, a changed document or configuration triggers a per-document delete-and-reindex, `--recreate` rebuilds everything, `--prune` removes documents no longer in the manifest, and `--stats` writes the corpus table and figure.
+
+**Why the architecture is preserved:** Only the evidence units change. The payload gains fields (`content_type`, `org`, `year`, `doc_title`, `doc_sha256` and others; contract in `docs/finalization_plan.md` §3.5) while retrieval stays read-only, and the gate logic is untouched.
+
+---
+
+### ADL-048 · Explicit RRF k = 60 (Retrieval Bug Fix) 🟠 HIGH
+
+**Issue:**
+The specification defines Reciprocal Rank Fusion with k = 60 (Technical Specification Part III §3.5, ADL-022), but the code used Qdrant's un-parameterised `FusionQuery(fusion=RRF)`, whose constant is far smaller. With the in-memory client of `qdrant-client` 1.19.1, a document ranked first in both lists scores 1.0 under the default fusion, which corresponds to k = 2 with zero-based ranks, and 2/60 with k = 60. The documented fusion was therefore not the implemented one, and the default weights the head of each list much more heavily.
+
+**Decision:**
+Implement the specified fusion exactly.
+
+**Resolution:**
+`medbridge/retrieval/hybrid_retriever.py` queries with `models.RrfQuery(rrf=models.Rrf(k=60))` (constant `RRF_K`). The retrieval evaluation on 70 labelled queries reports the fused ranking alongside dense-only and sparse-only retrieval (`evaluation/results/retrieval/retrieval_metrics.md`).
+
+**Why the architecture is preserved:** The fix brings the implementation into line with the specified dense + sparse → RRF(k=60) design; nothing else changes.
+
+---
+
+### ADL-049 · Retrieval Caches, Concurrent Encoding and Start-Up Warm-Up 🟠 HIGH
+
+**Issue:**
+The embedders, the reranker and the LLMs loaded lazily on the first query, dense and sparse query encoding ran one after the other, and identical queries (regenerations, evaluation reruns) were recomputed. Together with model loading in the LLM server this accounts for much of the latency reported in the Review-3 deck.
+
+**Decision:**
+Load every model at start-up in the background, report readiness honestly, and cache deterministic retrieval work in-process.
+
+**Resolution:**
+The FastAPI lifespan (`medbridge/main.py`) starts `PipelineOrchestrator.warmup()` as a background task when `WARMUP_ON_STARTUP` is set (default `true`): the dense and sparse embedders, a Qdrant probe, the reranker and the gate/generator models in Ollama (with `keep_alive`), plus the NLI verifier when enabled, load concurrently; readiness flags go to `app.state.readiness`, and `/health` reports `degraded` until warm-up completes, together with `models_loaded`, `ollama_reachable` and `qdrant_points`. If warm-up fails the app still serves, loading models lazily. `medbridge/retrieval/cache.py` provides a thread-safe LRU/TTL cache: query embeddings are LRU-cached in `EmbeddingClient` (`RETRIEVAL_CACHE_SIZE`), whose two encoders now run concurrently via `asyncio.gather` and `to_thread`, and fused results are cached in `HybridRetriever` by (query, top_k, mode) with TTL `RETRIEVAL_CACHE_TTL_SECONDS`; empty or failed results are never cached. The reranker selects its device automatically (cuda > mps > cpu), runs in `asyncio.to_thread` and serialises `predict` with a lock. Baseline latencies before these changes are in `reports/performance/before_gemma3-4b.json`; the after-measurement for the before/after table is pending.
+
+**Why the architecture is preserved:** The request path is unchanged; only the time at which models load differs. A cache hit returns exactly what the same Qdrant search would return, retrieval remains read-only, and the thread offloading of Constitution §7.7 is kept.
+
+---
+
+### ADL-050 · Cross-Encoder Reranker Retained after Retrieval Ablation 🟡 MEDIUM
+
+**Issue:**
+The brief allowed replacing the reranker if an alternative proved better, with numbers, while remaining lightweight. The retrieval evaluation also raised the question of whether reranking adds anything over RRF fusion alone.
+
+**Decision:**
+Keep `cross-encoder/ms-marco-MiniLM-L-6-v2` and the hybrid → RRF → rerank (top-20 → top-5) structure.
+
+**Resolution:**
+On the 70-query retrieval set (`evaluation/datasets/retrieval_eval_v1.json`, labelled by regex search over the parsed text, never with the retriever) four rerankers and "no reranker" were compared (`evaluation/results/retrieval/reranker_ablation/README.md`). All 95% bootstrap intervals overlap, so no reranker is significantly better than the default or than RRF fusion alone; on this set the default's point estimates are slightly below RRF alone (recall@5 0.733 vs 0.743, nDCG@5 0.657 vs 0.688). The default is kept because it is the fastest option, it is an architectural invariant, and its scores supply the quantitative evidence-sufficiency signal used by V1 (ADL-051). Among the single retrieval modes, hybrid fusion has the highest MRR and nDCG@5 point estimates, with intervals overlapping dense-only retrieval (`evaluation/results/retrieval/retrieval_metrics.md`).
+
+**Why the architecture is preserved:** The hybrid dense + sparse → RRF(k=60) → cross-encoder top-5 pipeline remains exactly as specified.
+
+---
+
+## Category 14 — Additional Verification Gates (Fallback Variants V1 and V2)
+
+---
+
+### ADL-051 · V1 Calibrated Evidence Gate with Permutation Self-Consistency 🟡 MEDIUM
+
+**Issue:**
+The project brief (§6.7) requires the closest possible variant of Gate 2 to be built and evaluated in case the Dual Answerability Gate does not significantly reduce hallucinations: Gate 2 combined with a quantitative evidence-sufficiency signal and three-way self-consistency voting. Classic self-consistency samples at non-zero temperature, which Non-Negotiable 3 forbids for the gates.
+
+**Decision:**
+Obtain diversity between votes from the order of the evidence, not from sampling, and let calibrated thresholds only ever move the decision towards the more conservative action.
+
+**Resolution:**
+`medbridge/ai/evidence_calibration.py::calibrated_evidence_decision` runs Gate 2 once per distinct deterministic ordering of the evidence (original, reversed, rotations; `EVIDENCE_GATE_VOTES`, default 3), each call at temperature 0.0 and seed 42. The majority wins and ties go to the more conservative action (ESCALATE > ABSTAIN > GENERALIZE > ANSWER). The pure rule `decide_with_thresholds`, shared with `evaluation/calibrate.py`, then applies reranker-score and entity-coverage thresholds (`EVIDENCE_MIN_RERANK_ANSWER`, `EVIDENCE_MIN_RERANK_ANY`, `EVIDENCE_MIN_ENTITY_COVERAGE`): a weakly supported ANSWER becomes GENERALIZE, ANSWER or GENERALIZE on irrelevant evidence becomes ABSTAIN, ESCALATE is never overridden and ABSTAIN is never upgraded. Redaction placeholders do not count as question entities. If every vote fails, the ordinary Gate 2 fallback applies (GENERALIZE, source `fallback`) and `failed_votes` is recorded. The plain Gate 2 records the same evidence features, so V1 thresholds can be calibrated from C5 traces on the dev split. Status: disabled in production (`EVIDENCE_GATE_CALIBRATION_ENABLED=false`); the thresholds in `medbridge/config.py` are placeholders until calibration; evaluated as condition V1 (ADL-056); results pending.
+
+**Why the architecture is preserved:** V1 has the same position, inputs and four outputs as Gate 2, every vote is a zero-temperature, seed-42 call, and the result can only be more conservative than the majority vote.
+
+---
+
+### ADL-052 · V2 Grounding Verifier ("Gate 3") Using a Different NLI Model from the Evaluation Judge 🟡 MEDIUM
+
+**Issue:**
+Citation validation (ADL-028) checks that a marker points to a chunk, not that the chunk supports the sentence. Integration runs showed local generators occasionally adding advice that the evidence does not contain. The brief's second fallback variant (§6.7, V2) is a post-generation verifier.
+
+**Decision:**
+Add a third, post-generation check that verifies each claim against the evidence it cites and can only remove content or make the response more conservative. Use a different NLI model from the evaluation's NLI judge, so that the verifier is never graded by the model it relies on.
+
+**Resolution:**
+`medbridge/ai/grounding_verifier.py` splits the ANSWER/GENERALIZE draft into sentences, skips non-claims (short headings, greeting or empathy lead-ins; advice to seek emergency care is never removed) and checks each claim with a local cross-encoder NLI model (`GROUNDING_NLI_MODEL`, default `cross-encoder/nli-MiniLM2-L6-H768`) against the chunks it cites, or all chunks when uncited, over evidence windows of about three sentences, in a worker thread on cuda > mps > cpu. The evaluation NLI judge is `cross-encoder/nli-deberta-v3-base` (`evaluation/judges/nli_judge.py`). In `_stage_verification` (`medbridge/core/orchestrator.py`): at or below τ (`GROUNDING_MAX_UNSUPPORTED_FRACTION`) unsupported sentences are removed and citations re-validated; above τ an ANSWER is regenerated once as GENERALIZE and re-verified, becoming ABSTAIN if still above τ, and a GENERALIZE becomes ABSTAIN; a verifier failure keeps the draft and records the failure. The public trace holds status (`ok`, `unavailable`, `failed`) and counts, never sentence text. Status: disabled in production (`GROUNDING_VERIFIER_ENABLED=false`). An integration smoke run with the uncalibrated default thresholds (a handful of turns, not a benchmark) turned the Gate-2 ANSWER turns into ABSTAIN, so the thresholds are calibrated on the dev split with the production verifier model before V2 is reported (ADL-056); results pending.
+
+**Why the architecture is preserved:** Gate 3 is added after the dual gate and never replaces Gate 1 or Gate 2; it only removes content or lowers the action, ABSTAIN still uses the template, and when the model is unavailable the draft passes through unchanged.
+
+---
+
+## Category 15 — Presentation Layer & Complementary Features
+
+---
+
+### ADL-053 · FastAPI-Served Web SPA without Third-Party JavaScript (Streamlit Kept) 🟡 MEDIUM
+
+**Issue:**
+The Streamlit interface relied on heavy CSS workarounds and could not offer a modern chat experience (streaming, a citation drawer, an explanation panel). The brief asked for a ChatGPT/Claude-style single-page app without a Node build step and suggested vendoring marked and DOMPurify; the project owner decided against downloading third-party libraries. ADL-007 had settled on Streamlit as the only frontend.
+
+**Decision:**
+Add a static single-page app served by the same FastAPI process, written in plain HTML, CSS and ES modules with its own escape-first Markdown renderer under a strict CSP, and keep Streamlit as a legacy client.
+
+**Resolution:**
+`medbridge/web/__init__.py::mount_web(app)` serves `/` (index.html), `/dashboard` and `/static/*` through a `StaticFiles` subclass restricted to css/js/img, with explicit, platform-independent content types (some Windows installations map `.js` to `text/plain`, which breaks ES modules), a short `max-age` with ETag revalidation, and `no-cache` HTML. No Node or bundler is needed at runtime; Node is used only for optional JavaScript unit tests (`medbridge/web/tests/`). The renderer escapes all text first and adds only markup it controls; links are limited to http/https with `rel="noopener noreferrer"`, citation markers become buttons, and `medbridge/tests/unit/test_web_static.py` enforces that `innerHTML` receives renderer output only. The conversation list (id, token, neutral title, timestamps) is kept in `localStorage`, so the server stores no titles; delete and "clear my data" call the server-side erasure first, and only 404/410 count as erased. The browser tab title never contains message text, and a per-conversation write guard prevents overlapping writes from one browser. Trade-off: session tokens in `localStorage` are readable by any script on the origin; this is mitigated by the CSP, escape-first rendering and the absence of third-party code. The Streamlit client (`medbridge/frontend/`) still works against the new API: it sends the session token as a bearer header, never puts it in the URL, and starts a new session after 401/403/404. Screenshots in `medbridge/web/dev_screenshots/` were taken against the development mock and must not be used as results.
+
+**Why the architecture is preserved:** The presentation layer talks only HTTP to the existing API and contains no clinical or AI logic (Constitution §3.1, §6.1). The "Why this answer?" panel renders `MessageResponse.explanation` and never recomputes or overrides a decision.
+
+---
+
+### ADL-054 · Server-Sent Events: Live Stage Progress and Typewriter Replay of Validated Text 🟡 MEDIUM
+
+**Issue:**
+A silent wait of tens of seconds (Review-3 latencies) gives the patient no feedback, and the brief asked for streamed pipeline stages and text. The generator returns validated JSON, so streaming raw model tokens would show text before validation, citation checks and Gate 3.
+
+**Decision:**
+Stream the real stage events live, but release the answer text only after the whole turn has been validated, replayed as a typewriter effect.
+
+**Resolution:**
+`POST /api/sessions/{id}/messages/stream` and `POST /api/sessions/{id}/regenerate?stream=true` (`medbridge/api/routes/messages.py`) run the orchestrator in a task with its own database session and bridge its `on_event` callback through an `asyncio.Queue`: live `stage` events, then `meta`, then `token` word groups about 12 ms apart, then `done` with the full `MessageResponse`; on failure an `error` event is followed by a safe `done`. Responses carry `Cache-Control: no-cache` and `X-Accel-Buffering: no`, and the pure ASGI middleware (ADL-034) does not buffer them. A client disconnect does not stop the turn (`asyncio.shield`): it completes and is persisted. The JSON endpoint is kept. The web client uses `fetch` with a `ReadableStream` (EventSource supports only GET) and falls back to the JSON endpoint if the stream fails before the first event. Consequence: the first text token arrives at about the full turn time, so neither the UI nor the report may present this as model-level token streaming.
+
+**Why the architecture is preserved:** The streaming route makes the identical orchestrator call as the JSON route, nothing unvalidated reaches the patient, and routing and the never-throw guarantee are unchanged.
+
+---
+
+### ADL-055 · BP Log & Trends, Clinician Summary and Admin Dashboard 🟡 MEDIUM
+
+**Issue:**
+The brief (§4.6) asked for complementary features (BP trends, a clinician summary export and an evaluation dashboard) that must not bypass the gates.
+
+**Decision:**
+Build them as read-mostly views over the existing event-sourced state and audit trail; the only new write path, manual BP entry, feeds the same event pipeline.
+
+**Resolution:**
+`medbridge/features/bp.py` assigns ACC/AHA categories (normal, elevated, stage 1, stage 2, crisis) deterministically. `GET /api/sessions/{id}/context` returns the snapshot and the BP series; `POST /api/sessions/{id}/bp` checks plausibility (`medbridge/nlp/bp_parse.py::is_plausible_bp`) and appends a BP_READING event through `turn_store.append_manual_events` (row-locked re-projection, ADL-038); a crisis-range entry returns fixed advice to re-measure and to call the emergency number if symptomatic. `medbridge/features/summary.py` builds a cited Markdown/JSON clinician summary from the decrypted session (snapshot, BP log, numbered questions and answers with action and citations, session referenced by a short id prefix). `/dashboard` with `GET /api/metrics` (latency p50/p95 per action and stage, action and gate counts, fallbacks, Gate 3 counters, redaction and feedback statistics) and `GET /api/admin/audit` (decrypted-then-redacted previews, or `[erased]`) require the admin token (ADL-034). `POST /api/sessions/{id}/feedback` stores one rating per message with an optional encrypted comment.
+
+**Why the architecture is preserved:** Clinical answers still come only from the gated pipeline; the BP category display does not replace the emergency fast-path; manual BP entries go through the same projector and append-only event log.
+
+---
+
+## Category 16 — Evaluation, Model Selection & Test Infrastructure
+
+---
+
+### ADL-056 · Evaluation Harness: Internal AblationConfig, Request Memoisation, Degraded-Turn Accounting and Calibration-Gated Protocol 🔴 CRITICAL
+
+**Issue:**
+The existing benchmark report was generated in mock mode (no LLM was called), so the "0% hallucination" claim had no empirical support, and the specification's ablation study and three baselines had never been implemented. An adversarial review of the first evaluation harness found that degraded turns (LLM fallbacks, retrieval outages) were scored as valid, non-hallucinated outcomes; that V1 could run before its thresholds were calibrated; that the "vanilla RAG" condition already used the safety-instructed production prompt; that a deterministic claim filter dropped real clinical claims; and that the request cache identified models by tag only (findings ablation-study-validity-1 to -5 and statistics-judges-1 to -8).
+
+**Decision:**
+Evaluate every condition through the production orchestrator using internal switches only; memoise identical LLM requests so that paired conditions differ only in pipeline structure; flag, exclude and report degraded turns; enforce "calibrate on dev, then test" in code.
+
+**Resolution:**
+Conditions (`medbridge/core/pipeline_types.py::AblationConfig`): C0 direct LLM (no retrieval, no gates, no fast-path), C1 vanilla RAG (a plain RAG prompt with `[n]` citations and no safety rules), C2 = C1 plus a prose safety block, C3 Gate 1 only, C4 Gate 2 only, C5 full MedBridge, V1, V2 and V12, plus the optional C1G (production prompt, no gates) as the anchor for gate-effect deltas. They are passed as `process_message(ablation=…)`, never exposed through the public API, and production uses `AblationConfig.full()`; the emergency fast-path is constant across C1–C5 and V*. Dataset: MedBridge-HalluBench v1 (`evaluation/datasets/hallubench_v1.json`, fully synthetic per ADL-017) with 247 items and 298 turns in six categories, gold actions plus acceptable-action sets, and gold evidence labelled by regex over the parsed corpus (never by the retriever); a stratified seed-42 split gives 49 dev and 198 test items, and 14 items that paraphrase the brief's own examples are tagged `prompt_overlap` for a sensitivity analysis. Memoisation (`evaluation/cache.py`): a disk cache installed through `set_request_cache`, keyed by the wrapper's SHA-256 of the full request and namespaced by the Ollama model digests; only complete JSON is stored; latency is reported cache-imputed, and `--no-cache` gives clean timings. Degraded turns (`evaluation/degraded.py`): any fallback or failure path (gate or generator fallback, a failed stage, `retrieval_status = "failed"`, failed V1 votes, Gate 3 unavailable) is flagged, re-run by `--resume`/`--retry-degraded` with targeted cache bypass, and excluded from headline metrics with an including-degraded sensitivity analysis; `evaluation/analyze.py` refuses headline results when any condition exceeds 5% degraded turns. Calibration gate (`evaluation/run.py`, `evaluation/calibrate.py`): C5 on dev → judges on dev → calibration of the NLI, V1 and V2 thresholds on dev → all conditions on test; V1/V2/V12 refuse to run on test without `evaluation/results/calibration.json`, and the values and the file hash are recorded in every record. Judges: an LLM judge from a different model family (default `gemma3:12b`, temperature 0, seed 42, atomic-claim decomposition and a SUPPORTED/UNSUPPORTED/CONTRADICTED rubric), a deterministic NLI judge (`cross-encoder/nli-deberta-v3-base`) and a blinded 50-item human annotation sheet. Statistics (`evaluation/metrics.py`): Wilson intervals, cluster bootstrap, exact McNemar with Holm correction, Cochran's Q, risk difference, odds ratio, relative risk reduction and Cohen's κ. The full order is scripted in `scripts/run_study.sh`. Study results (hallucination rates, p-values): pending.
+
+**Why the architecture is preserved:** The harness only observes the pipeline (orchestrator calls, read-only Qdrant, append-only sessions written through the normal turn store). The five actions, the gates at temperature 0.0 / seed 42, the loop-breaker, the template bypass and the never-throw orchestrator are untouched, and calibration only produces values for existing settings without changing any gate position or output set.
+
+---
+
+### ADL-057 · Application Model Selection (qwen3.5:4b for the Study) 🟡 MEDIUM
+
+**Issue:**
+The approved stack named `llama-3.1-8b-instant` on Groq (Constitution §5). Local inference (ADL-040) needs a model that fits a 6 GB RTX 4050 laptop at 4-bit quantisation, produces valid structured output and routes well. The brief required a small model-selection experiment.
+
+**Decision:**
+Choose the application model with a dev-split experiment on the full pipeline (condition C5) and keep the choice configurable.
+
+**Resolution:**
+`evaluation/model_selection.py` ran C5 on the HalluBench dev split (59 turns) for `gemma3:4b`, `qwen3.5:4b` and `qwen3:8b`, all at Q4_K_M (`evaluation/results/model_selection_round1_prefix/model_selection.md`). All three produced schema-valid output on the first attempt for every role (100%). `qwen3.5:4b` had the highest strict routing accuracy (62.7% vs 52.5% for gemma3:4b and 55.9% for qwen3:8b) and macro-F1 (0.63 vs 0.58 and 0.60), with a turn p50 of 10.0 s (gemma3:4b 9.4 s, qwen3:8b 20.0 s) and the smallest download (3.3 GB); qwen3:8b had a slightly higher lenient accuracy (72.9% vs 71.2%). With 59 turns the Wilson intervals overlap (`summary.json` in the same directory), so the choice is a practical trade-off, not a statistically significant difference. `qwen3.5:4b` is therefore the study's application model (`MODEL` in `scripts/run_study.sh`), and the judge comes from a different family (`gemma3:12b`). This run used commit 02cf985, before the prompt revisions of ADL-041; a re-run with the current prompts has been started (`evaluation/results/model_selection/`) and its results are pending. The code default `LLM_MODEL` in `medbridge/config.py` is still `qwen3:8b`; the deployed model is set through `.env` (`LLM_MODEL`, optionally `LLM_MODEL_GATES` and `LLM_MODEL_GENERATOR`).
+
+**Why the architecture is preserved:** Only the weights behind the four LLM calls change; prompts, sampling settings and the call sequence are identical for every candidate.
+
+---
+
+### ADL-058 · Test and Evaluation Database Isolation 🟡 MEDIUM
+
+**Issue:**
+Tests ran against the development database, so destructive tests (for example `alembic downgrade base` and migration round trips) could wipe live data, and live benchmark or evaluation runs would mix thousands of synthetic sessions into the data shown on the dashboard. Several work streams sharing one test database also produced transient failures.
+
+**Decision:**
+Tests never touch the development or evaluation database, and live evaluation runs use a dedicated evaluation database.
+
+**Resolution:**
+The repository-level `conftest.py` rewrites `DATABASE_URL` to a sibling `medbridge_test` database (overridable with `TEST_DATABASE_URL`), creates and migrates it on demand, sets deterministic test-only secrets, and skips tests marked `postgres`, `qdrant` or `ollama` when that service is unreachable; `live` tests run only with `-m live`. The live benchmark, RABBITS and adversarial runners (`tests/benchmark/live.py`) require `--database-url` or `EVAL_DATABASE_URL` and refuse to run against the development database; `evaluation/run.py` uses `EVAL_DATABASE_URL` when it is set, and `scripts/run_study.sh` reads it from `.env`. Constitution §11.3 (no live LLM calls in default tests) is kept: every LLM call in the default suite is mocked.
+
+**Why the architecture is preserved:** This concerns test infrastructure only; schema, migrations and append-only rules are identical in every database.
+
+---
+
 ## Summary Cross-Reference
 
-| ADL | Finding | Severity | Affected Diagrams |
-| :--- | :--- | :---: | :--- |
-| 001 | No deterministic state projector for Event Sourcing | 🔴 | Diagrams 2, 4 |
-| 002 | No emergency fast-path before full RAG pipeline | 🟠 | Diagrams 2, 3, 4 |
-| 003 | No formal ingestion service specification | 🟠 | Diagrams 2, 5 |
-| 004 | No LLM structured output fallback on parse failure | 🟡 | Diagram 2 |
-| 005 | PostgreSQL Docker contradiction with spec text | 🟠 | Diagram 5, Spec |
-| 006 | LlamaIndex vs. raw SDK stack conflict | 🟡 | Diagram 5, Spec |
-| 007 | Streamlit labelled as Node.js process | 🟡 | Diagram 5 |
-| 008 | Inconsistent action names across diagrams | 🟡 | Diagram 1 |
-| 009 | REST API schemas undefined | 🟠 | Diagrams 2, 4 |
-| 010 | LLM Pydantic output schemas undefined | 🔴 | Diagrams 2, 3, 4 |
-| 011 | Qdrant collection/payload schema undefined | 🟠 | Diagrams 2, 5 |
-| 012 | PostgreSQL DDL and event types undefined | 🟡 | Diagram 2 |
-| 013 | No exit path when soft_ask_count ≥ 2 | 🔴 | Diagrams 3, 4 |
-| 014 | No DB read step for session snapshot in sequence | 🔴 | Diagram 4 |
-| 015 | ABSTAIN/ESCALATE routed through LLM generation | 🟠 | Diagram 4 |
-| 016 | No inline citation attribution mechanism | 🟡 | Diagrams 2, 4 |
-| 017 | PHI/PII sent unredacted to cloud LLM APIs | 🔴 | Diagrams 2, 5 |
-| 018 | No prompt injection defense | 🟠 | Diagrams 2, 3 |
-| 019 | Database ports exposed without auth or binding | 🟠 | Diagram 5 |
-| 020 | CPU cross-encoder blocks async event loop | 🟠 | Diagrams 2, 5 |
-| 021 | HTTPS label on localhost development topology | 🟡 | Diagram 5 |
-| 022 | Sparse vector generation step unspecified | 🟡 | Diagrams 2, 3 |
-| 023 | Context Gate conflates classification + generation | 🟠 | Diagrams 2, 3, 4 |
-| 024 | Evidence Gate decision criteria undefined | 🟠 | Diagram 3 |
-| 025 | XML-Isolation prompt template undefined | 🟡 | Diagrams 2, 3, 4 |
-| 026 | Gate inference temperature not specified | 🟡 | Diagram 3 |
+The fourth column names the diagrams affected (ADL-001 – ADL-026) or the implementation modules affected (ADL-027 onward; module IDs as in `docs/module_map.md`). The last column lists later entries that implement or extend an earlier finding, or the status of a new decision.
+
+| ADL | Finding / Decision | Severity | Affected Diagrams / Modules | Related entries / Status |
+| :--- | :--- | :---: | :--- | :--- |
+| 001 | No deterministic state projector for Event Sourcing | 🔴 | Diagrams 2, 4 | Extended by 038, 044 |
+| 002 | No emergency fast-path before full RAG pipeline | 🟠 | Diagrams 2, 3, 4 | Extended by 045 |
+| 003 | No formal ingestion service specification | 🟠 | Diagrams 2, 5 | Extended by 046, 047 |
+| 004 | No LLM structured output fallback on parse failure | 🟡 | Diagram 2 | Extended by 039 |
+| 005 | PostgreSQL Docker contradiction with spec text | 🟠 | Diagram 5, Spec | — |
+| 006 | LlamaIndex vs. raw SDK stack conflict | 🟡 | Diagram 5, Spec | — |
+| 007 | Streamlit labelled as Node.js process | 🟡 | Diagram 5 | Extended by 053 (SPA added, Streamlit kept) |
+| 008 | Inconsistent action names across diagrams | 🟡 | Diagram 1 | — |
+| 009 | REST API schemas undefined | 🟠 | Diagrams 2, 4 | Extended by 033, 036, 054 |
+| 010 | LLM Pydantic output schemas undefined | 🔴 | Diagrams 2, 3, 4 | Extended by 039, 042 |
+| 011 | Qdrant collection/payload schema undefined | 🟠 | Diagrams 2, 5 | Extended by 047 |
+| 012 | PostgreSQL DDL and event types undefined | 🟡 | Diagram 2 | Extended by 031, 032, 036, 038 |
+| 013 | No exit path when soft_ask_count ≥ 2 | 🔴 | Diagrams 3, 4 | Extended by 037, 043 |
+| 014 | No DB read step for session snapshot in sequence | 🔴 | Diagram 4 | Extended by 036, 043 |
+| 015 | ABSTAIN/ESCALATE routed through LLM generation | 🟠 | Diagram 4 | — |
+| 016 | No inline citation attribution mechanism | 🟡 | Diagrams 2, 4 | Implemented by 028, 042 |
+| 017 | PHI/PII sent unredacted to cloud LLM APIs | 🔴 | Diagrams 2, 5 | Implemented by 030, 040 |
+| 018 | No prompt injection defense | 🟠 | Diagrams 2, 3 | Extended by 041 |
+| 019 | Database ports exposed without auth or binding | 🟠 | Diagram 5 | — |
+| 020 | CPU cross-encoder blocks async event loop | 🟠 | Diagrams 2, 5 | Extended by 049 |
+| 021 | HTTPS label on localhost development topology | 🟡 | Diagram 5 | — |
+| 022 | Sparse vector generation step unspecified | 🟡 | Diagrams 2, 3 | Extended by 048 |
+| 023 | Context Gate conflates classification + generation | 🟠 | Diagrams 2, 3, 4 | Extended by 041 |
+| 024 | Evidence Gate decision criteria undefined | 🟠 | Diagram 3 | Extended by 041, 051 |
+| 025 | XML-Isolation prompt template undefined | 🟡 | Diagrams 2, 3, 4 | Extended by 041, 042 |
+| 026 | Gate inference temperature not specified | 🟡 | Diagram 3 | Extended by 039, 051 |
+| 027 | Speculative retrieval concurrent with Gate 1; discarded on SOFT-ASK | 🟡 | M-08, M-01 | Implemented (`SPECULATIVE_RETRIEVAL=true`) |
+| 028 | Server-side citation validation; ANSWER with 0 valid citations → GENERALIZE | 🟠 | M-08 | Implemented |
+| 029 | Deterministic, claim-free small-talk handling under GENERALIZE | 🟡 | M-08, M-09 | Implemented |
+| 030 | PII/PHI redaction before any LLM call, log line or write | 🔴 | M-21, M-08 | Implemented; blind held-out evaluation in `reports/privacy_redaction_metrics.md` |
+| 031 | Per-session envelope encryption at rest | 🟠 | M-21, M-02, M-05 | Implemented |
+| 032 | Right to erasure by crypto-shredding; append-only tables untouched | 🟠 | M-21, M-05, M-04 | Implemented |
+| 033 | Signed, expiring session tokens | 🟠 | M-21, M-04 | Implemented (`AUTH_REQUIRED=true`) |
+| 034 | Admin authentication and pure-ASGI security middleware | 🟠 | M-21, M-04, M-19 | Implemented |
+| 035 | PII log scrubbing and data-retention purge | 🟡 | M-21, M-19, M-02 | Implemented |
+| 036 | Orchestrator split into traced stages; single-flush turn persistence | 🟠 | M-08, M-05, M-02 | Implemented |
+| 037 | Regenerate restarts from the pre-turn loop-breaker counter | 🟠 | M-08, M-05 | Implemented |
+| 038 | Snapshot row locking and per-session turn serialisation | 🟠 | M-05, M-06, M-08, M-02 | Implemented |
+| 039 | Native Ollama structured outputs, thinking control, keep_alive, per-role models | 🟠 | M-10, M-01 | Implemented |
+| 040 | LOCAL_ONLY_MODE: fail-closed local inference | 🟠 | M-10, M-01 | Implemented (default on) |
+| 041 | Prompt redesign: cardiology scope, rule-based few-shot gates, decontamination | 🟠 | M-11, M-12, M-13, M-14 | Implemented |
+| 042 | Index-based citation markers; server owns citation metadata | 🟡 | M-14, M-08 | Implemented |
+| 043 | Effective question for follow-ups after SOFT-ASK | 🟠 | M-08, M-12, M-13, M-14 | Implemented |
+| 044 | Deterministic NLP: drug normalisation, query expansion, BP-reading parser | 🟡 | M-23, M-11, M-06 | Implemented |
+| 045 | Natural-language emergency classifier with negation, typos and Hinglish | 🟠 | M-07 | Implemented; held-out estimate pending (HalluBench) |
+| 046 | Curated corpus expansion beyond the three-source rule (manifest-only) | 🟠 | M-18 | Implemented (27 documents) |
+| 047 | Tokenizer-measured 400-token chunks, table-aware chunking, incremental ingestion | 🟠 | M-18, M-15 | Implemented |
+| 048 | Explicit RRF k = 60 (bug fix) | 🟠 | M-16 | Implemented |
+| 049 | Retrieval caches, concurrent encoding, start-up warm-up | 🟠 | M-15, M-16, M-17, M-19 | Implemented; after-latency table pending |
+| 050 | Cross-encoder reranker retained after retrieval ablation | 🟡 | M-17, M-25 | Decided (ablation in `evaluation/results/retrieval/`) |
+| 051 | V1 calibrated Evidence Gate (permutation self-consistency) | 🟡 | M-26, M-13 | Implemented, off by default; calibration and results pending |
+| 052 | V2 grounding verifier (Gate 3), NLI model distinct from the evaluation judge | 🟡 | M-26, M-08 | Implemented, off by default; calibration and results pending |
+| 053 | FastAPI-served web SPA without third-party JavaScript; Streamlit kept | 🟡 | M-22, M-20 | Implemented |
+| 054 | SSE stage streaming with typewriter replay of validated text | 🟡 | M-04, M-08, M-22 | Implemented |
+| 055 | BP log & trends, clinician summary, admin dashboard | 🟡 | M-24, M-04, M-22 | Implemented |
+| 056 | Evaluation harness: AblationConfig, memoisation, degraded turns, calibration gate | 🔴 | M-25, M-08, M-10 | Implemented; study results pending |
+| 057 | Application model selection (qwen3.5:4b for the study) | 🟡 | M-25, M-01 | Decided on round 1; re-run with current prompts pending |
+| 058 | Test and evaluation database isolation | 🟡 | M-27, M-25 | Implemented |
+
+---
+
+## Numbering Reconciliation (Provisional References in Code)
+
+During the parallel 2026-10 work streams some module docstrings and test headers cited ADL numbers before this log was consolidated. The core-pipeline references (ADL-027 – ADL-029) and the privacy references (ADL-030 – ADL-035, including the Alembic migration `g1a7c3e9d2b4` and `medbridge/tests/integration/test_session_manager.py`) match the final numbering. The references below were provisional; the canonical entry is given on the right. The source files belong to other work streams and should be updated by their owners.
+
+| Provisional reference | Where it appears | Canonical entry |
+| :--- | :--- | :--- |
+| ADL-027 ("performance work") | `medbridge/retrieval/cache.py`, `medbridge/retrieval/hybrid_retriever.py` (performance paragraph) | ADL-049 (ADL-027 is speculative retrieval) |
+| ADL-028 | `medbridge/ai/llm_wrapper.py`, `medbridge/tests/unit/test_llm_wrapper.py` | ADL-039 and ADL-040 (ADL-028 is citation validation) |
+| ADL-029 | `medbridge/ai/context_extractor.py`, `context_gate.py`, `evidence_gate.py`, `response_generator.py` and the matching tests (`test_context_extractor.py`, `test_context_gate.py`, `test_evidence_gate.py`, `test_response_generator.py`, `test_prompts_contract.py`) | ADL-041, with ADL-042 and ADL-043 (ADL-029 is small talk) |
+| ADL-030 | `medbridge/ai/evidence_calibration.py` | ADL-051 (ADL-030 is PII redaction) |
+| ADL-031 | `medbridge/ai/grounding_verifier.py` | ADL-052 (ADL-031 is envelope encryption) |

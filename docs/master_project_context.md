@@ -893,7 +893,7 @@ The following items from the ADL are acknowledged as gaps that will **not** be f
 
 ## Appendix A — Conflict Resolution Register
 
-This appendix maps every conflict identified in the [Architecture Decision Log](file:///c:/Users/farha/.gemini/antigravity/brain/afbface1-c1d7-4a8d-92da-13f81f778fb6/architecture_decision_log.md) to its resolution in this document.
+This appendix maps every conflict identified in the [Architecture Decision Log](architecture_decision_log.md) to its resolution in this document.
 
 | ADL | Conflict | Resolution in This Document |
 | :--- | :--- | :--- |
@@ -923,3 +923,38 @@ This appendix maps every conflict identified in the [Architecture Decision Log](
 | ADL-024 | Evidence Gate criteria undefined | Defined decision matrix (§9.5) |
 | ADL-025 | XML-Isolation template undefined | Defined canonical template (§9.6) |
 | ADL-026 | Gate temperature unspecified | Defined inference parameters (§9.7) |
+
+---
+
+## Appendix B — Errata (2026-10)
+
+> **Date:** 2026-10-10. This appendix is append-only: the sections above remain the consolidated design-time context of 2026-08-15. Each erratum states what no longer holds for the implemented system and points to the decision that changed it (`docs/architecture_decision_log.md`, ADL-027 – ADL-058), to the constitution amendments (`docs/project_constitution.md` §14) or to the implementation part of the specification (`docs/technical_specification.md`, Part VII). The architecture itself (Dual Answerability Gate, five actions, deterministic fast-path, loop-breaker at 2, template bypass, XML isolation, event sourcing with append-only logs, never-throw orchestrator) is unchanged.
+>
+> The only in-place edit to this document is in Appendix A: the link to the Architecture Decision Log pointed to a machine-specific absolute path and now points to the repository file `architecture_decision_log.md`.
+
+| ID | Section | Statement in this document | Current state | Reference |
+| :--- | :--- | :--- | :--- | :--- |
+| MPC-E01 | §1.1 – §1.2, §5 | The system serves hypertension patients | Scope is cardiovascular care centred on hypertension (heart failure, atrial fibrillation, coronary disease, lipids, CKD, diabetes-related risk, hypertensive disorders of pregnancy, prevention); non-cardiovascular and non-medical topics are out of domain | Constitution A-8 |
+| MPC-E02 | §2.1 | Chat interface only | Additional patient features: streamed stage progress (SSE), regenerate, feedback, "Why this answer?" panel, patient context card, BP log with ACC/AHA categories, clinician summary export, right to erasure | ADL-053 – ADL-055, ADL-032 |
+| MPC-E03 | §2.3 FR-11, FR-14 | Three knowledge sources; PDF ingestion only | 27 documents listed in `data/corpus_manifest.json` (PDF and HTML) with licence and SHA-256 pins (`reports/corpus_stats.md`) | ADL-046, ADL-047 |
+| MPC-E04 | §3.1 NFR-01, NFR-02 | ≤ 8 s (PROCEED path) and ≤ 3 s (SOFT-ASK), assuming cloud inference | With local 4-bit models these are design-time targets, not guarantees. The round-1 model-selection run measured a turn p50 of 10.0 s and p95 of 23.4 s for the selected model over all dev-split turns (`evaluation/results/model_selection_round1_prefix/model_selection.md`). The before/after performance table is pending | ADL-049, ADL-057 |
+| MPC-E05 | §3.1 NFR-03 | Emergency fast-path ≤ 500 ms | Still deterministic and LLM-free; unit tests enforce under 5 ms on typical messages (Non-Negotiable 1) | ADL-045 |
+| MPC-E06 | §3.2 NFR-08 | Groq availability fallback | Local Ollama with retries and the unchanged spec fallbacks; Groq is optional and disabled in local-only mode | ADL-039, ADL-040 |
+| MPC-E07 | §3.3 NFR-11 | PII handling is a documented gap; anonymization deferred | Implemented: deterministic redaction before any LLM call, log line or write; encryption at rest; crypto-shredding erasure; evaluation in `reports/privacy_redaction_metrics.md` | ADL-030 – ADL-035 |
+| MPC-E08 | §3.4 NFR-12 – NFR-15 | Benchmark, κ, RABBITS and baselines planned | MedBridge-AQ rebuilt with 275 vignettes; RABBITS covers 189 brand → generic pairs (65 Indian) from the project's own lexicon rather than live RxNorm queries; baselines and ablations implemented as conditions C0 – C5 (plus V1/V2) on MedBridge-HalluBench v1; a 50-item human annotation sheet supports κ. Live benchmark results, study results and κ values: pending | ADL-044, ADL-056 |
+| MPC-E09 | §4.1 | External cloud LLM (Groq / OpenAI) | Local Ollama server on loopback; no outbound LLM connection in local-only mode | ADL-040 |
+| MPC-E10 | §4.2 | Authentication, PII anonymization and multilingual support out of scope | Signed session tokens and admin login are in scope; PII redaction is enforced; the emergency fast-path also recognises Hinglish / Indian-English red-flag phrasing (the rest of the pipeline remains English-only) | ADL-030, ADL-033, ADL-034, ADL-045 |
+| MPC-E11 | §5 (ASM-01 note) | Any user with the session URL can resume a session | Every session route requires a bearer token signed for that session; the token is never placed in the URL. An administrator role exists for the dashboard; "clinician mode" in the web UI is a presentation setting only | ADL-033, ADL-034, ADL-053 |
+| MPC-E12 | §6 | Workflows persist state between extraction and Gate 1 and contain no privacy or small-talk step | Privacy redaction first, then the fast-path on the raw message; small-talk check; in-memory projection; optional speculative retrieval during Gate 1; citation validation; optional Gate 3; one persistence step per turn. After a SOFT-ASK, the gates judge the original question plus the follow-up details | ADL-027 – ADL-029, ADL-036, ADL-043; Spec Part VII §3 |
+| MPC-E13 | §7 | Component registry | New components: privacy layer, web SPA and dashboard, deterministic NLP, complementary features, evaluation package, V1/V2 verification gates, benchmark harnesses | `docs/module_map.md` |
+| MPC-E14 | §8 | Data entities | Added `audit_logs.trace`, `sessions.erased_at`, `sessions.legacy_plaintext_rows`, `session_keys`, `feedback`; patient-derived fields are encrypted; snapshot writers lock and re-project | ADL-031, ADL-032, ADL-036, ADL-038 |
+| MPC-E15 | §9.2 – §9.6 | Prompt and schema descriptions | Rule-based few-shot prompts, JSON-schema structured output, Gate 1 `missing_fields` from a fixed vocabulary, generator cites `[n]` indices validated by the server | ADL-039, ADL-041, ADL-042, ADL-028 |
+| MPC-E16 | §9.7 | Generator seed "—" | The generator also uses seed 42 (temperature 0.3, top_p 0.95) for reproducible evaluation; gates unchanged at 0.0 / 42 | ADL-039 |
+| MPC-E17 | §9.8 | Permanent failure → GENERALIZE (calls 1 – 3) or ESCALATE (call 4) | Implemented fallbacks follow the specification: extractor → no events; Gate 1 → PROCEED; Gate 2 → GENERALIZE; generator → pre-vetted GENERALIZE template. Truncated output is never repaired | ADL-036, ADL-039 |
+| MPC-E18 | §10, §11 | PostgreSQL on :5432; Groq environment variables; no GPU needed | PostgreSQL on host port 5433; new required secrets (`ENCRYPTION_MASTER_KEY`, `SESSION_TOKEN_SECRET`), optional `ADMIN_PASSWORD`, `EVAL_DATABASE_URL` for evaluation; local LLM inference benefits from a GPU (Apple Silicon or the RTX 4050 demonstration laptop) | Spec Part VII §10 – §11 |
+| MPC-E19 | §12 | ASM-01, ASM-02, ASM-04, ASM-07 | ASM-01 superseded (tokens); ASM-02 obsolete (no Groq dependency); ASM-04 superseded (27-document corpus); ASM-07 superseded (wider cardiovascular scope; paediatric and pregnancy dosing questions are handled by explicit Gate 2 rules) | ADL-033, ADL-040, ADL-041, ADL-046 |
+| MPC-E20 | §12 ASM-03 | One model per pipeline without few-shot examples | Still no fine-tuning; prompts now include few-shot examples and each role may use its own model | ADL-039, ADL-041 |
+| MPC-E21 | §13 CON-02, CON-04, CON-05 | No local GPU; dependency on cloud LLM APIs; static AHA/ACC + ESC knowledge base | Local inference on the user's machine; no cloud dependency at runtime; the knowledge base is still a static, versioned snapshot, now of 27 documents | ADL-040, ADL-046 |
+| MPC-E22 | §14.1 | Risk register | RSK-01 becomes "local LLM server unavailable" (mitigated by warm-up, readiness reporting and the spec fallbacks); RSK-03 mitigated (redaction, local-only inference); RSK-04 mitigated further (full isolation, tag neutralisation, adversarial test suite); RSK-05 is measured by the HalluBench study (pending); RSK-07 reduced by corpus expansion (heart failure remains the thinnest topic) | ADL-030, ADL-040, ADL-041, ADL-046, ADL-049, ADL-056 |
+| MPC-E23 | §14.2 | ADL-017 deferred; ADL-018 partially mitigated | ADL-017 implemented (ADL-030, ADL-040); ADL-018 strengthened and tested (ADL-041, `tests/adversarial/`); ADL-019 unchanged (loopback binding, credentials from the environment) | ADL-030, ADL-040, ADL-041 |
+| MPC-E24 | Appendix A | Register ends at ADL-026 | Decisions ADL-027 – ADL-058 are listed in the summary table of `docs/architecture_decision_log.md` | ADL-027 – ADL-058 |

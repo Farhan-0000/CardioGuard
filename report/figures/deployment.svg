@@ -1,0 +1,581 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="659.52pt" height="483.12pt" viewBox="0 0 659.52 483.12" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 483.12 
+L 659.52 483.12 
+L 659.52 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 21.6 12.96 
+L 637.92 12.96 
+Q 646.56 12.96 646.56 21.6 
+L 646.56 457.92 
+Q 646.56 466.56 637.92 466.56 
+L 21.6 466.56 
+Q 12.96 466.56 12.96 457.92 
+L 12.96 21.6 
+Q 12.96 12.96 21.6 12.96 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #fbfcfd; stroke: #2d3748; stroke-width: 1.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 41.04 122.4 
+L 359.28 122.4 
+Q 365.76 122.4 365.76 128.88 
+L 365.76 323.28 
+Q 365.76 329.76 359.28 329.76 
+L 41.04 329.76 
+Q 34.56 329.76 34.56 323.28 
+L 34.56 128.88 
+Q 34.56 122.4 41.04 122.4 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #f7f8fa; stroke-dasharray: 1.2,1.8; stroke-dashoffset: 0; stroke: #5a6472; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 433.44 218.16 
+L 629.28 218.16 
+Q 635.76 218.16 635.76 224.64 
+L 635.76 323.28 
+Q 635.76 329.76 629.28 329.76 
+L 433.44 329.76 
+Q 426.96 329.76 426.96 323.28 
+L 426.96 224.64 
+Q 426.96 218.16 433.44 218.16 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #f7f8fa; stroke-dasharray: 1.2,1.8; stroke-dashoffset: 0; stroke: #6942b0; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 41.04 351.36 
+L 359.28 351.36 
+Q 365.76 351.36 365.76 357.84 
+L 365.76 445.68 
+Q 365.76 452.16 359.28 452.16 
+L 41.04 452.16 
+Q 34.56 452.16 34.56 445.68 
+L 34.56 357.84 
+Q 34.56 351.36 41.04 351.36 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #f7f8fa; stroke-dasharray: 1.2,1.8; stroke-dashoffset: 0; stroke: #5a6472; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 7.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #1f2933" x="41.04" y="132.398613" transform="rotate(-0 41.04 132.398613)">Python 3.11 · uvicorn medbridge.main:app · 127.0.0.1:8000</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 7.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #2e1a57" x="433.44" y="228.158613" transform="rotate(-0 433.44 228.158613)">Docker Desktop · docker-compose.yml</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 7.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #1f2933" x="41.04" y="361.358613" transform="rotate(-0 41.04 361.358613)">Command-line tools (same machine)</text>
+   </g>
+   <g id="patch_6">
+    <path d="M 124.56 122.4 
+Q 124.56 112.32 124.56 103.469837 
+" style="fill: none; stroke: #4a5568; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 122.86 106.869837 
+L 124.56 103.469837 
+L 126.26 106.869837 
+z
+" style="fill: #4a5568; stroke: #4a5568; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_1">
+    <path d="M 124.56 102.24 
+" clip-path="url(#pe5d5b7aeab)" style="fill: none; stroke: #4a5568; stroke-width: 1.1"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 124.56 102.24 
+Q 124.56 112.32 124.56 121.170163 
+" style="fill: none; stroke: #4a5568; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 126.26 117.770163 
+L 124.56 121.170163 
+L 122.86 117.770163 
+z
+" style="fill: #4a5568; stroke: #4a5568; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 430.56 83.52 
+L 333.36 83.52 
+" clip-path="url(#pe5d5b7aeab)" style="fill: none; stroke-dasharray: 4.4,2.64; stroke-dashoffset: 0; stroke: #4a5568; stroke-width: 1.1"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 333.36 83.52 
+Q 333.36 102.96 333.36 121.170163 
+" style="fill: none; stroke-dasharray: 4.4,2.64; stroke-dashoffset: 0; stroke: #4a5568; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 335.06 117.770163 
+L 333.36 121.170163 
+L 331.66 117.770163 
+z
+" style="fill: #4a5568; stroke-dasharray: 4.4,2.64; stroke-dashoffset: 0; stroke: #4a5568; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 430.56 172.8 
+Q 398.16 172.8 366.989837 172.8 
+" style="fill: none; stroke: #2b62a8; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 370.389837 174.5 
+L 366.989837 172.8 
+L 370.389837 171.1 
+z
+" style="fill: #2b62a8; stroke: #2b62a8; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 365.76 172.8 
+" clip-path="url(#pe5d5b7aeab)" style="fill: none; stroke: #2b62a8; stroke-width: 1.1"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 365.76 172.8 
+Q 398.16 172.8 429.330163 172.8 
+" style="fill: none; stroke: #2b62a8; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 425.930163 171.1 
+L 429.330163 172.8 
+L 425.930163 174.5 
+z
+" style="fill: #2b62a8; stroke: #2b62a8; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 430.56 257.76 
+Q 398.16 257.76 366.989837 257.76 
+" style="fill: none; stroke: #6942b0; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 370.389837 259.46 
+L 366.989837 257.76 
+L 370.389837 256.06 
+z
+" style="fill: #6942b0; stroke: #6942b0; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_4">
+    <path d="M 365.76 257.76 
+" clip-path="url(#pe5d5b7aeab)" style="fill: none; stroke: #6942b0; stroke-width: 1.1"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 365.76 257.76 
+Q 398.16 257.76 429.330163 257.76 
+" style="fill: none; stroke: #6942b0; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 425.930163 256.06 
+L 429.330163 257.76 
+L 425.930163 259.46 
+z
+" style="fill: #6942b0; stroke: #6942b0; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_5">
+    <path d="M 365.76 292.32 
+" clip-path="url(#pe5d5b7aeab)" style="fill: none; stroke: #6942b0; stroke-width: 1.1"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 365.76 292.32 
+Q 398.16 292.32 429.330163 292.32 
+" style="fill: none; stroke: #6942b0; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 425.930163 290.62 
+L 429.330163 292.32 
+L 425.930163 294.02 
+z
+" style="fill: #6942b0; stroke: #6942b0; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_6">
+    <path d="M 358.56 408.96 
+L 396 408.96 
+L 396 306 
+" clip-path="url(#pe5d5b7aeab)" style="fill: none; stroke: #6942b0; stroke-width: 1.1"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 396 306 
+Q 413.28 306 429.330163 306 
+" style="fill: none; stroke: #6942b0; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 425.930163 304.3 
+L 429.330163 306 
+L 425.930163 307.7 
+z
+" style="fill: #6942b0; stroke: #6942b0; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 9.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #1a202c" x="25.92" y="29.95626" transform="rotate(-0 25.92 29.95626)">One laptop runs the whole system</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #3f4a59" x="25.92" y="43.980156" transform="rotate(-0 25.92 43.980156)">demo: Windows 11 + NVIDIA RTX 4050 Laptop GPU (6 GB VRAM)   ·   development: macOS on Apple Silicon (M-series)   ·   API, Ollama, PostgreSQL, Qdrant on 127.0.0.1</text>
+   </g>
+   <g id="patch_15">
+    <path d="M 43.2 64.8 
+L 205.92 64.8 
+Q 210.96 64.8 210.96 69.84 
+L 210.96 97.2 
+Q 210.96 102.24 205.92 102.24 
+L 43.2 102.24 
+Q 38.16 102.24 38.16 97.2 
+L 38.16 69.84 
+Q 38.16 64.8 43.2 64.8 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #ffffff; stroke: #2d3748; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_16">
+    <path d="M 435.6 64.8 
+L 627.12 64.8 
+Q 632.16 64.8 632.16 69.84 
+L 632.16 97.2 
+Q 632.16 102.24 627.12 102.24 
+L 435.6 102.24 
+Q 430.56 102.24 430.56 97.2 
+L 430.56 69.84 
+Q 430.56 64.8 435.6 64.8 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #ffffff; stroke-dasharray: 4.8,2.88; stroke-dashoffset: 0; stroke: #2d3748; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_17">
+    <path d="M 46.8 151.2 
+L 195.12 151.2 
+Q 200.16 151.2 200.16 156.24 
+L 200.16 189.36 
+Q 200.16 194.4 195.12 194.4 
+L 46.8 194.4 
+Q 41.76 194.4 41.76 189.36 
+L 41.76 156.24 
+Q 41.76 151.2 46.8 151.2 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #eceff3; stroke: #5a6472; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_18">
+    <path d="M 212.4 151.2 
+L 353.52 151.2 
+Q 358.56 151.2 358.56 156.24 
+L 358.56 189.36 
+Q 358.56 194.4 353.52 194.4 
+L 212.4 194.4 
+Q 207.36 194.4 207.36 189.36 
+L 207.36 156.24 
+Q 207.36 151.2 212.4 151.2 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #d7f0de; stroke: #2e7d4f; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_19">
+    <path d="M 46.8 212.4 
+L 195.12 212.4 
+Q 200.16 212.4 200.16 217.44 
+L 200.16 250.56 
+Q 200.16 255.6 195.12 255.6 
+L 46.8 255.6 
+Q 41.76 255.6 41.76 250.56 
+L 41.76 217.44 
+Q 41.76 212.4 46.8 212.4 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #eceff3; stroke: #5a6472; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_20">
+    <path d="M 212.4 212.76 
+L 353.52 212.76 
+Q 358.56 212.76 358.56 217.8 
+L 358.56 283.32 
+Q 358.56 288.36 353.52 288.36 
+L 212.4 288.36 
+Q 207.36 288.36 207.36 283.32 
+L 207.36 217.8 
+Q 207.36 212.76 212.4 212.76 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #eceff3; stroke: #5a6472; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_21">
+    <path d="M 46.8 274.32 
+L 195.12 274.32 
+Q 200.16 274.32 200.16 279.36 
+L 200.16 305.28 
+Q 200.16 310.32 195.12 310.32 
+L 46.8 310.32 
+Q 41.76 310.32 41.76 305.28 
+L 41.76 279.36 
+Q 41.76 274.32 46.8 274.32 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #eceff3; stroke: #5a6472; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_22">
+    <path d="M 435.6 141.84 
+L 627.12 141.84 
+Q 632.16 141.84 632.16 146.88 
+L 632.16 198.72 
+Q 632.16 203.76 627.12 203.76 
+L 435.6 203.76 
+Q 430.56 203.76 430.56 198.72 
+L 430.56 146.88 
+Q 430.56 141.84 435.6 141.84 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #d8e7fa; stroke: #2b62a8; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_23">
+    <path d="M 439.2 241.2 
+L 623.52 241.2 
+Q 628.56 241.2 628.56 246.24 
+L 628.56 269.28 
+Q 628.56 274.32 623.52 274.32 
+L 439.2 274.32 
+Q 434.16 274.32 434.16 269.28 
+L 434.16 246.24 
+Q 434.16 241.2 439.2 241.2 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #e8dcf7; stroke: #6942b0; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_24">
+    <path d="M 439.2 282.24 
+L 623.52 282.24 
+Q 628.56 282.24 628.56 287.28 
+L 628.56 310.32 
+Q 628.56 315.36 623.52 315.36 
+L 439.2 315.36 
+Q 434.16 315.36 434.16 310.32 
+L 434.16 287.28 
+Q 434.16 282.24 439.2 282.24 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #e8dcf7; stroke: #6942b0; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_25">
+    <path d="M 46.8 385.2 
+L 195.12 385.2 
+Q 200.16 385.2 200.16 390.24 
+L 200.16 427.68 
+Q 200.16 432.72 195.12 432.72 
+L 46.8 432.72 
+Q 41.76 432.72 41.76 427.68 
+L 41.76 390.24 
+Q 41.76 385.2 46.8 385.2 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #eceff3; stroke: #5a6472; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_26">
+    <path d="M 212.4 385.2 
+L 353.52 385.2 
+Q 358.56 385.2 358.56 390.24 
+L 358.56 427.68 
+Q 358.56 432.72 353.52 432.72 
+L 212.4 432.72 
+Q 207.36 432.72 207.36 427.68 
+L 207.36 390.24 
+Q 207.36 385.2 212.4 385.2 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #eceff3; stroke: #5a6472; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_27">
+    <path d="M 435.6 360.72 
+L 627.12 360.72 
+Q 632.16 360.72 632.16 365.76 
+L 632.16 440.64 
+Q 632.16 445.68 627.12 445.68 
+L 435.6 445.68 
+Q 430.56 445.68 430.56 440.64 
+L 430.56 365.76 
+Q 430.56 360.72 435.6 360.72 
+z
+" clip-path="url(#pe5d5b7aeab)" style="fill: #f8f9fb; stroke: #a0aec0; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1a202c" x="124.56" y="81.693624" transform="rotate(-0 124.56 81.693624)">Web browser (Chrome / Edge)</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="124.56" y="90.413008" transform="rotate(-0 124.56 90.413008)">http://127.0.0.1:8000  ·  chat SPA, /dashboard</text>
+   </g>
+   <g id="text_8">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1a202c" x="531.36" y="81.693624" transform="rotate(-0 531.36 81.693624)">Streamlit UI (legacy, optional) · :8501</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="90.413008" transform="rotate(-0 531.36 90.413008)">start with --server.address 127.0.0.1</text>
+   </g>
+   <g id="text_10">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="120.96" y="166.947707" transform="rotate(-0 120.96 166.947707)">FastAPI app</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="120.96" y="175.666943" transform="rotate(-0 120.96 175.666943)">/api routes + SSE streaming</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="120.96" y="183.718943" transform="rotate(-0 120.96 183.718943)">SPA + dashboard (static files)</text>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #123d25" x="282.96" y="167.069624" transform="rotate(-0 282.96 167.069624)">Security layer</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="282.96" y="175.702129" transform="rotate(-0 282.96 175.702129)">session / admin tokens, rate limits</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="282.96" y="183.632065" transform="rotate(-0 282.96 183.632065)">CSP headers, PII-scrubbed logs</text>
+   </g>
+   <g id="text_16">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="120.96" y="228.147707" transform="rotate(-0 120.96 228.147707)">Pipeline orchestrator</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="120.96" y="236.866943" transform="rotate(-0 120.96 236.866943)">emergency rules, both gates,</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="120.96" y="244.918943" transform="rotate(-0 120.96 244.918943)">templates, encrypted turn store</text>
+   </g>
+   <g id="text_19">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="282.96" y="232.934707" transform="rotate(-0 282.96 232.934707)">In-process models</text>
+   </g>
+   <g id="text_20">
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="282.96" y="241.567065" transform="rotate(-0 282.96 241.567065)">bge-small-en-v1.5 + BM25</text>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="282.96" y="249.498906" transform="rotate(-0 282.96 249.498906)">(fastembed, ONNX on CPU)</text>
+   </g>
+   <g id="text_22">
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="282.96" y="257.427129" transform="rotate(-0 282.96 257.427129)">MiniLM-L-6 cross-encoder</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="282.96" y="265.357065" transform="rotate(-0 282.96 265.357065)">optional NLI verifier (Gate 3)</text>
+   </g>
+   <g id="text_24">
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="282.96" y="273.287129" transform="rotate(-0 282.96 273.287129)">torch device: CUDA &gt; MPS &gt; CPU</text>
+   </g>
+   <g id="text_25">
+    <text style="font-weight: 700; font-size: 7.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="120.96" y="286.530479" transform="rotate(-0 120.96 286.530479)">Background tasks</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 6.4px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="120.96" y="294.83025" transform="rotate(-0 120.96 294.83025)">model warm-up at start-up</text>
+   </g>
+   <g id="text_27">
+    <text style="font-size: 6.4px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="120.96" y="302.638188" transform="rotate(-0 120.96 302.638188)">hourly retention purge (crypto-shred)</text>
+   </g>
+   <g id="text_28">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #0f2f57" x="531.36" y="163.104707" transform="rotate(-0 531.36 163.104707)">Ollama server · 127.0.0.1:11434</text>
+   </g>
+   <g id="text_29">
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="171.737065" transform="rotate(-0 531.36 171.737065)">GPU: CUDA (RTX 4050) or Metal (Apple Silicon)</text>
+   </g>
+   <g id="text_30">
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="179.66897" transform="rotate(-0 531.36 179.66897)">LLM_MODEL default qwen3:8b, keep_alive 30m</text>
+   </g>
+   <g id="text_31">
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="187.597065" transform="rotate(-0 531.36 187.597065)">study judge model: gemma3:12b</text>
+   </g>
+   <g id="text_32">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #2e1a57" x="531.36" y="255.994624" transform="rotate(-0 531.36 255.994624)">postgres:16-alpine</text>
+   </g>
+   <g id="text_33">
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="264.627065" transform="rotate(-0 531.36 264.627065)">127.0.0.1:5433 → 5432 · volume pgdata</text>
+   </g>
+   <g id="text_34">
+    <text style="font-weight: 700; font-size: 8.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #2e1a57" x="531.36" y="297.156707" transform="rotate(-0 531.36 297.156707)">qdrant/qdrant</text>
+   </g>
+   <g id="text_35">
+    <text style="font-size: 6.3px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="305.61531" transform="rotate(-0 531.36 305.61531)">127.0.0.1:6333 REST, 6334 gRPC · volume qdrant_data</text>
+   </g>
+   <g id="text_36">
+    <text style="font-weight: 700; font-size: 7.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="120.96" y="399.266479" transform="rotate(-0 120.96 399.266479)">python -m evaluation.run</text>
+   </g>
+   <g id="text_37">
+    <text style="font-size: 6.4px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="120.96" y="407.56625" transform="rotate(-0 120.96 407.56625)">runs the orchestrator in-process</text>
+   </g>
+   <g id="text_38">
+    <text style="font-size: 6.4px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="120.96" y="415.376" transform="rotate(-0 120.96 415.376)">(same Ollama, Qdrant, PostgreSQL)</text>
+   </g>
+   <g id="text_39">
+    <text style="font-size: 6.4px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="120.96" y="423.182187" transform="rotate(-0 120.96 423.182187)">+ judge, calibrate, analyze</text>
+   </g>
+   <g id="text_40">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="282.96" y="403.118723" transform="rotate(-0 282.96 403.118723)">python -m medbridge.ingestion</text>
+   </g>
+   <g id="text_41">
+    <text style="font-size: 6.4px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="282.96" y="411.34825" transform="rotate(-0 282.96 411.34825)">offline: PDF / HTML → chunks</text>
+   </g>
+   <g id="text_42">
+    <text style="font-size: 6.4px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="282.96" y="419.158" transform="rotate(-0 282.96 419.158)">→ embeddings → Qdrant upsert</text>
+   </g>
+   <g id="text_43">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #2d3748" x="531.36" y="382.108723" transform="rotate(-0 531.36 382.108723)">.env (environment only, never in the DB)</text>
+   </g>
+   <g id="text_44">
+    <text style="font-size: 6.3px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="390.253094" transform="rotate(-0 531.36 390.253094)">ENCRYPTION_MASTER_KEY (KEK),</text>
+   </g>
+   <g id="text_45">
+    <text style="font-size: 6.3px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="397.939155" transform="rotate(-0 531.36 397.939155)">SESSION_TOKEN_SECRET, ADMIN_PASSWORD,</text>
+   </g>
+   <g id="text_46">
+    <text style="font-size: 6.3px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="405.625155" transform="rotate(-0 531.36 405.625155)">POSTGRES_PASSWORD</text>
+   </g>
+   <g id="text_47">
+    <text style="font-size: 6.3px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="413.311155" transform="rotate(-0 531.36 413.311155)">LOCAL_ONLY_MODE=true: no remote LLM</text>
+   </g>
+   <g id="text_48">
+    <text style="font-size: 6.3px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="420.99531" transform="rotate(-0 531.36 420.99531)">local: data/guidelines,</text>
+   </g>
+   <g id="text_49">
+    <text style="font-size: 6.3px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="531.36" y="428.683094" transform="rotate(-0 531.36 428.683094)">Hugging Face + Ollama model caches</text>
+   </g>
+   <g id="text_50">
+    <g id="patch_28">
+     <path d="M 128.82 115.887556 
+L 167.647344 115.887556 
+L 167.647344 107.312444 
+L 128.82 107.312444 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #4a5568" x="129.6" y="113.926289" transform="rotate(-0 129.6 113.926289)">HTTP + SSE</text>
+   </g>
+   <g id="text_51">
+    <g id="patch_29">
+     <path d="M 364.5585 81.261594 
+L 402.9615 81.261594 
+L 402.9615 72.818406 
+L 364.5585 72.818406 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 6.4px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #4a5568" x="383.76" y="78.7335" transform="rotate(-0 383.76 78.7335)">HTTP → /api</text>
+   </g>
+   <g id="text_52">
+    <g id="patch_30">
+     <path d="M 383.136 169.821594 
+L 408.864 169.821594 
+L 408.864 161.378406 
+L 383.136 161.378406 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 6.4px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #2b62a8" x="396" y="167.2935" transform="rotate(-0 396 167.2935)">/api/chat</text>
+   </g>
+   <g id="text_53">
+    <g id="patch_31">
+     <path d="M 383.314 254.781594 
+L 408.686 254.781594 
+L 408.686 246.338406 
+L 383.314 246.338406 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 6.4px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #6942b0" x="396" y="251.5835" transform="rotate(-0 396 251.5835)">asyncpg</text>
+   </g>
+   <g id="text_54">
+    <g id="patch_32">
+     <path d="M 382.11293 289.275631 
+L 409.88707 289.275631 
+L 409.88707 280.964369 
+L 382.11293 280.964369 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 6.3px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #6942b0" x="396" y="286.711734" transform="rotate(-0 396 286.711734)">read-only</text>
+   </g>
+   <g id="text_55">
+    <text style="font-size: 6.3px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #6942b0" x="401.04" y="342.910125" transform="rotate(-0 401.04 342.910125)">upsert (only writer)</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pe5d5b7aeab">
+   <rect x="5.76" y="5.76" width="648" height="471.6"/>
+  </clipPath>
+ </defs>
+</svg>

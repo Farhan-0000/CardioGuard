@@ -1,0 +1,353 @@
+{
+  "generated_at": "2026-10-10T06:16:03+00:00",
+  "slides": [
+    {
+      "index": 1,
+      "id": "title",
+      "title": "CardioGuard",
+      "state": "data",
+      "pending": [],
+      "sources": [],
+      "citations": [],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 984
+    },
+    {
+      "index": 2,
+      "id": "problem",
+      "title": "Hypertension is common, and generic chatbots answer anyway",
+      "state": "data",
+      "pending": [],
+      "sources": [
+        "report/references/references.json (full entries in the notes)"
+      ],
+      "citations": [
+        "who2023globalreport",
+        "ncdrisc2021hypertension",
+        "anjana2023indiab",
+        "wolk2025ragcds",
+        "gallifant2024rabbits",
+        "dpdp2023india"
+      ],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 3128
+    },
+    {
+      "index": 3,
+      "id": "gap",
+      "title": "The gap: RAG never decides whether it should answer",
+      "state": "data",
+      "pending": [],
+      "sources": [
+        "report/references/references.json (full entries in the notes)"
+      ],
+      "citations": [
+        "lewis2020rag",
+        "asai2024selfrag",
+        "yan2024crag",
+        "wen2025abstention",
+        "singhal2023llmclinical"
+      ],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 2289
+    },
+    {
+      "index": 4,
+      "id": "architecture",
+      "title": "Architecture: one pipeline, two gates, safe exits",
+      "state": "data",
+      "pending": [],
+      "sources": [
+        "report/figures/architecture_pipeline.png",
+        "medbridge/config.py"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {
+        "report/figures/architecture_pipeline.png": true
+      },
+      "notes_chars": 1462
+    },
+    {
+      "index": 5,
+      "id": "gate",
+      "title": "The Dual Answerability Gate: five actions, one per message",
+      "state": "data",
+      "pending": [],
+      "sources": [
+        "medbridge/config.py",
+        "medbridge/ai/context_gate.py",
+        "medbridge/ai/evidence_gate.py"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 1540
+    },
+    {
+      "index": 6,
+      "id": "emergency",
+      "title": "Emergency fast-path and natural-language robustness",
+      "state": "data",
+      "pending": [
+        "study.per_condition.C5.emergency.recall_system"
+      ],
+      "sources": [
+        "medbridge/nlp/drugs.py",
+        "medbridge/core/emergency_classifier.py",
+        "tests/data/emergency_cases.json",
+        "tests/data/emergency_cases_hinglish.json"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 1708
+    },
+    {
+      "index": 7,
+      "id": "retrieval",
+      "title": "Curated knowledge base and measured retrieval quality",
+      "state": "data",
+      "pending": [],
+      "sources": [
+        "reports/corpus_stats.json",
+        "evaluation/results/retrieval/metrics.json",
+        "evaluation/results/retrieval/reranker_ablation/*/metrics.json"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 1215
+    },
+    {
+      "index": 8,
+      "id": "privacy",
+      "title": "Privacy by design: patient data never leaves the machine",
+      "state": "data",
+      "pending": [],
+      "sources": [
+        "reports/privacy_redaction_metrics.json",
+        "medbridge/privacy/"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 1346
+    },
+    {
+      "index": 9,
+      "id": "ui",
+      "title": "The web interface: every decision is visible",
+      "state": "pending",
+      "pending": [],
+      "sources": [
+        "screenshots: capture with python -m medbridge.web.screenshots --base-url http://127.0.0.1:8000 --out report/screenshots"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {
+        "report/screenshots/answer_citations.png": false,
+        "report/screenshots/why_panel.png": false,
+        "report/screenshots/soft_ask.png": false,
+        "report/screenshots/escalate.png": false,
+        "report/screenshots/bp_trend.png": false,
+        "report/screenshots/dashboard.png": false
+      },
+      "notes_chars": 1314
+    },
+    {
+      "index": 10,
+      "id": "evaluation",
+      "title": "How we measure hallucination: HalluBench, ablation, two judges",
+      "state": "data",
+      "pending": [],
+      "sources": [
+        "evaluation/datasets/hallubench_v1.json",
+        "medbridge/core/pipeline_types.py",
+        "report/figures/evaluation_design.png"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 1454
+    },
+    {
+      "index": 11,
+      "id": "models",
+      "title": "Choosing the local model: quality, speed and a 6 GB GPU",
+      "state": "data",
+      "pending": [],
+      "sources": [
+        "evaluation/results/model_selection/summary.json",
+        "evaluation/results/model_selection/DECISION.md",
+        "reports/figures/model_selection.png",
+        "medbridge/config.py"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {
+        "reports/figures/model_selection.png": true
+      },
+      "notes_chars": 1235
+    },
+    {
+      "index": 12,
+      "id": "results_hallucination",
+      "title": "Hallucination results: pending",
+      "state": "pending",
+      "pending": [
+        "study (evaluation/results/summary.json)"
+      ],
+      "sources": [
+        "evaluation/results/summary.json (pending)"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {
+        "reports/figures/hallucination_rate_by_condition.png": false
+      },
+      "notes_chars": 972
+    },
+    {
+      "index": 13,
+      "id": "results_unsafe",
+      "title": "Unsafe answers and ablation: pending",
+      "state": "pending",
+      "pending": [
+        "study (evaluation/results/summary.json)"
+      ],
+      "sources": [
+        "evaluation/results/summary.json (pending)"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {
+        "reports/figures/unsafe_answer_rate_unanswerable.png": false,
+        "reports/figures/ablation_waterfall.png": false
+      },
+      "notes_chars": 638
+    },
+    {
+      "index": 14,
+      "id": "robustness",
+      "title": "Robustness: brand names, routing benchmark and prompt injection",
+      "state": "pending",
+      "pending": [],
+      "sources": [
+        "tests/benchmark/vignettes/*.json",
+        "medbridge/nlp/drugs.py",
+        "tests/adversarial/payloads.py",
+        "mock-mode reports ignored: aq, rabbits",
+        "report/references/references.json (full entries in the notes)"
+      ],
+      "citations": [
+        "gallifant2024rabbits",
+        "greshake2023notwhat"
+      ],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 2102
+    },
+    {
+      "index": 15,
+      "id": "performance",
+      "title": "Performance: from cold starts to a warm, overlapped pipeline",
+      "state": "partial",
+      "pending": [
+        "perf_latest.after"
+      ],
+      "sources": [
+        "reports/performance/before_gemma3-4b.json"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 1277
+    },
+    {
+      "index": 16,
+      "id": "testing",
+      "title": "Testing, validation and an adversarial code review",
+      "state": "data",
+      "pending": [
+        "tests (reports/test_summary.json)"
+      ],
+      "sources": [
+        "reports/baseline/pytest_baseline.txt",
+        "reports/smoke_test_latest.json",
+        "docs/notes/code_review_findings.md",
+        "tests/, medbridge/tests/, medbridge/web/tests/ (static count)"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 1605
+    },
+    {
+      "index": 17,
+      "id": "limitations",
+      "title": "Limitations and future work",
+      "state": "data",
+      "pending": [],
+      "sources": [
+        "evaluation/results/model_selection/summary.json",
+        "medbridge/config.py",
+        "reports/privacy_redaction_metrics.json",
+        "report/references/references.json (full entries in the notes)"
+      ],
+      "citations": [
+        "angelopoulos2023conformal"
+      ],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 1529
+    },
+    {
+      "index": 18,
+      "id": "thanks",
+      "title": "Thank you. Questions?",
+      "state": "data",
+      "pending": [],
+      "sources": [],
+      "citations": [],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 914
+    }
+  ],
+  "slide_count": 18,
+  "layout_issues": [],
+  "citation_keys_missing": [],
+  "pending_slides": [
+    "ui",
+    "results_hallucination",
+    "results_unsafe",
+    "robustness",
+    "performance"
+  ],
+  "emergency_example_mismatches": [],
+  "results_sources": {
+    "retrieval": "evaluation/results/retrieval/metrics.json",
+    "model_selection": "evaluation/results/model_selection/summary.json",
+    "model_selection_r1": "evaluation/results/model_selection_round1_prefix/summary.json",
+    "corpus": "reports/corpus_stats.json",
+    "pii": "reports/privacy_redaction_metrics.json",
+    "smoke": "reports/smoke_test_latest.json",
+    "manifest": "data/corpus_manifest.json",
+    "reranker": "evaluation/results/retrieval/reranker_ablation/*/metrics.json",
+    "perf": "reports/performance/*.json",
+    "perf_latest": "reports/performance/before_gemma3-4b.json",
+    "hallubench": "evaluation/datasets/hallubench_v1.json",
+    "manifest_stats": "data/corpus_manifest.json"
+  },
+  "results_skipped": {
+    "aq": "reports/medbridge_aq_benchmark_report.json is a 'mock' run (not live) - not used as a result",
+    "rabbits": "reports/rabbits_benchmark_report.json is a 'mock' run (not live) - not used as a result"
+  },
+  "deck_fact_errors": {},
+  "text_measurement": "truetype",
+  "output": "report/MedBridge_Review_Presentation.pptx"
+}

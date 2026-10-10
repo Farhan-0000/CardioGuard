@@ -32,3 +32,7 @@ report/build/
 # Dev-only UI screenshots against the mock server
 medbridge/web/dev_screenshots/
 node_modules/
+
+# Generated build artefacts (deliverables are committed explicitly at release)
+report/paper/build/
+report/build/

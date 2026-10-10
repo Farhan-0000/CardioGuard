@@ -9,3 +9,5 @@ font = "sans serif"
 [server]
 headless = true
 port = 8501
+# Loopback only (constitution §8.1)
+address = "127.0.0.1"

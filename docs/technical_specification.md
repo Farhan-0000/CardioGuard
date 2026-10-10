@@ -4,6 +4,7 @@
 > **Architecture Baseline:** Corrected architecture incorporating all 26 ADL resolutions
 > **Date:** 2026-08-15
 > **Source Artifacts:** Master Project Context, Architecture Decision Log, 5 Architecture Diagrams
+> **Implementation Update:** 2026-10-10 — [Part VII](#part-vii-implementation-update-2026-10) describes the system as implemented after the 2026-10 finalization (ADL-027 – ADL-058). Parts I – VI and the appendices are kept as the design-time record; statements that no longer hold are flagged in place with short **Erratum E-nn** notes, and all errata are listed in the [Errata Register](#14-errata-register).
 
 ---
 
@@ -18,6 +19,7 @@
 - [Appendix A: Interaction Catalog](#appendix-a-interaction-catalog)
 - [Appendix B: Deterministic Response Templates](#appendix-b-deterministic-response-templates)
 - [Appendix C: Project Directory Structure](#appendix-c-project-directory-structure)
+- [Part VII: Implementation Update 2026-10](#part-vii-implementation-update-2026-10)
 
 ---
 
@@ -38,6 +40,8 @@ Provide a conversational web interface for hypertension patients to submit clini
 | **R-FE-05** | Manage session lifecycle: create a new `session_id` on first visit, persist it across page reloads via URL query parameter |
 | **R-FE-06** | Display a persistent disclaimer banner: *"This tool provides informational guidance only. It does not replace professional medical advice."* |
 
+> **Erratum E-02 (2026-10):** R-FE-05 no longer applies: `POST /api/sessions` returns a signed session token that every session route requires as a bearer header, and neither client puts it in the URL (ADL-033, ADL-053).
+
 ## 3. Internal Components
 
 ### 3.1 Technology Selection
@@ -47,6 +51,8 @@ Provide a conversational web interface for hypertension patients to submit clini
 | **Framework** | Streamlit | Python-only stack; rapid prototyping; built-in session state; no Node.js dependency (ADL-007) |
 | **Runtime** | Python / Tornado | Port 8501 |
 | **HTTP Client** | `httpx` (async) | Communicate with FastAPI backend |
+
+> **Erratum E-01 (2026-10):** A FastAPI-served web SPA (`medbridge/web/`) is now the primary interface; this Streamlit client is kept as a legacy client (ADL-053). See Part VII §2 and §11.
 
 ### 3.2 Page Structure
 
@@ -161,6 +167,8 @@ class ChatMessage:
 | **No authentication** | Sessions identified by UUID in URL. Acceptable for academic prototype (ASM-01). |
 | **XSS in chat messages** | Streamlit's `st.markdown` auto-escapes HTML. Do not use `unsafe_allow_html=True` for patient-sourced content. |
 | **Session hijacking** | UUIDs are unguessable (128-bit random). No mitigation beyond this for semester scope. |
+
+> **Erratum E-03 (2026-10):** Authentication now exists (signed session tokens, admin login), and the SPA renders Markdown with an escape-first renderer under a strict Content-Security-Policy (ADL-033, ADL-034, ADL-053).
 
 ## 9. Error Handling
 
@@ -277,7 +285,11 @@ medbridge/
     └── indexer.py                   # Qdrant upsert with schema validation
 ```
 
+> **Erratum E-04 (2026-10):** The package now also contains `privacy/`, `nlp/`, `features/` and `web/`, plus `core/citations.py`, `core/smalltalk.py`, `core/pipeline_types.py`, `state/turn_store.py`, `ai/prompt_utils.py`, `ai/evidence_calibration.py`, `ai/grounding_verifier.py` and further ingestion and route modules; see Part VII §2 and `docs/module_map.md`.
+
 ## 4. APIs (Exposed)
+
+> **Erratum E-05 (2026-10):** The API has grown (SSE streaming, regenerate, erasure, feedback, context and BP entry, clinician summary, public config, metrics, admin), every session route requires a bearer session token, and responses carry additional fields (`message_id`, `user_message_id`, `redaction_count`, `explanation`). See Part VII §4 – §5.
 
 ### 4.1 Send Message — `POST /api/sessions/{session_id}/messages`
 
@@ -371,6 +383,8 @@ This is the primary endpoint. It orchestrates the entire AI pipeline.
   "timestamp": "2026-08-15T02:10:00Z"
 }
 ```
+
+> **Erratum E-06 (2026-10):** `/health` and `/api/health` now report `healthy`, `degraded` or `unhealthy` together with `ollama_reachable`, `models_loaded` and `qdrant_points`; `degraded` is reported until start-up warm-up completes (ADL-049).
 
 ## 5. Data Models (Backend — Pydantic)
 
@@ -504,6 +518,8 @@ class ResponseGeneratorOutput(BaseModel):
 | Database | PostgreSQL | TCP/SQL on :5432 | Username/password (env vars) |
 | Vector Store | Qdrant | HTTP/gRPC on :6333 | None (loopback-only binding) |
 
+> **Erratum E-07 (2026-10):** Inbound session routes are authenticated with signed bearer tokens (ADL-033). The default LLM endpoint is a local Ollama server on loopback (`http://127.0.0.1:11434`); Groq and OpenAI are optional and blocked while `LOCAL_ONLY_MODE=true` (ADL-040). PostgreSQL is mapped to host port 5433.
+
 ## 7. Dependencies
 
 | Package | Version | Purpose |
@@ -531,6 +547,8 @@ class ResponseGeneratorOutput(BaseModel):
 | **Database port binding** | PostgreSQL and Qdrant bound to `127.0.0.1` only (ADL-019) |
 | **PII exposure** | Acknowledged gap: patient data is sent to Groq/OpenAI unredacted. Use synthetic data for all testing (ADL-017) |
 | **CORS** | Restrict `allow_origins` to `["http://localhost:8501"]` (Streamlit origin only) |
+
+> **Erratum E-08 (2026-10):** The PII gap is closed: patient text is redacted before any LLM call, log line or write, and session data are encrypted at rest (ADL-030, ADL-031). CORS allows the configured `CORS_ORIGINS` (by default the FastAPI origin on port 8000 and Streamlit on 8501) without credentials (ADL-034).
 
 ## 9. Error Handling
 
@@ -570,6 +588,8 @@ async def global_handler(request, exc):
 | LLM malformed JSON | 200 | Resilient wrapper retries with JSON repair; on failure, deterministic fallback |
 | PostgreSQL connection failure | 503 | `{ "error_code": "DATABASE_UNAVAILABLE", ... }` |
 | Qdrant connection failure | 200 | Skip retrieval; route to `GENERALIZE` with cached general guidance |
+
+> **Erratum E-09 (2026-10):** A Qdrant or embedder failure now raises `RetrievalError`; the orchestrator records `retrieval_status = "failed"` and Gate 2 decides on empty evidence (spec fallback unchanged). Erased sessions answer 410 `SESSION_ERASED`, oversized bodies 413 and rate-limited clients 429 (ADL-032, ADL-034, ADL-036).
 
 ## 10. Configuration Requirements
 
@@ -615,6 +635,8 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 ```
+
+> **Erratum E-10 (2026-10):** The settings now default to local Ollama (`LLM_PROVIDER=ollama`, `LOCAL_ONLY_MODE=true`), bind to `127.0.0.1`, and add retrieval-cache, privacy, V1/V2 and UI settings; `GROQ_API_KEY` is optional. See Part VII §10.
 
 ## 11. Logging Requirements
 
@@ -716,6 +738,8 @@ flowchart TD
     LLM4_SA --> OUTPUT_SA["SOFT-ASK\nResponse"]
 ```
 
+> **Erratum E-11 (2026-10):** Persistence no longer happens between the projector and Gate 1: the projection is computed in memory and the whole turn is persisted once at the end (ADL-036). The flow also gains a privacy stage, a small-talk stage, optional speculative retrieval, citation validation and the optional Gate 3 verifier. Updated flow: Part VII §3.
+
 ### 3.2 Emergency Triage Classifier
 
 | Property | Value |
@@ -744,6 +768,8 @@ EMERGENCY_PATTERNS = [
 ```
 
 **Return:** If matched → `ActionEnum.ESCALATE` + pre-vetted template. If not matched → `None` (continue pipeline).
+
+> **Erratum E-12 (2026-10):** The pattern list above is superseded by a deterministic rules engine with 26 English and 14 Hinglish rule IDs, clause-level negation, informational and historical suppression and typo normalisation; `classify()` keeps this signature (ADL-045).
 
 ### 3.3 LLM Call 1 — Context Extractor
 
@@ -798,6 +824,8 @@ Output ONLY valid JSON. Schema:
 }
 ```
 
+> **Erratum E-13 (2026-10):** The prompts in §3.3, §3.4, §3.7 and §3.8 are design-time drafts. The implemented prompts (`medbridge/ai/*.py`) are rule-based with few-shot examples, cover cardiology centred on hypertension, isolate all patient-derived text in `<untrusted_user_input>`, restrict Gate 1's `missing_fields` to a fixed vocabulary, and present evidence as indexed `<chunk index="n">` elements cited as `[n]` (ADL-041, ADL-042).
+
 ### 3.5 Hybrid Retriever
 
 | Property | Value |
@@ -832,6 +860,8 @@ async def hybrid_search(query: str, top_k: int = 20) -> list[RetrievedChunk]:
 
     return [to_retrieved_chunk(point) for point in results.points]
 ```
+
+> **Erratum E-14 (2026-10):** `FusionQuery(fusion=Fusion.RRF)` does not implement k = 60 (Qdrant's default constant corresponds to k = 2). The implementation uses `RrfQuery(rrf=Rrf(k=60))`, adds query-embedding and result caches, and raises `RetrievalError` on infrastructure failure (ADL-048, ADL-049).
 
 ### 3.6 Cross-Encoder Reranker
 
@@ -921,6 +951,8 @@ Output ONLY valid JSON. Schema:
 </user_query>
 ```
 
+> **Erratum E-15 (2026-10):** The generator no longer returns citation objects: it writes `[n]` markers that refer to indexed chunks, and the server validates them and rebuilds the citations (an ANSWER without a valid citation becomes GENERALIZE). The generator is also used for SOFT-ASK replies (asking for the missing fields) and has ablation-only modes (ADL-028, ADL-042, ADL-056).
+
 ### 3.9 Resilient LLM Wrapper
 
 ```python
@@ -983,6 +1015,8 @@ class ResilientLLMWrapper:
 | LLM Call 3 (Evidence Gate) | Default to `GENERALIZE` (safe: provide general info without personalization) |
 | LLM Call 4 (Generator) | Return pre-vetted `GENERALIZE` template with disclaimer |
 
+> **Erratum E-16 (2026-10):** The wrapper now calls Ollama's native `/api/chat` with a JSON-schema `format`, per-role models, `keep_alive` and `think` control; truncated output is retried once with a doubled budget and never repaired; local-only mode blocks remote and non-loopback endpoints. The fallback table above is unchanged (ADL-039, ADL-040).
+
 ## 4. APIs
 
 The AI pipeline does not expose external REST endpoints — it is invoked internally by the backend orchestrator. The following table documents the internal Python API surface (method signatures) for each pipeline component.
@@ -1000,6 +1034,8 @@ The AI pipeline does not expose external REST endpoints — it is invoked intern
 | Response Generator | `ai/response_generator.py` | `async generate(action: ActionEnum, chunks: list[RetrievedChunk], snapshot: dict, query: str) → ResponseGeneratorOutput \| None` | `ResponseGeneratorOutput` Pydantic model, or `None` on failure |
 | Resilient LLM Wrapper | `ai/llm_wrapper.py` | `async call(call_name: str, system_prompt: str, user_prompt: str, output_schema: type[BaseModel], temperature: float, max_tokens: int) → BaseModel \| None` | Validated Pydantic model, or `None` on permanent failure |
 | Pipeline Orchestrator | `core/orchestrator.py` | `async process_message(session_id: UUID, message: str) → MessageResponse` | Complete `MessageResponse` (always succeeds — fallback guarantees) |
+
+> **Erratum E-17 (2026-10):** Current signatures add optional parameters: `extract(message, snapshot, history=None)`, `EvidenceGate.evaluate(chunks, snapshot, query=None, message=None)`, `generate(action, chunks, snapshot, query=None, message=None, *, mode, history, missing_fields)`, `call(..., *, model=None, seed=None)` and `process_message(session_id, message, db=None, *, on_event=None, ablation=None, regenerate=False)`; see `docs/finalization_plan.md` §3.
 
 ## 5. Data Models
 
@@ -1046,6 +1082,8 @@ All AI pipeline Pydantic schemas are defined in Part II §5.2. For quick referen
 | **Hallucination containment** | Response Generator prompt restricts output to evidence provided in `<clinical_evidence>` tags. ABSTAIN and ESCALATE actions bypass the generator entirely, using pre-vetted templates (ADL-015). |
 | **API key protection** | LLM API keys are loaded from environment variables, never embedded in prompts, logged, or returned in responses. |
 
+> **Erratum E-18 (2026-10):** The gates no longer see only structured snapshot data: Gate 1, Gate 2 and the generator also receive the redacted patient message (Gate 1 also the extractor's intent), always inside `<untrusted_user_input>` with tag-like text neutralised. The PHI row is superseded by redaction before every LLM call and by local-only inference (ADL-030, ADL-040, ADL-041).
+
 ## 9. Error Handling
 
 | Error Scenario | Pipeline Stage | Behavior |
@@ -1059,6 +1097,8 @@ All AI pipeline Pydantic schemas are defined in Part II §5.2. For quick referen
 | Embedding model load failure | Hybrid Retriever | Fatal at startup; backend fails health check; operator must verify model availability |
 | Emergency classifier regex error | Emergency Classifier | Log error; skip classifier; continue to full pipeline (safe: does not skip gates) |
 
+> **Erratum E-19 (2026-10):** Zero results no longer force ABSTAIN: Gate 2 decides on the evidence it receives, and infrastructure failures are recorded as `retrieval_status = "failed"`. A reranker failure passes the top-5 fused candidates on (degraded). Provider failover applies only with `LOCAL_ONLY_MODE=false`.
+
 ## 10. Configuration Requirements
 
 | Parameter | Calls 1–3 (Gates) | Call 4 (Generator) |
@@ -1070,6 +1110,8 @@ All AI pipeline Pydantic schemas are defined in Part II §5.2. For quick referen
 | `max_tokens` | 512 | 1024 |
 | `response_format` | `{"type": "json_object"}` | `{"type": "json_object"}` |
 | `timeout` | 30 seconds | 30 seconds |
+
+> **Erratum E-20 (2026-10):** Models are configurable per role (`LLM_MODEL`, `LLM_MODEL_GATES`, `LLM_MODEL_GENERATOR`; `qwen3.5:4b` for the study, ADL-057); structured output uses a JSON schema instead of `json_object`; the generator also uses seed 42; generator `max_tokens` is 900 and the timeout 120 s. See Part VII §6.
 
 Additional configuration:
 
@@ -1146,6 +1188,8 @@ Provide persistent storage for patient session state using an Event Sourcing pat
 | **ORM** | SQLAlchemy 2.0 (async) |
 | **Driver** | asyncpg |
 | **Migrations** | Alembic |
+
+> **Erratum E-21 (2026-10):** Docker Compose maps the container's port 5432 to host port `127.0.0.1:5433` (`docker-compose.yml`).
 
 ### 3.2 Schema — DDL
 
@@ -1244,6 +1288,8 @@ CREATE TABLE message_history (
 CREATE INDEX idx_messages_session ON message_history (session_id, created_at);
 ```
 
+> **Erratum E-22 (2026-10):** Migrations `g1a7c3e9d2b4` and `h2b8d4f6a1c3` add `audit_logs.trace` (JSONB, PHI-free), `sessions.erased_at`, `sessions.legacy_plaintext_rows`, the `session_keys` table and the `feedback` table (one rating per session and message). Patient-derived columns now hold ciphertext; the append-only rules are unchanged (ADL-031, ADL-032, ADL-038). See Part VII §7.
+
 ### 3.3 Deterministic State Projector
 
 The State Projector is a pure Python module that applies typed delta events to the context snapshot using deterministic merge rules. It does **not** use the LLM.
@@ -1258,6 +1304,8 @@ The State Projector is a pure Python module that applies typed delta events to t
 | `SYMPTOM_REPORTED` | Append to `symptoms[]` (deduplicated, case-insensitive). |
 | `DEMOGRAPHIC` | Merge into `demographics{}`. Overwrite existing fields (e.g., updated age). |
 | `LAB_RESULT` | Append to `lab_results[]`. Keep only last 3 per lab type. |
+
+> **Erratum E-23 (2026-10):** A MEDICATION_ADDED event for a drug already listed is now a dose change (the new dose or frequency replaces the old one, which moves to a `history` list); drug names are normalised to generics before projection; DEMOGRAPHIC conditions are merged as an order-preserving union (ADL-044).
 
 ### 4.2 Snapshot Reconstruction Validator
 
@@ -1338,6 +1386,8 @@ The database does not expose external REST endpoints. Access is via SQLAlchemy O
 | :--- | :--- | :--- |
 | **State update** | Append events + upsert snapshot | `READ COMMITTED` |
 | **Audit write** | Insert audit_log + insert message_history (patient) + insert message_history (assistant) | `READ COMMITTED` |
+
+> **Erratum E-24 (2026-10):** The two transactions are merged: `state/turn_store.py::persist_turn` writes events, snapshot, counter, both messages and one audit row with a single flush per turn, after taking a row lock on the session's snapshot (ADL-036, ADL-038). The orchestrator no longer writes tables directly.
 
 ## 5. Data Models
 
@@ -1486,6 +1536,8 @@ COLLECTION_CONFIG = {
 | **Splitting strategy** | Section-aware (split at section headers, then sentence boundaries) | Preserve clinical context units |
 | **Metadata preserved** | `guideline_id`, `section_title`, `page_number`, `source_url` | Required for citation generation |
 
+> **Erratum E-25 (2026-10):** Chunks are now 400 tokens with 60 overlap, measured with the bge-small tokenizer (512 whitespace words exceeded the models' 512-token input window); tables become separate chunks; the payload adds `doc_title`, `org`, `year`, `page_end`, `topics`, `doc_sha256`, `chunk_index` and `content_type` (ADL-047).
+
 ### 3.4 Ingestion CLI
 
 ```bash
@@ -1505,6 +1557,8 @@ python -m medbridge.ingestion \
 # --recreate        Drop and recreate collection before indexing
 # --dry-run         Parse and validate only, do not write to Qdrant
 ```
+
+> **Erratum E-26 (2026-10):** Ingestion is driven by `data/corpus_manifest.json` (`--manifest`), and `--pdf-dir` is optional. Further flags: `--only`, `--prune`, `--stats`, `--batch-size`, `--state-file`, `--reports-dir`, `--no-manifest-update`; unchanged documents are skipped (ADL-047).
 
 ## 4. APIs
 
@@ -1559,6 +1613,8 @@ class GuidelineChunk:
     sparse_vector: SparseVector  # fastembed BM25 indices + values
 ```
 
+> **Erratum E-28 (2026-10):** See E-25 for the additional payload fields; guideline IDs follow the manifest (for example `AHA_ACC_HTN_2025`, `ESC_HTN_2024`, `NICE_NG136`).
+
 ## 6. Knowledge Sources
 
 | Source | Document | Content Scope |
@@ -1566,6 +1622,8 @@ class GuidelineChunk:
 | **AHA/ACC 2025** | Hypertension Clinical Practice Guideline | BP classification, treatment thresholds, drug therapy, special populations |
 | **ESC/ESH 2024** | Arterial Hypertension Guidelines | European perspectives, drug combinations, target organ damage |
 | **MedlinePlus** | High Blood Pressure consumer information | General lifestyle guidance, medication overviews, plain-language explanations |
+
+> **Erratum E-27 (2026-10):** The knowledge base now holds the 27 documents listed in `data/corpus_manifest.json` (guidelines, statements, a review and patient pages from 11 organisations; `reports/corpus_stats.md`). At Review 3 the third indexed source was NICE NG136, not MedlinePlus (`docs/finalization_plan.md` §0) (ADL-046).
 
 ## 7. Interfaces
 
@@ -1663,6 +1721,8 @@ Define the complete physical deployment topology, startup procedures, health che
 **Container Management:** Docker Compose v3.9 with named volumes and health checks.
 **Non-Containerized Services:** Streamlit and FastAPI run as local Python processes, started manually. They are not containerized to simplify debugging and hot-reloading during development.
 
+> **Erratum E-29 (2026-10):** LLM inference runs on a local Ollama server (loopback, port 11434) instead of Groq; the FastAPI process also serves the web SPA on port 8000, and Streamlit on 8501 is optional. A GPU is recommended (Apple Silicon or the RTX 4050 demonstration laptop) but not required (ADL-040, ADL-053).
+
 ## 4. Topology
 
 ```
@@ -1744,6 +1804,8 @@ volumes:
   qdrant_data:
 ```
 
+> **Erratum E-31 (2026-10):** The repository's `docker-compose.yml` uses `postgres:16-alpine`, maps PostgreSQL to `127.0.0.1:5433` and checks Qdrant with a TCP probe; it remains the authoritative file.
+
 ## 6. Environment Configuration
 
 ```bash
@@ -1765,6 +1827,8 @@ QDRANT_URL=http://127.0.0.1:6333
 CORS_ORIGINS=["http://localhost:8501"]
 ```
 
+> **Erratum E-32 (2026-10):** `GROQ_API_KEY` is no longer required. New secrets: `ENCRYPTION_MASTER_KEY` and `SESSION_TOKEN_SECRET` (generated by `scripts/setup_env.py`), optionally `ADMIN_PASSWORD`; `EVAL_DATABASE_URL` for evaluation runs. Full list: Part VII §10.
+
 ## 7. Startup Sequence
 
 ```bash
@@ -1785,6 +1849,8 @@ uvicorn medbridge.main:app --host 0.0.0.0 --port 8000 --reload
 # 5. Start the frontend (separate terminal)
 streamlit run medbridge/frontend/app.py --server.port 8501
 ```
+
+> **Erratum E-33 (2026-10):** Current sequence: `docker compose up -d`; `alembic upgrade head` from the repository root; pull the Ollama model(s); `python -m medbridge.ingestion` (manifest-driven); `uvicorn medbridge.main:app --host 127.0.0.1 --port 8000`; open `http://127.0.0.1:8000/`. Streamlit is optional. Platform-specific steps are in the operator guide `HOW_TO_RUN.md`.
 
 ## 8. APIs
 
@@ -1831,6 +1897,8 @@ The deployment layer's responsibility is ensuring these schemas are applied corr
 
 All local interfaces are bound to `127.0.0.1` (loopback only). The only outbound internet connection is to Groq Cloud API.
 
+> **Erratum E-30 (2026-10):** With `LOCAL_ONLY_MODE=true` there is no outbound LLM connection at all; internet access is needed only to download models and corpus documents during setup.
+
 ## 11. Dependencies
 
 ### 11.1 Infrastructure Dependencies
@@ -1852,6 +1920,8 @@ All local interfaces are bound to `127.0.0.1` (loopback only). The only outbound
 | **GPU** | Not required | Not required |
 | **Network** | Internet access (for Groq API) | Stable broadband |
 | **OS** | Windows 10+, macOS 12+, Ubuntu 22.04+ | Any with Docker support |
+
+> **Erratum E-34 (2026-10):** Local LLM inference needs memory for the model: the selected 4-bit application model is 3.3 GB (`evaluation/results/model_selection_round1_prefix/model_selection.md`); the target machines are an Apple M-series Mac and a Windows 11 laptop with a 6 GB RTX 4050. Internet access is needed only for the initial downloads.
 
 ## 12. Security Considerations
 
@@ -1916,6 +1986,8 @@ Every system interaction, with source, processor, data, and result.
 | 14 | FastAPI Orchestrator | PostgreSQL | `INSERT INTO audit_logs ...` + `INSERT INTO message_history ...` | Transaction committed |
 | 15 | FastAPI Backend | Streamlit Chat UI | HTTP 200 `MessageResponse` JSON | Response rendered in chat panel + citations panel |
 
+> **Erratum E-35 (2026-10):** Rows 5, 8, 9a, 12 and 13a now go to the local Ollama server; row 7 is no longer a separate transaction (one persistence step, row 14); new interactions are redaction before row 4, the small-talk check, speculative retrieval during row 8, citation validation after row 13a, the optional Gate 3 and SSE stage events. See Part VII §3.
+
 ## A.2 Offline Interactions
 
 | # | Request Source | Processing Component | Data Exchanged | Result Returned |
@@ -1944,6 +2016,8 @@ medical emergencies.
 
 If you are in the United States, call 911 for emergencies.
 ```
+
+> **Erratum E-36 (2026-10):** The ESCALATE template now names configurable emergency numbers (`EMERGENCY_NUMBER`, `AMBULANCE_NUMBER`, `EMERGENCY_REGION_LABEL`; defaults 112, 108 and India) and is built by `core/templates.py::build_escalate_template`.
 
 ## B.2 ABSTAIN Template
 
@@ -2073,3 +2147,318 @@ medbridge/
         └── fixtures/
             └── medbridge_aq/
 ```
+
+> **Erratum E-37 (2026-10):** The tree above is the design-time layout. The implemented layout is in Part VII §2, and the file-to-test mapping of every module is in `docs/module_map.md`.
+
+---
+
+# Part VII: Implementation Update 2026-10
+
+## 1. Purpose and Reading Guide
+
+This part describes MedBridge as implemented on 2026-10-10, after the finalization work for Reviews 4 and 5. Parts I – VI remain the design-time record; outdated statements there carry dated errata that point here (§14). The decisions behind every change are recorded in `docs/architecture_decision_log.md` (ADL-027 – ADL-058), and the corresponding rule changes in `docs/project_constitution.md` §14 (Amendments). Module, file and test mapping: `docs/module_map.md`.
+
+**Unchanged architecture invariants.** The eight-step workflow; the five actions ANSWER, SOFT-ASK, GENERALIZE, ABSTAIN and ESCALATE; the deterministic emergency fast-path before any LLM call; Gate 1 (Context Gate) and Gate 2 (Evidence Gate) as separate decision points at temperature 0.0 and seed 42; the loop-breaker at `soft_ask_count` 2 forcing GENERALIZE; hybrid dense + sparse retrieval fused with RRF (k = 60) and reranked by a cross-encoder (top-20 → top-5) in a worker thread; template bypass for ABSTAIN and ESCALATE; XML isolation of untrusted input; event-sourced state with append-only `clinical_events` and `audit_logs`; and the never-throw orchestrator with the spec fallbacks (Gate 1 → PROCEED, Gate 2 → GENERALIZE, generator → pre-vetted template).
+
+## 2. Package Layout
+
+```
+MedBridge/
+├── medbridge/
+│   ├── config.py, main.py, logging_config.py      # settings, app factory + lifespan, structured logging
+│   ├── api/
+│   │   ├── routes/      sessions, messages (JSON + SSE + regenerate), features (feedback, context,
+│   │   │                BP, summary), admin, metrics, config (public), health
+│   │   ├── schemas/     enums, requests, responses (MessageResponse, Explanation, …)
+│   │   └── middleware/  error_handler (safe structured errors)
+│   ├── core/            orchestrator (traced stages), pipeline_types (StageName, AblationConfig),
+│   │                    emergency_classifier, citations, smalltalk, templates
+│   ├── ai/              llm_wrapper, prompt_utils, context_extractor, context_gate, evidence_gate,
+│   │                    response_generator, evidence_calibration (V1), grounding_verifier (V2), schemas/
+│   ├── nlp/             drugs (brand → generic), query_expansion, bp_parse
+│   ├── retrieval/       embedder, hybrid_retriever, reranker, cache
+│   ├── state/           projector, session_manager, turn_store
+│   ├── privacy/         redaction, crypto, tokens, deps, middleware, log_scrub, retention, evaluation
+│   ├── features/        bp (ACC/AHA categories), summary (clinician summary)
+│   ├── db/              models, connection
+│   ├── ingestion/       __main__ (CLI), parser (PDF), html_parser, chunker, tokenizer, indexer,
+│   │                    manifest, pipeline, state, stats
+│   ├── web/             index.html, dashboard.html, css/, js/ (ES modules), js/ui/, mount_web()
+│   ├── frontend/        legacy Streamlit client
+│   └── tests/           unit/ and integration/ suites
+├── evaluation/          HalluBench runner, judges, calibration, statistics, figures, retrieval
+│                        evaluation, model selection; datasets/ and results/
+├── tests/               adversarial/, benchmark/ (MedBridge-AQ, 275 vignettes), evaluation/,
+│                        privacy/, scripts/, data/ (emergency case files)
+├── alembic/versions/    four migrations (initial schema → feedback uniqueness)
+├── data/                corpus_manifest.json, guidelines/ (local copies, not committed), README.md
+├── scripts/             setup_env, download_corpus, pii_eval, smoke_test, load_test, latency_probe,
+│                        llm_sanity_check, run_study.sh, study_ollama.sh
+├── reports/             measurement files and figures
+└── docs/                specification, constitution, ADL, module map, plans and notes
+```
+
+## 3. Runtime Pipeline
+
+| # | Stage (`StageName`) | Component | LLM call | Result | On failure |
+| :--- | :--- | :--- | :---: | :--- | :--- |
+| 0 | `privacy` | `privacy/redaction.redact` | No | Redacted message used by every later stage except stage 1 | Fails closed: nothing unredacted reaches an LLM or the database; safe error response |
+| 1 | `emergency` | `core/emergency_classifier.classify_detailed` on the **raw** message | No | ESCALATE template, or continue | — (deterministic, no I/O) |
+| 2 | `load_state` | `state/turn_store` (snapshot, `soft_ask_count`, recent turns); effective question after a SOFT-ASK | No | State for the turn | Continue with empty state (recorded as failed) |
+| 2b | `small_talk` | `core/smalltalk.is_small_talk` | No | Claim-free GENERALIZE template, or continue | — |
+| 3 | `extraction` | `ai/context_extractor` (LLM 1) + `nlp` post-processing; `state/projector` applied in memory | Yes | Delta events, search query, intent | No events; query = expansion of the redacted message |
+| 4 | `context_gate` | `ai/context_gate` (LLM 2, Gate 1); speculative retrieval task started in parallel | Yes | SOFT-ASK (count + 1) / PROCEED (count reset) / loop-breaker GENERALIZE at count 2 | PROCEED |
+| 5 | `retrieval`, `rerank` | `retrieval/hybrid_retriever` (dense ‖ sparse → RRF k = 60, top-20) → `retrieval/reranker` (top-5, worker thread) | No | Evidence chunks; `retrieval_status` ok / empty / failed / skipped / discarded | Empty evidence, status `failed`; reranker failure → top-5 fused candidates |
+| 6 | `evidence_gate` | `ai/evidence_gate` (LLM 3, Gate 2); V1 `ai/evidence_calibration` when enabled | Yes | ANSWER / GENERALIZE / ABSTAIN / ESCALATE | GENERALIZE (also when every V1 vote fails) |
+| 7 | `generation` | ABSTAIN/ESCALATE → `core/templates`; otherwise `ai/response_generator` (LLM 4) → `core/citations.validate_citations` | ANSWER / GENERALIZE / SOFT-ASK only | Response text with validated `[n]` citations; ANSWER with 0 valid citations → GENERALIZE | Pre-vetted GENERALIZE template |
+| 7b | `verification` | V2 `ai/grounding_verifier` (Gate 3) when enabled | No (NLI model) | Unsupported sentences removed, or ANSWER → GENERALIZE / → ABSTAIN | Draft kept, failure recorded |
+| 8 | `persistence` | `state/turn_store.persist_turn` (one flush, row lock) | No | Stored events, snapshot, counter, messages, audit row with trace | Answer still returned; transaction rolled back |
+
+```mermaid
+flowchart TD
+    IN["Patient message"] --> PV["0 Privacy: redact PII"]
+    PV --> EC{"1 Emergency fast-path<br/>(raw text, deterministic)"}
+    EC -->|"red flag"| T_E["ESCALATE template"]
+    EC -->|"no"| LS["2 Load state<br/>(+ effective question)"]
+    LS --> ST{"2b Small talk?"}
+    ST -->|"yes"| T_S["Claim-free GENERALIZE template"]
+    ST -->|"no"| EX["3 Context Extractor (LLM 1)<br/>+ deterministic NLP, in-memory projection"]
+    EX --> G1{"4 Gate 1: Context Gate (LLM 2)"}
+    EX -.->|"speculative, optional"| RT
+    G1 -->|"SOFT-ASK, count < 2"| SA["Generator: ask for missing fields<br/>(speculative results discarded)"]
+    G1 -->|"SOFT-ASK, count = 2"| LB["Loop-breaker: force GENERALIZE"]
+    G1 -->|"PROCEED"| RT["5 Hybrid retrieval: dense + sparse → RRF k=60<br/>→ cross-encoder top-5"]
+    LB --> RT
+    RT --> G2{"6 Gate 2: Evidence Gate (LLM 3)<br/>(V1 calibrated variant optional)"}
+    G2 -->|"ABSTAIN"| T_A["ABSTAIN template"]
+    G2 -->|"ESCALATE"| T_E2["ESCALATE template"]
+    G2 -->|"ANSWER / GENERALIZE"| GEN["7 Generator (LLM 4)<br/>+ citation validation"]
+    GEN --> V2{"7b Gate 3 verifier<br/>(V2, optional)"}
+    V2 --> PS["8 Persist turn (single flush)"]
+    SA --> PS
+    T_E --> PS
+    T_S --> PS
+    T_A --> PS
+    T_E2 --> PS
+    PS --> OUT["MessageResponse + Explanation<br/>(JSON or SSE)"]
+```
+
+Concurrency: turns of one session are serialised by an in-process lock from stage 2 to stage 8; a message that triggers the fast-path is classified before the lock and never waits. Regenerate re-runs the last user message from the loop-breaker counter recorded before that turn and stores no new events (ADL-037, ADL-038).
+
+## 4. HTTP API
+
+All paths under `/api/sessions/{id}/` require `Authorization: Bearer <session_token>` when `AUTH_REQUIRED=true` (missing → 401, invalid or expired → 403; erasure accepts an expired but correctly signed token for a bounded grace period). An unknown session answers 404 and an erased session 410 `SESSION_ERASED`, before any pipeline work.
+
+| Method and path | Purpose | Response |
+| :--- | :--- | :--- |
+| `POST /api/sessions` | Create a session | 201 `{session_id, created_at, session_token, expires_at}` |
+| `GET /api/sessions/{id}/history` | Conversation history | Messages with `message_id`, citations and `explanation` |
+| `DELETE /api/sessions/{id}` | Right to erasure (crypto-shred) | 204 |
+| `POST /api/sessions/{id}/messages` | Run one turn | `MessageResponse` |
+| `POST /api/sessions/{id}/messages/stream` | Run one turn with Server-Sent Events | Events `stage`, `meta`, `token`, `done` (`error` then a safe `done` on failure) |
+| `POST /api/sessions/{id}/regenerate` | Re-run the last user message (`?stream=true` for SSE) | `MessageResponse` or SSE |
+| `POST /api/sessions/{id}/feedback` | Rating (+1 / −1) with optional comment, one per message | 201 |
+| `GET /api/sessions/{id}/context` | Snapshot, medications and BP series with ACC/AHA categories | JSON |
+| `POST /api/sessions/{id}/bp` | Manual BP entry, appended as a BP_READING event | 201 (422 when implausible) |
+| `GET /api/sessions/{id}/summary?format=md\|json` | Clinician summary with citations | Markdown or JSON |
+| `GET /api/config/public` | App name, emergency numbers, disclaimer, local-only flag, models, suggested prompts | JSON |
+| `GET /health`, `GET /api/health` | Readiness: status, `ollama_reachable`, `models_loaded`, `qdrant_points` | JSON |
+| `GET /api/metrics` | Latency percentiles, action and gate counts, fallbacks, Gate 3, redaction and feedback statistics | JSON (admin token) |
+| `POST /api/admin/login` | Admin login (disabled while `ADMIN_PASSWORD` is empty) | `{token}` |
+| `GET /api/admin/audit?limit=` | Recent audit rows, decrypted then redacted, or `[erased]` | JSON (admin token) |
+| `GET /`, `GET /dashboard`, `GET /static/*` | Web SPA and admin dashboard | Static files |
+
+SSE wire format: `event: <type>\ndata: <json>\n\n`. The `done` event carries the full `MessageResponse`. Text tokens are a typewriter replay of the validated answer, so the first token arrives at about the full turn time (ADL-054).
+
+## 5. Data Contracts (additions)
+
+| Model (file) | Added fields / changes |
+| :--- | :--- |
+| `MessageRequest` (`api/schemas/requests.py`) | Unchanged contract: `message`, 1 – 2,000 characters |
+| `MessageResponse` (`api/schemas/responses.py`) | `message_id`, `user_message_id`, `redaction_count`, `explanation` |
+| `CitationResponse` | `guideline_id`, `title`, `org`, `year`, `page`, `url` (all optional); built by the server from chunk metadata |
+| `Explanation` | `gate1` and `gate2` (`GateDecision`: action, rationale, missing fields, source, votes, numeric features), `gate3`, `emergency`, `retrieval` (top-5 `RetrievedEvidence` with RRF and rerank scores), `timings` (`StageTiming` per stage), `total_ms`, `speculative_retrieval`, `citation_validation`, `redactions`, `redaction_categories`, `models`, `llm_calls`, `ablation`, `regenerated`, `soft_ask_count_before`, `retrieval_status`, `effective_question` |
+| `SessionResponse` | `created_at`, `session_token`, `expires_at` |
+| `ContextGateOutput` (`ai/schemas/context_gate.py`) | `missing_fields` restricted to 12 values (`current_medications`, `blood_pressure_reading`, `age`, `sex`, `pregnancy_status`, `kidney_function`, `heart_rate`, `symptoms_detail`, `diagnosis`, `medication_dose`, `comorbidities`, `lab_results`); rationale-first field order |
+| `ResponseGeneratorOutput` | `citations` optional and not requested from the model; the model writes `[n]` markers |
+| `RetrievedChunk` (`retrieval/hybrid_retriever.py`) | Optional `doc_title`, `org`, `year`, `page_end`, `topics`, `score_rrf`, `score_rerank`, `source_format` |
+
+## 6. LLM Configuration
+
+| Parameter | Extractor, Gate 1, Gate 2 | Generator |
+| :--- | :--- | :--- |
+| Provider | Local Ollama, native `/api/chat` (`LOCAL_ONLY_MODE=true`) | Same |
+| Model setting | `LLM_MODEL_GATES`, else `LLM_MODEL` | `LLM_MODEL_GENERATOR`, else `LLM_MODEL` |
+| Model used for the study | `qwen3.5:4b` (ADL-057; code default `LLM_MODEL=qwen3:8b`, overridden through `.env` or `--model`) | Same |
+| Output format | JSON schema of the Pydantic output model (grammar-constrained) | Same |
+| `temperature` / `top_p` / `seed` | 0.0 / 1.0 / 42 | 0.3 / 0.95 / 42 |
+| `max_tokens` (`num_predict`) | 512 | 900 |
+| `num_ctx` | 8192 | 8192 |
+| `keep_alive` / `think` | 30m / off (sent only to thinking-capable models) | Same |
+| Timeout and retries | 120 s; 3 attempts with exponential backoff; one extra attempt with a doubled budget after a truncated output | Same |
+
+Evaluation only: an LLM judge from a different model family (default `gemma3:12b`) and the NLI judge `cross-encoder/nli-deberta-v3-base`; the V2 verifier uses `cross-encoder/nli-MiniLM2-L6-H768` so that it is never graded by its own model (ADL-052, ADL-056).
+
+## 7. Database Changes
+
+Migrations: `6a69a1c21f43` (initial schema) → `f7737fab1c53` (enum hyphenation) → `g1a7c3e9d2b4` (privacy, trace, feedback) → `h2b8d4f6a1c3` (feedback uniqueness, legacy-plaintext marker).
+
+```sql
+-- Additions after the design-time DDL of Part IV §3.2 (summary, see the migrations for exact types)
+ALTER TABLE audit_logs ADD COLUMN trace JSONB;          -- PHI-free pipeline trace (+ index on created_at)
+ALTER TABLE sessions   ADD COLUMN erased_at TIMESTAMPTZ; -- crypto-shredding marker
+ALTER TABLE sessions   ADD COLUMN legacy_plaintext_rows INTEGER;  -- counted at erasure
+CREATE TABLE session_keys (session_id UUID PRIMARY KEY REFERENCES sessions, wrapped_key TEXT, created_at TIMESTAMPTZ);
+CREATE TABLE feedback (feedback_id UUID PRIMARY KEY, session_id UUID REFERENCES sessions, message_id UUID,
+                       rating SMALLINT, comment TEXT /* encrypted */, created_at TIMESTAMPTZ,
+                       CONSTRAINT uq_feedback_session_message UNIQUE (session_id, message_id));
+-- The rules no_update_events, no_delete_events, no_update_audit, no_delete_audit are unchanged.
+```
+
+Encrypted storage formats: text columns `enc:v1:<fernet token>`; JSONB columns `{"enc": "v1", "ct": "<fernet token>"}`. Encrypted: message text, audit request/response text and rationales, event payloads, snapshots, feedback comments and the PHI part of the trace. Plaintext: actions, chunk IDs, latencies and the public trace. Write model: `persist_turn` locks the session's `context_snapshots` row (`SELECT … FOR UPDATE`), folds the turn's own events onto it and flushes once; erasure deletes `session_keys`, `message_history`, `context_snapshots` and `feedback` rows and stamps `sessions.erased_at`.
+
+## 8. Retrieval and Knowledge Base
+
+| Item | Implementation |
+| :--- | :--- |
+| Collection | `clinical_guidelines`: dense `dense` 384-d cosine (`BAAI/bge-small-en-v1.5`), sparse `sparse` BM25 with IDF modifier (`Qdrant/bm25`) — unchanged |
+| Fusion | `RrfQuery(rrf=Rrf(k=60))`, top-20 candidates (ADL-048) |
+| Reranking | `cross-encoder/ms-marco-MiniLM-L-6-v2`, top-5, worker thread, device cuda > mps > cpu (ADL-049, ADL-050) |
+| Caches | LRU query embeddings (`RETRIEVAL_CACHE_SIZE`); LRU + TTL fused results (`RETRIEVAL_CACHE_TTL_SECONDS`); failures and empty results not cached |
+| Corpus | 27 documents from `data/corpus_manifest.json`, 2,747 chunks of which 505 are tables (`reports/corpus_stats.md`) |
+| Chunking | 400 tokens, overlap 60, bge-small tokenizer; table chunks; cleaning of headers, footers, references and duplicates; `INGEST_VERSION = 3` |
+| Payload | `chunk_id, chunk_text, guideline_id, doc_title, org, year, section_title, page_number, page_end, source_url, topics, doc_sha256, chunk_index, content_type` |
+| CLI | `python -m medbridge.ingestion [--manifest] [--only ID …] [--recreate] [--prune] [--dry-run] [--stats] [--chunk-size] [--chunk-overlap] [--batch-size]` |
+| Retrieval evaluation | 70 labelled queries; dense, sparse, hybrid and hybrid + rerank (`evaluation/results/retrieval/retrieval_metrics.md`); reranker ablation (`evaluation/results/retrieval/reranker_ablation/README.md`) |
+
+## 9. Privacy and Security Controls
+
+| Control | Implementation | Settings |
+| :--- | :--- | :--- |
+| PII/PHI redaction | `privacy/redaction.py`, stage 0 and log scrubbing; evaluation in `reports/privacy_redaction_metrics.md` | `PII_REDACTION_ENABLED` |
+| Encryption at rest | `privacy/crypto.py`, per-session Fernet data keys wrapped by the master key | `ENCRYPTION_ENABLED`, `ENCRYPTION_MASTER_KEY` |
+| Right to erasure | `DELETE /api/sessions/{id}` → crypto-shredding | — |
+| Retention | `privacy/retention.py`, hourly purge of inactive sessions | `DATA_RETENTION_DAYS` |
+| Session tokens | `privacy/tokens.py` (HMAC-SHA256, expiring), `privacy/deps.py` | `AUTH_REQUIRED`, `SESSION_TOKEN_SECRET`, `SESSION_TOKEN_TTL_SECONDS` |
+| Admin access | `api/routes/admin.py`, 8-hour admin token, login 5/min | `ADMIN_USERNAME`, `ADMIN_PASSWORD` |
+| HTTP hardening | `privacy/middleware.py` (pure ASGI): CSP and security headers, CORS, body-size limit, rate limits | `CORS_ORIGINS`, `MAX_REQUEST_BYTES`, `RATE_LIMIT_PER_MINUTE` |
+| Local-only inference | `ai/llm_wrapper.py` refuses remote providers, non-loopback hosts and cloud tags | `LOCAL_ONLY_MODE`, `OLLAMA_BASE_URL` |
+| Log hygiene | `privacy/log_scrub.py`, secret masking, `hide_parameters=True`, no input echo in validation errors | — |
+
+## 10. Configuration Reference (additions and changed defaults)
+
+Defaults as in `medbridge/config.py`. Secrets are generated with `scripts/setup_env.py`.
+
+| Setting | Default | Purpose |
+| :--- | :--- | :--- |
+| `LLM_PROVIDER` | `ollama` | `ollama`, `groq` or `openai` (remote ones only with local-only mode off) |
+| `LOCAL_ONLY_MODE` | `true` | Enforce local inference (ADL-040) |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama endpoint (must be loopback in local-only mode) |
+| `LLM_MODEL` / `LLM_MODEL_GATES` / `LLM_MODEL_GENERATOR` | `qwen3:8b` / empty / empty | Model per role (empty = `LLM_MODEL`); the study uses `qwen3.5:4b` |
+| `LLM_KEEP_ALIVE`, `LLM_NUM_CTX`, `LLM_THINK`, `LLM_TIMEOUT` | `30m`, `8192`, `false`, `120` | Ollama residency, context window, thinking, timeout (s) |
+| `LLM_MAX_TOKENS_GATES` / `LLM_MAX_TOKENS_GENERATOR` | `512` / `900` | Generation caps |
+| `DATABASE_URL` | `postgresql+asyncpg://…@127.0.0.1:5433/medbridge` | Development database (tests use `medbridge_test`; evaluation uses `EVAL_DATABASE_URL`) |
+| `RETRIEVAL_CACHE_SIZE`, `RETRIEVAL_CACHE_TTL_SECONDS` | `512`, `900` | Retrieval caches |
+| `SPECULATIVE_RETRIEVAL` | `true` | Retrieval concurrent with Gate 1 (ADL-027) |
+| `EVIDENCE_MAX_CHARS_PER_CHUNK` | `2400` | Evidence text per chunk in prompts |
+| `EXTRACTOR_HISTORY_TURNS` | `4` | Turns given to the extractor for coreference |
+| `CITATION_VALIDATION_ENABLED`, `SMALL_TALK_ENABLED` | `true`, `true` | ADL-028, ADL-029 |
+| `EVIDENCE_GATE_CALIBRATION_ENABLED`, `EVIDENCE_GATE_VOTES` | `false`, `3` | V1 (ADL-051) |
+| `EVIDENCE_MIN_RERANK_ANSWER`, `EVIDENCE_MIN_RERANK_ANY`, `EVIDENCE_MIN_ENTITY_COVERAGE` | `0.0`, `-6.0`, `0.0` | V1 thresholds (placeholders until calibrated on dev) |
+| `GROUNDING_VERIFIER_ENABLED`, `GROUNDING_NLI_MODEL` | `false`, `cross-encoder/nli-MiniLM2-L6-H768` | V2 (ADL-052) |
+| `GROUNDING_ENTAILMENT_THRESHOLD`, `GROUNDING_MAX_UNSUPPORTED_FRACTION` | `0.5`, `0.34` | V2 thresholds (to be calibrated on dev) |
+| `WARMUP_ON_STARTUP` | `true` | Background model warm-up (ADL-049) |
+| `PII_REDACTION_ENABLED`, `ENCRYPTION_ENABLED` | `true`, `true` | Privacy layer |
+| `ENCRYPTION_MASTER_KEY`, `SESSION_TOKEN_SECRET` | empty (must be set) | Key-encryption key; token signing secret (an empty secret falls back to an ephemeral per-process one with a warning) |
+| `SESSION_TOKEN_TTL_SECONDS`, `AUTH_REQUIRED` | `604800` (7 days), `true` | Session tokens |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | `admin`, empty (dashboard disabled) | Admin login |
+| `RATE_LIMIT_PER_MINUTE`, `MAX_REQUEST_BYTES`, `DATA_RETENTION_DAYS` | `30`, `32768`, `30` | Abuse limits and retention |
+| `HOST`, `PORT` | `127.0.0.1`, `8000` | Loopback binding |
+| `CORS_ORIGINS` | `http://127.0.0.1:8000`, `http://localhost:8000`, `http://localhost:8501` | Allowed browser origins |
+| `APP_NAME`, `EMERGENCY_NUMBER`, `AMBULANCE_NUMBER`, `EMERGENCY_REGION_LABEL` | `MedBridge`, `112`, `108`, `India` | UI text and ESCALATE template |
+
+## 11. Deployment
+
+```
+Local machine (single node, every port bound to 127.0.0.1)
+  Browser ──HTTP :8000──▶ FastAPI / Uvicorn  (API + web SPA + dashboard, pipeline in-process)
+  Browser ──HTTP :8501──▶ Streamlit (optional legacy client) ──HTTP :8000──▶ FastAPI
+  FastAPI ──SQL  :5433──▶ PostgreSQL 16 (Docker)
+  FastAPI ──HTTP :6333──▶ Qdrant (Docker; gRPC :6334)
+  FastAPI ──HTTP :11434─▶ Ollama (local LLM server, Metal / CUDA / CPU)
+  No outbound internet connection at runtime when LOCAL_ONLY_MODE=true.
+```
+
+Target machines: Apple M-series Mac (development and experiments) and a Windows 11 laptop with an NVIDIA RTX 4050 (6 GB VRAM) for the final demonstration. The hallucination study can use a dedicated Ollama instance on port 11435 with parallel decoding slots (`scripts/study_ollama.sh`). Step-by-step setup for both platforms: `HOW_TO_RUN.md`.
+
+## 12. Evaluation Architecture
+
+| Condition | Retrieval | Gate 1 | Gate 2 | Generator prompt | Purpose |
+| :--- | :---: | :---: | :---: | :--- | :--- |
+| C0 | — | — | — | `direct` (no evidence; fast-path also off) | Direct-LLM baseline |
+| C1 | ✓ | — | — | `vanilla` (plain RAG with `[n]` citations) | Vanilla RAG baseline |
+| C2 | ✓ | — | — | `prompt_safety` (vanilla + prose safety block) | Prompt-only safety baseline |
+| C1G | ✓ | — | — | `grounded` (production prompt) | Optional anchor for gate-effect deltas |
+| C3 | ✓ | ✓ | — (always ANSWER) | `grounded` | Context Gate only |
+| C4 | ✓ | — (always PROCEED) | ✓ | `grounded` | Evidence Gate only |
+| C5 | ✓ | ✓ | ✓ | `grounded` | Full MedBridge (Dual Answerability Gate) |
+| V1 / V2 / V12 | ✓ | ✓ | ✓ (V1: calibrated) | `grounded` (V2: + Gate 3) | Fallback variants of brief §6.7 |
+
+Flow (`scripts/run_study.sh`): C5 on the dev split → LLM and NLI judges on dev → calibration of NLI, V1 and V2 thresholds on dev (`evaluation/calibrate.py`) → all conditions on the test split → judges on test → `evaluation/analyze.py` (tables and figures). Dataset: MedBridge-HalluBench v1, 247 synthetic items (49 dev / 198 test). Requests identical across conditions are memoised by model digest; degraded turns are flagged and excluded from headline metrics, and analysis refuses headline results when a condition exceeds 5% degraded turns (ADL-056). Results available now: retrieval evaluation and reranker ablation (`evaluation/results/retrieval/`), model selection round 1 (`evaluation/results/model_selection_round1_prefix/`). **Hallucination-study results, judge agreement and significance tests: pending.**
+
+## 13. Testing
+
+| Suite | Location | Notes |
+| :--- | :--- | :--- |
+| Unit | `medbridge/tests/unit/` | All LLM calls mocked |
+| Integration | `medbridge/tests/integration/` | Markers `postgres`, `qdrant`; isolated `medbridge_test` database |
+| Privacy | `tests/privacy/` | Redaction (development and blind sets), crypto, tokens, middleware, retention |
+| Evaluation | `tests/evaluation/` | Metrics cross-checked against scipy / scikit-learn, runner, judges, calibration, degraded turns |
+| Adversarial | `tests/adversarial/` | Prompt injection, SQL injection, RABBITS harness |
+| Scripts | `tests/scripts/` | Smoke, load and latency harnesses against a fake API |
+| JavaScript | `medbridge/web/tests/` | Node test runner (optional; wrapped by `test_web_js.py`) |
+| Live | `pytest -m live` | Full stack with a real LLM; excluded by default |
+
+Per-module test files and collected counts: `docs/module_map.md`. Live benchmark runs (MedBridge-AQ, RABBITS, adversarial, load test) are pending; the current `reports/medbridge_aq_benchmark_report.md` and `reports/rabbits_benchmark_report.md` are bannered mock-mode harness checks.
+
+## 14. Errata Register
+
+| ID | Location | Design-time statement | Current state | Reference |
+| :--- | :--- | :--- | :--- | :--- |
+| E-01 | Part I §3.1 | Streamlit is the frontend | Web SPA is primary; Streamlit kept as legacy | ADL-053 |
+| E-02 | Part I §2 (R-FE-05) | Session id kept in the URL | Signed bearer session token, never in the URL | ADL-033 |
+| E-03 | Part I §8 | No authentication | Session tokens, admin login, strict CSP | ADL-033, 034, 053 |
+| E-04 | Part II §3.2 | Module tree | New packages and modules | Part VII §2 |
+| E-05 | Part II §4 | Three endpoints | Extended API, bearer tokens, new response fields | Part VII §4 – §5 |
+| E-06 | Part II §4.4 | Health reports Groq | Readiness with Ollama, models and Qdrant points | ADL-049 |
+| E-07 | Part II §6 | No inbound auth; Groq outbound; port 5432 | Bearer auth; local Ollama; host port 5433 | ADL-033, 040 |
+| E-08 | Part II §8 | PII sent unredacted; CORS Streamlit only | Redaction + encryption; configurable CORS | ADL-030, 031, 034 |
+| E-09 | Part II §9.2 | Qdrant failure → GENERALIZE with cached guidance | `RetrievalError`, Gate 2 decides on empty evidence; 410/413/429 | ADL-036 |
+| E-10 | Part II §10 | Groq-based settings, host 0.0.0.0 | Local-first settings, host 127.0.0.1 | Part VII §10 |
+| E-11 | Part III §3.1 | DB write before Gate 1; fewer stages | Single persistence at the end; privacy, small talk, speculative retrieval, citation validation, Gate 3 | ADL-036, Part VII §3 |
+| E-12 | Part III §3.2 | Ten regex patterns | 26 English + 14 Hinglish rules with negation and context | ADL-045 |
+| E-13 | Part III §3.3 – §3.8 | Draft prompts | Rule-based few-shot prompts, full isolation, indexed chunks | ADL-041, 042 |
+| E-14 | Part III §3.5 | `FusionQuery(RRF)` | `RrfQuery(k=60)`, caches, `RetrievalError` | ADL-048, 049 |
+| E-15 | Part III §3.8 | Generator returns citation objects | `[n]` markers validated by the server | ADL-028, 042 |
+| E-16 | Part III §3.9 | Generic API call with JSON repair | Native Ollama structured output, truncation handling, local-only | ADL-039, 040 |
+| E-17 | Part III §4 | Original signatures | Optional history, message, mode, model, ablation parameters | `docs/finalization_plan.md` §3 |
+| E-18 | Part III §8 | Gates see only structured data; PHI gap | Gates see the redacted message inside isolation tags; PHI gap closed | ADL-030, 040, 041 |
+| E-19 | Part III §9 | Zero results → ABSTAIN; reranker failure → top-20 unsorted | Gate 2 decides; failed status recorded; reranker failure → top-5 fused | ADL-036 |
+| E-20 | Part III §10 | `llama-3.1-8b-instant`, `json_object`, 30 s | Per-role local models, JSON schema, generator seed, 900 tokens, 120 s | ADL-039, 057 |
+| E-21 | Part IV §3.1 | Port 5432 | Host port 5433 | `docker-compose.yml` |
+| E-22 | Part IV §3.2 | Original DDL | Trace, erasure markers, session keys, feedback; ciphertext columns | ADL-031, 032, 038 |
+| E-23 | Part IV §4.1 | Repeated MEDICATION_ADDED ignored | Dose change with history; generic names; condition union | ADL-044 |
+| E-24 | Part IV §4 | Two transactions written by projector and orchestrator | One `persist_turn` flush under a row lock | ADL-036, 038 |
+| E-25 | Part V §3.3 | 512 / 64 tokens | 400 / 60 tokenizer-measured; tables; richer payload | ADL-047 |
+| E-26 | Part V §3.4 | `--pdf-dir` driven CLI | Manifest-driven, incremental CLI | ADL-047 |
+| E-27 | Part V §6 | Three sources incl. MedlinePlus | 27 manifest-listed documents | ADL-046 |
+| E-28 | Part V §5 | Point structure | Additional payload fields, manifest IDs | ADL-047 |
+| E-29 | Part VI §3 | Groq cloud inference; Streamlit only | Local Ollama; SPA on :8000; Streamlit optional | ADL-040, 053 |
+| E-30 | Part VI §10 | Outbound connection to Groq | No outbound LLM connection in local-only mode | ADL-040 |
+| E-31 | Part VI §5 | Compose file | `postgres:16-alpine`, host port 5433, TCP probe for Qdrant | `docker-compose.yml` |
+| E-32 | Part VI §6 | Groq key required | Encryption and token secrets required; Groq optional | Part VII §10 |
+| E-33 | Part VI §7 | Startup with `--host 0.0.0.0` and `--pdf-dir` | Loopback host, manifest ingestion, Ollama models | Part VII §11 |
+| E-34 | Part VI §11.2 | No GPU; internet for Groq | Local model memory; GPU recommended; internet only for setup | ADL-057 |
+| E-35 | Appendix A | Groq interactions; separate state transaction | Ollama interactions; single persistence; new stages | Part VII §3 |
+| E-36 | Appendix B.1 | US 911 template | Configurable numbers (default India 112 / 108) | `core/templates.py` |
+| E-37 | Appendix C | Directory tree | Implemented layout | Part VII §2, `docs/module_map.md` |

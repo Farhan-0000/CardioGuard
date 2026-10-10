@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="544.32pt" height="321.12pt" viewBox="0 0 544.32 321.12" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 321.12 
+L 544.32 321.12 
+L 544.32 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="line2d_1">
+    <path d="M 36 122.4 
+" clip-path="url(#p9b01e9ce38)" style="fill: none; stroke: #4a5568; stroke-width: 1.1"/>
+   </g>
+   <g id="patch_2">
+    <path d="M 36 122.4 
+Q 59.76 122.4 82.290163 122.4 
+" style="fill: none; stroke: #4a5568; stroke-width: 1.1; stroke-linecap: round"/>
+    <path d="M 78.890163 120.7 
+L 82.290163 122.4 
+L 78.890163 124.1 
+z
+" style="fill: #4a5568; stroke: #4a5568; stroke-width: 1.1; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 151.2 122.4 
+" clip-path="url(#p9b01e9ce38)" style="fill: none; stroke: #b7740a; stroke-width: 1.3"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 151.2 122.4 
+Q 203.76 122.4 254.866556 122.4 
+" style="fill: none; stroke: #b7740a; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 251.466556 120.7 
+L 254.866556 122.4 
+L 251.466556 124.1 
+z
+" style="fill: #b7740a; stroke: #b7740a; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 324 122.4 
+" clip-path="url(#p9b01e9ce38)" style="fill: none; stroke: #b7740a; stroke-width: 1.3"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 324 122.4 
+Q 376.56 122.4 427.666556 122.4 
+" style="fill: none; stroke: #b7740a; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 424.266556 120.7 
+L 427.666556 122.4 
+L 424.266556 124.1 
+z
+" style="fill: #b7740a; stroke: #b7740a; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 454.32 154.08 
+Q 290.16 259.1424 127.789207 155.225093 
+" clip-path="url(#p9b01e9ce38)" style="fill: none; stroke: #b7740a; stroke-width: 1.9; stroke-linecap: round"/>
+    <path d="M 130.080186 159.06585 
+L 127.789207 155.225093 
+L 132.2364 155.696765 
+z
+" clip-path="url(#p9b01e9ce38)" style="fill: #b7740a; stroke: #b7740a; stroke-width: 1.9; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 275.76 91.44 
+Q 203.76 30.96 132.787301 90.577067 
+" clip-path="url(#p9b01e9ce38)" style="fill: none; stroke: #2e7d4f; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 137.136505 89.535709 
+L 132.787301 90.577067 
+L 134.563736 86.472889 
+z
+" clip-path="url(#p9b01e9ce38)" style="fill: #2e7d4f; stroke: #2e7d4f; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 454.32 90 
+Q 290.16 -28.1952 127.088788 89.216073 
+" clip-path="url(#p9b01e9ce38)" style="fill: none; stroke: #2e7d4f; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 131.503534 88.501923 
+L 127.088788 89.216073 
+L 129.166315 85.255785 
+z
+" clip-path="url(#p9b01e9ce38)" style="fill: #2e7d4f; stroke: #2e7d4f; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 89.639895 102.990173 
+Q 74.121292 54.528823 110.498651 88.163288 
+" clip-path="url(#p9b01e9ce38)" style="fill: none; stroke: #2e7d4f; stroke-width: 1.2; stroke-linecap: round"/>
+    <path d="M 108.919432 83.979263 
+L 110.498651 88.163288 
+L 106.2039 86.916248 
+z
+" clip-path="url(#p9b01e9ce38)" style="fill: #2e7d4f; stroke: #2e7d4f; stroke-width: 1.2; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 117.36 88.56 
+C 126.334473 88.56 134.942583 92.125596 141.288493 98.471507 
+C 147.634404 104.817417 151.2 113.425527 151.2 122.4 
+C 151.2 131.374473 147.634404 139.982583 141.288493 146.328493 
+C 134.942583 152.674404 126.334473 156.24 117.36 156.24 
+C 108.385527 156.24 99.777417 152.674404 93.431507 146.328493 
+C 87.085596 139.982583 83.52 131.374473 83.52 122.4 
+C 83.52 113.425527 87.085596 104.817417 93.431507 98.471507 
+C 99.777417 92.125596 108.385527 88.56 117.36 88.56 
+z
+" clip-path="url(#p9b01e9ce38)" style="fill: #eceff3; stroke: #5a6472; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 290.16 88.56 
+C 299.134473 88.56 307.742583 92.125596 314.088493 98.471507 
+C 320.434404 104.817417 324 113.425527 324 122.4 
+C 324 131.374473 320.434404 139.982583 314.088493 146.328493 
+C 307.742583 152.674404 299.134473 156.24 290.16 156.24 
+C 281.185527 156.24 272.577417 152.674404 266.231507 146.328493 
+C 259.885596 139.982583 256.32 131.374473 256.32 122.4 
+C 256.32 113.425527 259.885596 104.817417 266.231507 98.471507 
+C 272.577417 92.125596 281.185527 88.56 290.16 88.56 
+z
+" clip-path="url(#p9b01e9ce38)" style="fill: #eceff3; stroke: #5a6472; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 462.96 88.56 
+C 471.934473 88.56 480.542583 92.125596 486.888493 98.471507 
+C 493.234404 104.817417 496.8 113.425527 496.8 122.4 
+C 496.8 131.374473 493.234404 139.982583 486.888493 146.328493 
+C 480.542583 152.674404 471.934473 156.24 462.96 156.24 
+C 453.985527 156.24 445.377417 152.674404 439.031507 146.328493 
+C 432.685596 139.982583 429.12 131.374473 429.12 122.4 
+C 429.12 113.425527 432.685596 104.817417 439.031507 98.471507 
+C 445.377417 92.125596 453.985527 88.56 462.96 88.56 
+z
+" clip-path="url(#p9b01e9ce38)" style="fill: #eceff3; stroke: #5a6472; stroke-width: 1.5; stroke-linejoin: miter"/>
+   </g>
+   <g id="line2d_4">
+    <path d="M 30.96 122.4 
+" clip-path="url(#p9b01e9ce38)" style="fill: none; stroke: #1a202c; stroke-width: 1.5; stroke-linecap: square"/>
+    <defs>
+     <path id="m8bc69a804e" d="M 0 3.5 
+C 0.928211 3.5 1.81853 3.131218 2.474874 2.474874 
+C 3.131218 1.81853 3.5 0.928211 3.5 0 
+C 3.5 -0.928211 3.131218 -1.81853 2.474874 -2.474874 
+C 1.81853 -3.131218 0.928211 -3.5 0 -3.5 
+C -0.928211 -3.5 -1.81853 -3.131218 -2.474874 -2.474874 
+C -3.131218 -1.81853 -3.5 -0.928211 -3.5 0 
+C -3.5 0.928211 -3.131218 1.81853 -2.474874 2.474874 
+C -1.81853 3.131218 -0.928211 3.5 0 3.5 
+z
+" style="stroke: #1a202c"/>
+    </defs>
+    <g clip-path="url(#p9b01e9ce38)">
+     <use xlink:href="#m8bc69a804e" x="30.96" y="122.4" style="fill: #1a202c; stroke: #1a202c"/>
+    </g>
+   </g>
+   <g id="patch_12">
+    <path d="M 25.2 260.64 
+L 180.72 260.64 
+Q 185.76 260.64 185.76 265.68 
+L 185.76 300.24 
+Q 185.76 305.28 180.72 305.28 
+L 25.2 305.28 
+Q 20.16 305.28 20.16 300.24 
+L 20.16 265.68 
+Q 20.16 260.64 25.2 260.64 
+z
+" clip-path="url(#p9b01e9ce38)" style="fill: #f8f9fb; stroke: #a0aec0; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 201.6 260.64 
+L 357.12 260.64 
+Q 362.16 260.64 362.16 265.68 
+L 362.16 300.24 
+Q 362.16 305.28 357.12 305.28 
+L 201.6 305.28 
+Q 196.56 305.28 196.56 300.24 
+L 196.56 265.68 
+Q 196.56 260.64 201.6 260.64 
+z
+" clip-path="url(#p9b01e9ce38)" style="fill: #f8f9fb; stroke: #a0aec0; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_14">
+    <path d="M 378 260.64 
+L 533.52 260.64 
+Q 538.56 260.64 538.56 265.68 
+L 538.56 300.24 
+Q 538.56 305.28 533.52 305.28 
+L 378 305.28 
+Q 372.96 305.28 372.96 300.24 
+L 372.96 265.68 
+Q 372.96 260.64 378 260.64 
+z
+" clip-path="url(#p9b01e9ce38)" style="fill: #f8f9fb; stroke: #a0aec0; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 10px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="117.36" y="120.667891" transform="rotate(-0 117.36 120.667891)">count = 0</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="117.36" y="133.468008" transform="rotate(-0 117.36 133.468008)">no open question</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 10px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="290.16" y="120.667891" transform="rotate(-0 290.16 120.667891)">count = 1</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="290.16" y="133.469877" transform="rotate(-0 290.16 133.469877)">1 SOFT-ASK asked</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 10px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #1f2933" x="462.96" y="120.667891" transform="rotate(-0 462.96 120.667891)">count = 2</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 6.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="462.96" y="133.469877" transform="rotate(-0 462.96 133.469877)">2 SOFT-ASKs asked</text>
+   </g>
+   <g id="text_7">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #2d3748" x="102.96" y="272.665723" transform="rotate(-0 102.96 272.665723)">Counter unchanged</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 6.7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="102.96" y="281.155887" transform="rotate(-0 102.96 281.155887)">Turns that never reach Gate 1 keep the</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 6.7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="102.96" y="289.329821" transform="rotate(-0 102.96 289.329821)">stored value: emergency fast-path</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 6.7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="102.96" y="297.503887" transform="rotate(-0 102.96 297.503887)">ESCALATE, small-talk template.</text>
+   </g>
+   <g id="text_11">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #2d3748" x="279.36" y="272.665723" transform="rotate(-0 279.36 272.665723)">Regenerate</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 6.7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="279.36" y="281.155821" transform="rotate(-0 279.36 281.155821)">Re-runs the last user message from</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 6.7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="279.36" y="289.329821" transform="rotate(-0 279.36 289.329821)">soft_ask_count_before (value recorded</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 6.7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="279.36" y="297.503821" transform="rotate(-0 279.36 297.503821)">before that turn): restored, never +2.</text>
+   </g>
+   <g id="text_15">
+    <text style="font-weight: 700; font-size: 7.6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #2d3748" x="455.76" y="272.665797" transform="rotate(-0 455.76 272.665797)">* PROCEED also covers</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 6.7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="455.76" y="281.155887" transform="rotate(-0 455.76 281.155887)">the Gate 1 failure fallback and the</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 6.7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="455.76" y="289.329821" transform="rotate(-0 455.76 289.329821)">Gate 1 bypass in C0, C1, C1G, C2, C4.</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 6.7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #3f4a59" x="455.76" y="297.505784" transform="rotate(-0 455.76 297.505784)">Threshold SOFT_ASK_MAX_COUNT = 2.</text>
+   </g>
+   <g id="text_19">
+    <text style="font-size: 6.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4a5568" transform="translate(53.523125 111.853775)">new</text>
+    <text style="font-size: 6.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4a5568" transform="translate(48.232406 119.823256)">session</text>
+   </g>
+   <g id="text_20">
+    <text style="font-weight: 700; font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #b7740a" x="203.76" y="113.383594" transform="rotate(-0 203.76 113.383594)">Gate 1: SOFT-ASK</text>
+   </g>
+   <g id="text_21">
+    <text style="font-size: 6.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #b7740a" transform="translate(178.632406 137.191068)">reply SOFT-ASK</text>
+    <text style="font-size: 6.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #b7740a" transform="translate(189.677625 145.172236)">count + 1</text>
+   </g>
+   <g id="text_22">
+    <text style="font-weight: 700; font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #b7740a" x="376.56" y="113.383594" transform="rotate(-0 376.56 113.383594)">Gate 1: SOFT-ASK</text>
+   </g>
+   <g id="text_23">
+    <text style="font-size: 6.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #b7740a" transform="translate(351.432406 137.191068)">reply SOFT-ASK</text>
+    <text style="font-size: 6.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #b7740a" transform="translate(362.477625 145.172236)">count + 1</text>
+   </g>
+   <g id="text_24">
+    <g id="patch_15">
+     <path d="M 203.514187 222.189293 
+L 376.805812 222.189293 
+L 376.805812 212.690707 
+L 203.514187 212.690707 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-weight: 700; font-size: 7.2px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #b7740a" x="290.16" y="219.35025" transform="rotate(-0 290.16 219.35025)">Gate 1: SOFT-ASK with count ≥ 2  →  loop-breaker</text>
+   </g>
+   <g id="text_25">
+    <g id="patch_16">
+     <path d="M 172.194344 234.885443 
+L 408.125656 234.885443 
+L 408.125656 225.914557 
+L 172.194344 225.914557 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 6.8px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #b7740a" x="290.16" y="232.1595" transform="rotate(-0 290.16 232.1595)">forced GENERALIZE · Evidence Gate skipped (retrieval still runs) · count → 0</text>
+   </g>
+   <g id="text_26">
+    <text style="font-size: 6.9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #2e7d4f" transform="translate(173.082492 75.788196)">Gate 1: PROCEED*</text>
+    <text style="font-size: 6.9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #2e7d4f" transform="translate(188.035547 83.201046)">count → 0</text>
+   </g>
+   <g id="text_27">
+    <g id="patch_17">
+     <path d="M 230.332758 23.991406 
+L 436.387242 23.991406 
+L 436.387242 14.888594 
+L 230.332758 14.888594 
+z
+" style="fill: #ffffff"/>
+    </g>
+    <text style="font-size: 6.9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #2e7d4f" x="333.36" y="21.911602" transform="rotate(-0 333.36 21.911602)">Gate 1: PROCEED*  ·  count → 0  ·  Evidence Gate routes the turn</text>
+   </g>
+   <g id="text_28">
+    <text style="font-size: 6.9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #2e7d4f" x="53.28" y="57.911602" transform="rotate(-0 53.28 57.911602)">Gate 1: PROCEED*</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p9b01e9ce38">
+   <rect x="5.76" y="5.76" width="532.8" height="309.6"/>
+  </clipPath>
+ </defs>
+</svg>

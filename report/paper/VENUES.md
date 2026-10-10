@@ -249,3 +249,21 @@ Before you submit anywhere not in the top 5, run through this list. Two or more 
 - The BMC MIDM publisher fee page.
 - IATMSI-2027: the site blocked access.
 - The ICICC 2027 official site.
+
+---
+
+## 10. Note added with the paper builders (10 Oct 2026)
+
+- The venue is still open: the team will choose a conference or journal later. The paper is
+  kept in IEEE conference format because it converts easily to the other formats; the
+  builders and the page budget are described in `report/paper/README.md`.
+- Draft outputs: `report/paper/MedBridge_IEEE_Paper.docx` and `report/paper/latex/`
+  (IEEEtran, compile on Overleaf). Section V (results) is pending until the study finishes.
+- The working title in the draft is *MedBridge: A Dual Answerability Gate for
+  Hallucination-Resistant Local Retrieval-Augmented Clinical Guidance* (shorter than the
+  title in the heading of this file).
+- Patent route: read Section 1 of `report/paper/patent_disclosure_draft.md` **before**
+  submitting anywhere or posting a preprint. A disclosure before a patent filing can destroy
+  novelty, so the order of patent filing and paper submission has to be decided first.
+- For a double-blind venue, build the review copy with `--anonymous` (removes names and the
+  acknowledgment).
