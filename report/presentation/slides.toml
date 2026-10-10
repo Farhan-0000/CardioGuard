@@ -38,7 +38,7 @@ actions = [
   { name = "SOFT-ASK", text = "asks for the missing personal fact" },
   { name = "GENERALIZE", text = "general guideline information" },
   { name = "ABSTAIN", text = "safe refusal, no text generated" },
-  { name = "ESCALATE", text = "emergency advice, no LLM involved" },
+  { name = "ESCALATE", text = "emergency template, no text generated" },
 ]
 notes = """
 Introduce the team and the guide. The project is presented as CardioGuard; the software system inside it is called MedBridge, and we use that name for everything technical.
@@ -90,8 +90,8 @@ gap_title = "What existing approaches leave open"
 gap = [
   "Standard RAG retrieves and generates for every query: there is no explicit point at which it declines [@lewis2020rag]",
   "Self-reflective and corrective RAG judge the **evidence**, not whether the **patient context** is sufficient [@asai2024selfrag; @yan2024crag]",
-  "Abstention is rarely treated as a first-class, evaluated output [@wen2025abstention]",
-  "The strongest medical LLMs are cloud-hosted, which rules out private local use [@singhal2023llmclinical]",
+  "Abstention research still has open gaps in how declining to answer is evaluated [@wen2025abstention]",
+  "Flagship medical LLMs such as Med-PaLM are large, closed models that cannot be run privately on local hardware [@singhal2023llmclinical]",
 ]
 reasons = [
   { title = "“I don't know enough about you”", text = "Patient context is missing → ask first (SOFT-ASK), **before** retrieval" },
@@ -109,7 +109,7 @@ objectives = [
   "Transparent web interface and an automated test suite",
 ]
 notes = """
-Retrieval-augmented generation pairs a model with a retriever, and it is the natural starting point for a guideline assistant. But in its standard form it retrieves and generates for every query. Later work such as Self-RAG and Corrective RAG adds critique of the retrieved evidence, yet nothing asks whether the system knows enough about the patient to apply that evidence safely. Surveys of abstention also note that declining to answer is rarely evaluated properly.
+Retrieval-augmented generation pairs a model with a retriever, and it is the natural starting point for a guideline assistant. But in its standard form it retrieves and generates for every query. Later work such as Self-RAG and Corrective RAG adds critique of the retrieved evidence, yet nothing asks whether the system knows enough about the patient to apply that evidence safely. A survey of abstention also points to open gaps in how declining to answer is evaluated.
 
 Our observation is that there are two different reasons to hold back, shown in the two amber boxes. The first is about the patient and is best checked before retrieval: if a fact that would change the safe answer is missing, ask for it. The second is about the evidence and can only be checked after retrieval: if the passages do not support a specific answer, generalise or abstain. MedBridge makes both decisions explicit as two separate gates, with a deterministic emergency check in front of both.
 
@@ -134,7 +134,7 @@ stages = [
   { n = "8", name = "Persistence", text = "one encrypted flush per turn; append-only events and audit log", tone = "storage" },
 ]
 notes = """
-Walk the pipeline top to bottom; the full diagram on the left is Figure 3 of the report, and the colours are the same in every diagram: amber for the gates, red for the emergency path, blue for calls to the local LLM, grey for deterministic code, green for templates and privacy controls, purple for storage.
+Walk the pipeline top to bottom; the full diagram on the left is Figure 3.1 of the report, and the colours are the same in every diagram: amber for the gates, red for the emergency path, blue for calls to the local LLM, grey for deterministic code, green for templates and privacy controls, purple for storage.
 
 Stage 0 redacts personal identifiers before anything else. Stage 1, the emergency fast-path, reads the raw text with deterministic rules and escalates immediately, with no model call. Stage 3 asks the LLM to extract typed clinical events such as BP readings and medicines; the patient snapshot is a fold over those events and is never written by the model directly.
 
@@ -154,7 +154,7 @@ rows = [
   ["SOFT-ASK", "Context Gate", "A personal fact that would change the safe answer is missing", "One focused follow-up question", "Yes"],
   ["GENERALIZE", "Evidence Gate or loop-breaker", "Evidence covers the topic only in general, or a false belief needs correcting; or {{deck.config.SOFT_ASK_MAX_COUNT|int}} SOFT-ASKs in a row", "Non-personalised guideline information with citations", "Yes"],
   ["ABSTAIN", "Evidence Gate", "Outside cardiovascular care, an unknown (possibly fabricated) drug, or a dose the evidence does not state", "Pre-vetted refusal with a referral", "No: template"],
-  ["ESCALATE", "Emergency fast-path, or Evidence Gate", "Red flags happening now: chest pain, stroke signs, a reading of 180/120 or more with symptoms", "Emergency template: seek care now", "No: template"],
+  ["ESCALATE", "Emergency fast-path, or Evidence Gate", "Red flags happening now: chest pain, stroke signs; fast-path: any reading with systolic ≥ 180 or diastolic ≥ 120; Gate 2: 180/120 or more with symptoms", "Emergency template: seek care now", "No: template"],
 ]
 strip = [
   "Both gates: temperature 0, seed 42, JSON-schema outputs",
@@ -179,7 +179,7 @@ kicker = "Safety layer"
 title = "Emergency fast-path and natural-language robustness"
 how_title = "Deterministic emergency triage"
 how = [
-  "Runs on the **raw** message before redaction or any LLM call: rules only, no model, no network",
+  "Runs on the **raw** (unredacted) message before any LLM call: rules only, no model, no network",
   "Lay phrasing and formats: “150 over 95”, “chest feels tight”, “can't move my arm”",
   "Negation and context: “no chest pain”, educational and historical mentions pass through",
   "Typo tolerance plus a Hinglish and Indian-English lexicon",
@@ -201,7 +201,7 @@ nl = [
   "Recent turns go to the extractor for follow-ups like “is that dose ok?”",
 ]
 notes = """
-The emergency fast-path is the one place where we do not trust a language model at all. It is a deterministic classifier that reads the raw message, before redaction and before any LLM call, so an emergency is escalated even if Ollama is down.
+The emergency fast-path is the one place where we do not trust a language model at all. It is a deterministic classifier that reads the raw, unredacted message (redaction runs first, but its output is not used here), before any LLM call, so an emergency is escalated even if Ollama is down.
 
 It understands everyday phrasings and number formats, handles negation (“no chest pain” does not escalate), ignores educational and historical mentions, tolerates typos, and has a Hinglish and Indian-English lexicon. The examples at the top right were run through the real classifier when this deck was built; the right-hand column shows its actual output.
 
@@ -218,17 +218,17 @@ id = "retrieval"
 kicker = "Knowledge base and retrieval"
 title = "Curated knowledge base and measured retrieval quality"
 kpis = [
-  { value = "{{corpus.totals.documents|int}}", label = "curated documents (open access, licence checked)" },
-  { value = "{{corpus.totals.organisations|int}}", label = "issuing organisations (AHA/ACC, ESC, NICE, WHO, ...)" },
+  { value = "{{corpus.totals.documents|int}}", label = "curated documents (publicly readable, licence recorded per document)" },
+  { value = "{{deck.corpus.organisations|int}}", label = "issuing organisations (AHA, ACC, ESC, NICE, WHO, ...)" },
   { value = "{{corpus.totals.chunks|comma}}", label = "indexed chunks, at most {{corpus.totals.chunk_tokens.max|int}} tokens each" },
   { value = "{{retrieval.modes.hybrid.n|int}}", label = "labelled evaluation queries (lay and clinical)" },
 ]
 notes = """
-The knowledge base grew from three PDF guidelines at Review 3 to {{corpus.totals.documents|int}} curated documents from {{corpus.totals.organisations|int}} organisations: {{corpus.totals.pdf_documents|int}} PDFs and {{corpus.totals.html_documents|int}} HTML pages, {{corpus.totals.chunks|comma}} chunks in total. Every document is pinned in data/corpus_manifest.json with its source, licence and checksum; nothing is scraped. Chunks are at most {{corpus.totals.chunk_tokens.max|int}} tokens so that no text falls outside the embedder's window, which was a real problem in the old index.
+The knowledge base grew from three PDF guidelines at Review 3 to {{corpus.totals.documents|int}} curated documents from {{deck.corpus.organisations|int}} organisations (joint AHA/ACC guidelines counted as AHA and ACC): {{corpus.totals.pdf_documents|int}} PDFs and {{corpus.totals.html_documents|int}} HTML pages, {{corpus.totals.chunks|comma}} chunks in total. Every document is pinned in data/corpus_manifest.json with its source, licence and checksum; nothing is scraped. Chunks are at most {{corpus.totals.chunk_tokens.max|int}} tokens so that no text falls outside the embedder's window, which was a real problem in the old index.
 
-Retrieval was evaluated on {{retrieval.modes.hybrid.n|int}} labelled queries. The table gives Recall at 5 and 20, MRR and nDCG at 5, each with a 95 per cent bootstrap confidence interval. Hybrid fusion is the configuration the pipeline uses; the rows below it are the reranker ablation, where four cross-encoders rerank the same top-20 hybrid candidates.
+Retrieval was evaluated on {{retrieval.modes.hybrid.n|int}} labelled queries. The table gives Recall at 5 and 20, MRR and nDCG at 5, each with a 95 per cent bootstrap confidence interval. Hybrid fusion followed by the MiniLM-L-6 cross-encoder (the highlighted production row) is the configuration the pipeline uses; that row and the three below it form the reranker ablation, where four cross-encoders rerank the same top-20 hybrid candidates.
 
-Read the takeaway line honestly: on this set the confidence intervals overlap, so no reranker is significantly better than fusion alone. We kept the small MiniLM cross-encoder because it is the fastest, it is part of the approved architecture, and its score doubles as the quantitative evidence signal of the calibrated Evidence Gate variant (V1).
+Read the takeaway line honestly: on this set the confidence intervals overlap, so it shows no clear difference between fusion alone and any reranker; no paired test was run, and MiniLM-L-6 even has slightly lower point estimates than fusion alone. We kept the small MiniLM cross-encoder because it is the fastest, it is part of the approved architecture, and its score doubles as the quantitative evidence signal of the calibrated Evidence Gate variant (V1).
 """
 
 # ---------------------------------------------------------------------------------------------
@@ -244,7 +244,7 @@ cards = [
   { title = "Stay local", tone = "llm", text = "LOCAL_ONLY_MODE: only a loopback Ollama is allowed; remote providers are refused" },
 ]
 notes = """
-Privacy was a deferred limitation at Review 1; it is now a layer of its own (Figure 3.x, privacy flow, in the report).
+Privacy was a deferred limitation at Review 1; it is now a layer of its own (Figure 3.7, privacy controls along the request path, in the report).
 
 Redaction is deterministic and runs before any model call and before anything is stored. It is careful not to touch clinical values: BP readings, doses, lab values and drug names survive. Storage is encrypted per session: each session gets its own data key, wrapped by a master key that only lives in the environment. That is what makes erasure possible in an append-only design: deleting the session key ("crypto-shredding") makes every stored ciphertext of that session unreadable, including the immutable audit and event rows, and the API then answers 410 for that session. Access control uses signed, expiring session tokens; and in local-only mode a non-loopback model host is refused outright.
 
@@ -290,7 +290,7 @@ conditions = [
 ]
 judges = [
   "**LLM judge** ({{deck.judges.llm_judge_model}}, a different model family from the app model): splits each answer into atomic claims, labels each SUPPORTED, UNSUPPORTED or CONTRADICTED",
-  "**NLI judge** ({{deck.judges.nli_model}}): deterministic check of the same claims against corpus passages",
+  "**NLI judge** ({{deck.judges.nli_model}}): deterministic re-labelling of the LLM judge's claims against the same evidence passages (thresholds calibrated on the dev split against the LLM judge)",
   "Agreement: Cohen's κ between judges; a 50-item human sheet for the team",
 ]
 stats = [
@@ -298,11 +298,11 @@ stats = [
   "Wilson 95 % CIs · exact McNemar (C5 vs each) with Holm correction · Cochran's Q · risk difference and odds ratio",
 ]
 notes = """
-MedBridge-HalluBench is our synthetic benchmark: {{hallubench.n_items|int}} items with {{hallubench.n_turns|int}} turns in six categories, from answerable questions with complete context to unanswerable questions about fabricated drugs, false premises and doses that no guideline states, plus out-of-domain and emergency items. No real patient data is used. A stratified 20 per cent development split ({{hallubench.by_split.dev|int}} items) is used only for calibration; every reported number comes from the {{hallubench.by_split.test|int}}-item test split.
+MedBridge-HalluBench is our synthetic benchmark: {{hallubench.n_items|int}} items with {{hallubench.n_turns|int}} turns in six categories, from answerable questions with complete context to unanswerable questions about fabricated drugs, false premises and doses that no guideline states, plus out-of-domain and emergency items. No real patient data is used. A stratified 20 per cent development split ({{hallubench.by_split.dev|int}} items) is used only for model selection and calibration; every hallucination-study result comes from the {{hallubench.by_split.test|int}}-item test split.
 
-The ablation runs the same application model, retrieval and prompts under each condition. C0 to C2 are the baselines promised in the specification: direct LLM, vanilla RAG and RAG with safety instructions in the prompt. C3 and C4 switch on one gate each; C5 is the full system. V1 and V2 are the two extensions from the decision rule: a calibrated Evidence Gate and a post-generation grounding verifier.
+The ablation runs the same application model, corpus, retriever and benchmark under every condition. The generator prompt differs by design: C0 answers directly with no retrieval, C1 uses a vanilla RAG prompt, C2 adds a prose safety block, and C3-C5, V1 and V2 use the production grounded prompt. C0 to C2 are the baselines promised in the specification: direct LLM, vanilla RAG and RAG with safety instructions in the prompt. C3 and C4 switch on one gate each; C5 is the full system. V1 and V2 are the two extensions from the decision rule: a calibrated Evidence Gate and a post-generation grounding verifier.
 
-Hallucination is judged twice, independently: an LLM judge from a different model family (to avoid self-preference) labels atomic claims, and a deterministic NLI cross-encoder checks the same claims. We report agreement between them as Cohen's kappa, and the team will label a 50-item human sheet. Statistics are paired: exact McNemar tests of C5 against each other condition with Holm correction, Cochran's Q across conditions, and effect sizes with confidence intervals.
+Hallucination is judged by two complementary judges: an LLM judge from a different model family (to avoid self-preference) splits each answer into atomic claims and labels them, and a deterministic NLI cross-encoder re-labels those same claims against the same evidence. The two are not independent: the NLI judge reuses the LLM judge's claims and evidence, and its thresholds were calibrated on the dev split to agree with it. We report agreement between them as Cohen's kappa, which therefore shows consistency rather than independent confirmation, and the team will label a 50-item human sheet. Statistics are paired: exact McNemar tests of C5 against each other condition with Holm correction, Cochran's Q across conditions, and effect sizes with confidence intervals.
 """
 
 # ---------------------------------------------------------------------------------------------
@@ -317,7 +317,7 @@ rationale = [
   "**Structured outputs:** first-attempt JSON validity per LLM role is part of the comparison",
 ]
 notes = """
-All inference uses free local models through Ollama. We compared three candidates that fit about 6 GB of GPU memory at 4-bit quantisation by running the full pipeline (condition C5) on the same {{model_selection.results.qwen3.5:4b.n_valid|int}} development turns.
+All language-model inference uses free local models through Ollama (the embedder, reranker and NLI models run in-process). We compared three 4-bit candidates sized for a laptop GPU with about 6 GB of memory (only the 4B models fit together with their KV cache) by running the full pipeline (condition C5) on the same {{model_selection.results.qwen3.5:4b.n_valid|int}} development turns.
 
 Read the table from the file: routing accuracy (strict and lenient), macro-F1, the lowest first-attempt JSON validity across the four LLM roles, turn latency and generation speed. The application model in medbridge/config.py is {{deck.config.LLM_MODEL}}.
 
@@ -342,7 +342,7 @@ pending_points = [
 notes = """
 Research question 1: does the full Dual Answerability Gate reduce the rate of hallucinated responses?
 
-The chart and table show the response-level hallucination rate per condition: the share of answered turns with at least one unsupported or contradicted claim, judged separately by the LLM judge and the NLI judge, each with a 95 per cent Wilson interval. Coverage tells how many answerable turns actually received an answer, which guards against a system that looks safe only because it refuses everything.
+The chart and table show the response-level hallucination rate per condition: the share of all judged turns with at least one unsupported or contradicted claim (template ABSTAIN, ESCALATE and small-talk replies count as zero claims), judged separately by the LLM judge and the NLI judge, each with a 95 per cent Wilson interval. Coverage tells how many answerable turns actually received an answer, which guards against a system that looks safe only because it refuses everything.
 
 Report the line at the bottom exactly as printed: it is computed from the paired McNemar tests in evaluation/results/summary.json, with Holm correction, and it says whether each difference is significant. Do not round it up into a stronger claim.
 """
@@ -362,9 +362,9 @@ title = "Unsafe answers, gate ablation and significance"
 title_pending = "Unsafe answers and ablation: pending"
 figure_left = "reports/figures/unsafe_answer_rate_unanswerable.png"
 figure_right = "reports/figures/ablation_waterfall.png"
-decision_rule = "Pre-registered decision rule: the gate counts as effective only if C5 shows a significant reduction (Holm-corrected p < 0.05) in hallucination or unsafe-answer rate against both C1 and C2. Otherwise we report that transparently, analyse the errors, and evaluate the closest variants V1 (calibrated Evidence Gate) and V2 (grounding verifier)."
+decision_rule = "Decision rule fixed in advance: the gate counts as effective only if C5 shows a significant reduction (Holm-corrected p < 0.05) in hallucination or unsafe-answer rate against both C1 and C2. Otherwise we report that transparently with an error analysis. The variants V1 (calibrated Evidence Gate) and V2 (grounding verifier) are evaluated under the same protocol in any case."
 notes = """
-Two outcomes on this slide. Left: the unsafe-answer rate on unanswerable questions, meaning the share of questions that should have been declined or generalised but received specific clinical claims. Right: the ablation waterfall, which shows how the hallucination rate changes as the gates are switched on one at a time, anchored at the RAG baseline.
+Two outcomes on this slide. Left: the unsafe-answer rate on unanswerable questions, meaning the share of questions that should have been declined or generalised but received specific clinical claims. Right: the ablation waterfall from vanilla RAG (C1) to C3 and then C5, with C4 shown alongside. C3-C5 also use the production grounded prompt, so the first step combines the prompt change with the Context Gate. The C1G reference that would separate them was not run. The C3/C4/C5 steps compare like with like.
 
 The table reports the primary paired comparisons of C5 against vanilla RAG (C1) and prompt-only safety (C2), with the risk difference and its confidence interval and the Holm-corrected p-value. Read the verdict line as printed; it applies the decision rule in the box mechanically.
 
@@ -373,7 +373,7 @@ If the gate does not win significantly, that is a valid scientific result: we th
 notes_pending = """
 These results do not exist yet; the slide shows placeholders and quotes no number.
 
-Explain the two outcomes that will appear: the unsafe-answer rate on unanswerable questions, and the ablation waterfall that separates the contribution of each gate. Then read the decision rule in the box: it was fixed before the results, and it commits us to reporting a negative result transparently and to evaluating the variants V1 and V2 if the full gate does not beat both C1 and C2 with Holm-corrected significance.
+Explain the two outcomes that will appear: the unsafe-answer rate on unanswerable questions, and the ablation waterfall that separates the contribution of each gate. Then read the decision rule in the box: it was fixed before the results, and it commits us to reporting a negative result transparently and to evaluating the variants V1 and V2 under the same protocol, whatever the outcome for C5.
 """
 
 # ---------------------------------------------------------------------------------------------
@@ -411,9 +411,9 @@ optimisations = [
   "**Deterministic shortcuts:** small talk and erased sessions never reach a model",
 ]
 notes = """
-Review 3 reported latencies in the tens of seconds, and our own baseline confirmed that model loading dominated cold turns. The table on the left is the baseline measured on the received code with the latency probe (scripts/latency_probe.py), one cold pass and three warm passes over the five Review-3 scenarios. The "after" column is filled from the matching probe of the final system; until that file exists it shows a pending marker rather than an estimate.
+Review 3 reported latencies in the tens of seconds, and our own baseline showed that model loading dominated the first model turn after start-up, while warm turns still took several to tens of seconds. The table on the left is the baseline measured on the received code with the latency probe (scripts/latency_probe.py), one cold pass and three warm passes over the five Review-3 scenarios. The "after" column is filled from the matching probe of the final system; until that file exists it shows a pending marker rather than an estimate.
 
-The optimisations on the right were made without changing routing. The most important are warm-up at start-up, which removes the cold-start penalty, and speculative retrieval: retrieval only depends on the extractor's search query, so it can run while Gate 1 decides; if Gate 1 asks a question, the retrieved passages are simply discarded, so Gate 1 still fully controls whether they are used. Every trace records how much time speculation saved.
+The optimisations on the right keep the gate semantics. The before probe is the received prototype on gemma3:4b and the after probe is the final system on qwen3.5:4b with revised prompts, so the speed-up is not due to the optimisations alone. The most important are warm-up at start-up, which removes the cold-start penalty, and speculative retrieval: retrieval only depends on the extractor's search query, so it can run while Gate 1 decides; if Gate 1 asks a question, the retrieved passages are simply discarded, so Gate 1 still fully controls whether they are used. Every trace records how much time speculation saved.
 
 Honest limitation: each LLM turn still takes several seconds because the extractor, two gates and the generator are sequential model calls on a small local GPU.
 
@@ -446,10 +446,10 @@ kicker = "Limitations and future work"
 title = "Limitations and future work"
 limitations = [
   "**Synthetic benchmark:** HalluBench was written by one author with AI assistance; no clinician review of the gold labels yet",
-  "**Judges are models:** the NLI thresholds are calibrated against the LLM judge; the 50-item human sheet is still to be labelled",
+  "**Judges are models:** the NLI judge re-labels the LLM judge's claims with thresholds calibrated against it; the 50-item human sheet is still to be exported and labelled",
   "**Small local models:** 4B–8B models route imperfectly (dev routing, strict: {{model_selection.results.qwen3.5:4b.routing.accuracy_strict|pct}} for {{deck.config.LLM_MODEL}})",
   "**Name redaction:** rule-based detection misses names without a cue (blind-set recall {{pii.datasets.blind_v2.results.all.per_category_strict.NAME.recall|f3}})",
-  "**Knowledge base gaps:** major heart-failure and ESH 2023 guidelines could not be obtained; open alternatives used",
+  "**Knowledge base gaps:** major heart-failure and ESH 2023 guidelines could not be obtained; freely readable alternatives used",
   "**Prototype scope:** single node, simulated streaming, not tested on the Windows RTX 4050 laptop by us; not a medical device",
 ]
 future = [
@@ -464,7 +464,7 @@ future = [
 notes = """
 Be candid here; the panel rewards it.
 
-The benchmark is synthetic and was written by one author, so the gold labels have not been checked by clinicians. The automatic judges are themselves models, and the NLI judge is calibrated against the LLM judge, so they are not fully independent; the human annotation sheet will validate both. The small local models that fit the demo GPU route imperfectly: on the development split the chosen model routed {{model_selection.results.qwen3.5:4b.routing.accuracy_strict|pct}} of turns exactly right. The rule-based redactor misses names without a cue, although such identifiers never leave the machine and are encrypted at rest. Some major guidelines could not be downloaded, so heart failure and coronary disease are thinly covered. The system is a single-node research prototype, the text is streamed only after the turn is complete, and it is not a medical device.
+The benchmark is synthetic and was written by one author, so the gold labels have not been checked by clinicians. The automatic judges are themselves models, and the NLI judge labels the LLM judge's own claims against the same evidence, with thresholds tuned to agree with it, so the two are complementary rather than independent; the human annotation sheet will validate both. The small local models that fit the demo GPU route imperfectly: on the development split the chosen model routed {{model_selection.results.qwen3.5:4b.routing.accuracy_strict|pct}} of turns exactly right. The rule-based redactor misses names without a cue, although such identifiers never leave the machine and are encrypted at rest. Some major guidelines could not be downloaded, so heart failure and coronary disease are thinly covered. The system is a single-node research prototype, the text is streamed only after the turn is complete, and it is not a medical device.
 
 The future-work list answers these limitations one by one: clinician validation, statistically calibrated abstention, a production grounding verifier, stronger name detection and key management, real streaming, regional languages and a proper user study.
 """
@@ -484,9 +484,9 @@ Thank the panel and the guide. Invite questions.
 
 Likely questions and where the answers are (docs/DEMO_SCRIPT.md has full answers):
 1. Why two gates instead of one? Different information at different times; the ablation C3/C4 measures each gate.
-2. How was hallucination measured? Atomic claims judged by an LLM judge from another model family and by an NLI model, with agreement reported and a human subset.
+2. How was hallucination measured? Atomic claims judged by an LLM judge from another model family and by an NLI model, with inter-judge agreement (Cohen's kappa) to be reported from the study and a 50-item human subset still to be labelled.
 3. Why local models? Privacy of health data and a free, reproducible setup on a 6 GB GPU.
-4. What happens if the LLM fails? Every failure degrades to a safe response: Gate 1 to PROCEED, Gate 2 to GENERALIZE, the generator to a template; emergencies never depend on the LLM.
+4. What happens if the LLM fails? Every failure degrades to a safe response: Gate 1 to PROCEED, Gate 2 to GENERALIZE, the generator to a template; emergencies caught by the deterministic fast-path never depend on the LLM; Gate 2 is a second, LLM-based check for the rest.
 5. Can the emergency check be bypassed by prompt injection? No: it runs on the raw text before any model and its result cannot be overruled.
 6. Individual contributions: [TO BE FILLED: contribution split between the two students].
 """

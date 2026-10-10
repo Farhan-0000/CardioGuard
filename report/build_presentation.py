@@ -1043,10 +1043,13 @@ class DeckBuilder:
                 if len(lows) > 1 and len(highs) > 1:
                     overlap.append(max(lows) <= min(highs))
             if overlap and all(overlap):
+                n_q = self.get("retrieval.modes.hybrid.n")
+                query_set = f"this {n_q}-query set" if isinstance(n_q, int) else "this query set"
                 reading = (
                     "**Reading:** the 95 % bootstrap CIs of all configurations overlap on every "
-                    "metric, so no retriever or reranker is significantly better on this set; the "
-                    "pipeline keeps hybrid fusion and the fast MiniLM-L-6 cross-encoder."
+                    f"metric, so {query_set} shows no clear difference between retrievers or "
+                    "rerankers (no paired test was run); the pipeline keeps hybrid fusion and the "
+                    "fast MiniLM-L-6 cross-encoder."
                 )
             elif overlap:
                 reading = (
@@ -1329,7 +1332,7 @@ class DeckBuilder:
         rx = MX + lw + 0.35
         rw = MX + CW - rx
         y = self.heading(
-            slide, rx, BODY_TOP, rw, "Conditions (same model, retrieval and prompts)", size=16
+            slide, rx, BODY_TOP, rw, "Conditions (same model, corpus and benchmark)", size=16
         )
         conds = spec.get("conditions") or []
         colw = (rw - 0.15) / 2
@@ -1383,7 +1386,7 @@ class DeckBuilder:
             y,
             rw,
             BODY_BOTTOM + 0.02 - y,
-            "Two independent judges, plus people",
+            "Two complementary judges, plus people",
             self.bullets(spec.get("judges") or [], color=TONES["llm"].line, gap=6),
             TONES["llm"],
             title_size=15,
@@ -1559,6 +1562,19 @@ class DeckBuilder:
             return None
         return p < 0.05 and rd < 0
 
+    @staticmethod
+    def _verdict_label(t: dict[str, Any] | None) -> str:
+        """Three-state verdict of one paired test (Holm p < 0.05 and the sign of the RD)."""
+        if not t:
+            return "not significant"
+        p = t.get("pvalue_holm", t.get("pvalue"))
+        rd = (t.get("risk_difference") or {}).get("estimate")
+        if not isinstance(p, (int, float)) or not isinstance(rd, (int, float)):
+            return "not significant"
+        if not (math.isfinite(p) and math.isfinite(rd)) or p >= 0.05 or rd == 0:
+            return "not significant"
+        return "significant reduction" if rd < 0 else "significant increase"
+
     def _rd_text(self, t: dict[str, Any]) -> str:
         rd = t.get("risk_difference") or {}
         vals = [rd.get("estimate"), rd.get("low"), rd.get("high")]
@@ -1676,10 +1692,9 @@ class DeckBuilder:
         for control in ("C1", "C2"):
             t = self._mcnemar(control, "hallucination")
             if t:
-                sig = self._significant(t)
                 verdict.append(
                     f"C5 vs {control}: {self._rd_text(t)}, Holm p = {tables.pvalue(t.get('pvalue_holm'))}"
-                    f" ({'significant reduction' if sig else 'not significant'})"
+                    f" ({self._verdict_label(t)})"
                 )
         paras = [
             P(
@@ -1789,12 +1804,18 @@ class DeckBuilder:
                 self.cur.state = "partial"
         rows = []
         sig_count, total = 0, 0
-        for outcome, label in (("hallucination", "Hallucination"), ("unsafe", "Unsafe answer")):
+        reduced: dict[tuple[str, str], bool] = {}
+        outcomes = (
+            ("hallucination", "Hallucination", "the hallucination rate"),
+            ("unsafe", "Unsafe answer", "the unsafe-answer rate"),
+        )
+        for outcome, label, _ in outcomes:
             for control in ("C1", "C2"):
                 t = self._mcnemar(control, outcome)
                 if not t:
                     continue
-                sig = self._significant(t)
+                sig = bool(self._significant(t))
+                reduced[(outcome, control)] = sig
                 total += 1
                 sig_count += 1 if sig else 0
                 rows.append(
@@ -1804,7 +1825,7 @@ class DeckBuilder:
                         f"{t.get('b_treatment_only')} / {t.get('c_control_only')}",
                         self._rd_text(t),
                         tables.pvalue(t.get("pvalue_holm")),
-                        "significant reduction" if sig else "not significant",
+                        self._verdict_label(t),
                     ]
                 )
         y = BODY_TOP + fh + 0.18
@@ -1812,7 +1833,10 @@ class DeckBuilder:
 
             def style(r: int, c: int, value: str) -> K.CellStyle | None:
                 if c == 5:
-                    tone = TONES["safe"] if value.startswith("significant") else TONES["det"]
+                    tone = {
+                        "significant reduction": TONES["safe"],
+                        "significant increase": TONES["emergency"],
+                    }.get(value, TONES["det"])
                     return K.CellStyle(fill=tone.fill, color=tone.text, bold=True)
                 return None
 
@@ -1839,20 +1863,22 @@ class DeckBuilder:
             )
             y += fit.height_in + 0.1
             self.cur.source(self.ctx.source("study"))
-            if sig_count == total:
+            # The rule: a significant reduction against BOTH C1 and C2 in at least one outcome.
+            met = [
+                phrase
+                for outcome, _, phrase in outcomes
+                if reduced.get((outcome, "C1")) and reduced.get((outcome, "C2"))
+            ]
+            if met:
                 verdict = (
-                    f"**Decision rule:** C5 shows a significant reduction in all {total} primary paired "
-                    "comparisons (Holm-corrected)."
-                )
-            elif sig_count:
-                verdict = (
-                    f"**Decision rule:** significant reduction in {sig_count} of {total} primary "
-                    "comparisons; see the error analysis and the V1 / V2 variants."
+                    f"**Decision rule:** met. C5 significantly reduces {' and '.join(met)} "
+                    "against both C1 and C2 (Holm-corrected)."
                 )
             else:
                 verdict = (
-                    "**Decision rule:** no significant reduction in the primary comparisons; the "
-                    "error analysis and the V1 / V2 variants are reported in the report."
+                    f"**Decision rule:** not met. {sig_count} of {total} primary comparisons show "
+                    "a significant reduction; the error analysis and the V1 / V2 variants are in "
+                    "the report."
                 )
         else:
             verdict = "**Decision rule:** [PENDING: hallucination study]"
@@ -2090,7 +2116,7 @@ class DeckBuilder:
         kit.rect(slide, rx, BODY_TOP, rw, BODY_BOTTOM + 0.02 - BODY_TOP, fill=K.PANEL, line=K.RULE)
         kit.claim("optimisations", rx, BODY_TOP, rw, BODY_BOTTOM + 0.02 - BODY_TOP)
         y2 = self.heading(
-            slide, rx + 0.18, BODY_TOP + 0.1, rw - 0.36, "What changed (routing unchanged)", size=16
+            slide, rx + 0.18, BODY_TOP + 0.1, rw - 0.36, "What changed (gate semantics preserved)", size=16
         )
         kit.text(
             slide,

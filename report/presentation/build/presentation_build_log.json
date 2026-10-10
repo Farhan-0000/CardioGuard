@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T06:16:03+00:00",
+  "generated_at": "2026-10-10T08:01:18+00:00",
   "slides": [
     {
       "index": 1,
@@ -52,7 +52,7 @@
       ],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 2289
+      "notes_chars": 2291
     },
     {
       "index": 4,
@@ -69,7 +69,7 @@
       "images": {
         "report/figures/architecture_pipeline.png": true
       },
-      "notes_chars": 1462
+      "notes_chars": 1464
     },
     {
       "index": 5,
@@ -104,7 +104,7 @@
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1708
+      "notes_chars": 1755
     },
     {
       "index": 7,
@@ -120,7 +120,7 @@
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1215
+      "notes_chars": 1465
     },
     {
       "index": 8,
@@ -135,28 +135,28 @@
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1346
+      "notes_chars": 1373
     },
     {
       "index": 9,
       "id": "ui",
       "title": "The web interface: every decision is visible",
-      "state": "pending",
+      "state": "data",
       "pending": [],
       "sources": [
-        "screenshots: capture with python -m medbridge.web.screenshots --base-url http://127.0.0.1:8000 --out report/screenshots"
+        "report/screenshots"
       ],
       "citations": [],
       "citations_missing": [],
       "images": {
-        "report/screenshots/answer_citations.png": false,
-        "report/screenshots/why_panel.png": false,
-        "report/screenshots/soft_ask.png": false,
-        "report/screenshots/escalate.png": false,
-        "report/screenshots/bp_trend.png": false,
-        "report/screenshots/dashboard.png": false
+        "report/screenshots/answer_citations.png": true,
+        "report/screenshots/why_panel.png": true,
+        "report/screenshots/soft_ask.png": true,
+        "report/screenshots/escalate.png": true,
+        "report/screenshots/bp_trend.png": true,
+        "report/screenshots/dashboard.png": true
       },
-      "notes_chars": 1314
+      "notes_chars": 1213
     },
     {
       "index": 10,
@@ -172,7 +172,7 @@
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1454
+      "notes_chars": 1992
     },
     {
       "index": 11,
@@ -191,7 +191,7 @@
       "images": {
         "reports/figures/model_selection.png": true
       },
-      "notes_chars": 1235
+      "notes_chars": 1358
     },
     {
       "index": 12,
@@ -228,7 +228,7 @@
         "reports/figures/unsafe_answer_rate_unanswerable.png": false,
         "reports/figures/ablation_waterfall.png": false
       },
-      "notes_chars": 638
+      "notes_chars": 612
     },
     {
       "index": 14,
@@ -265,17 +265,16 @@
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1277
+      "notes_chars": 1531
     },
     {
       "index": 16,
       "id": "testing",
       "title": "Testing, validation and an adversarial code review",
       "state": "data",
-      "pending": [
-        "tests (reports/test_summary.json)"
-      ],
+      "pending": [],
       "sources": [
+        "reports/test_summary.json",
         "reports/baseline/pytest_baseline.txt",
         "reports/smoke_test_latest.json",
         "docs/notes/code_review_findings.md",
@@ -284,7 +283,7 @@
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1605
+      "notes_chars": 1559
     },
     {
       "index": 17,
@@ -303,7 +302,7 @@
       ],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1529
+      "notes_chars": 1612
     },
     {
       "index": 18,
@@ -315,14 +314,13 @@
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 914
+      "notes_chars": 1080
     }
   ],
   "slide_count": 18,
   "layout_issues": [],
   "citation_keys_missing": [],
   "pending_slides": [
-    "ui",
     "results_hallucination",
     "results_unsafe",
     "robustness",
@@ -335,6 +333,8 @@
     "model_selection_r1": "evaluation/results/model_selection_round1_prefix/summary.json",
     "corpus": "reports/corpus_stats.json",
     "pii": "reports/privacy_redaction_metrics.json",
+    "tests": "reports/test_summary.json",
+    "calibration": "evaluation/results/calibration.json",
     "smoke": "reports/smoke_test_latest.json",
     "manifest": "data/corpus_manifest.json",
     "reranker": "evaluation/results/retrieval/reranker_ablation/*/metrics.json",

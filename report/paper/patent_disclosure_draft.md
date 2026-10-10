@@ -23,7 +23,7 @@
 | Inventors | [TO BE FILLED: to be decided by the TTO and the patent agent — inventorship follows contribution to the claimed inventive concept, not authorship of the paper or code] |
 | Contact | [TO BE FILLED: name, e-mail, phone of the responsible inventor] |
 | Date of this draft | [TO BE FILLED: date] |
-| Earliest public disclosure so far | [TO BE FILLED: list every talk, poster, report, preprint, public code repository or paper submission and its date — see Section 1] |
+| Earliest public disclosure so far | [TO BE FILLED: list every talk, poster, report, preprint, public code repository or paper submission and its date — see Section 1. Record in particular the visibility of the source repository github.com/Farhan-0000/MedBridge (public or private) and, if it is or was public, the date it became public] |
 
 ---
 
@@ -162,12 +162,15 @@ fixed positions:
    through the generative model, while answer and general-information outputs are generated
    from the passages only, with citation validation that downgrades an unsupported answer.
 
-Optional stages can only move the decision towards a more conservative route: a
-**calibrated evidence gate** (repeated gate decisions over deterministic permutations of the
-passage order with a conservative tie-break, plus calibrated thresholds on retrieval scores
-and entity coverage) and a **post-generation grounding verifier** (entailment checking of
-each generated claim against its cited passages, with removal, regeneration as general
-information, or withdrawal to a refusal).
+Optional stages add further checks: a **calibrated evidence gate** (repeated gate decisions
+over deterministic permutations of the passage order with a conservative tie-break, plus
+calibrated thresholds on retrieval scores and entity coverage) and a **post-generation
+grounding verifier** (entailment checking of each generated claim against its cited passages,
+with removal, regeneration as general information, or withdrawal to a refusal). The calibrated
+thresholds and the grounding verifier can only move the decision towards a more conservative
+route, while the permutation vote replaces the single evidence-gate decision with a majority
+that has a conservative tie-break and can differ from the decision on the original passage
+order in either direction.
 
 **Technical effects** (relevant to Section 3(k)): the generative model is not invoked at all
 on the emergency, refusal and escalation routes, so these outputs are deterministic and
@@ -175,8 +178,12 @@ cannot contain generated content; decision stages run with deterministic decodin
 fixed seed and are logged, so the system's routing is reproducible and auditable; retrieval
 is launched concurrently with the first gate and discarded if unused, which reduces response
 latency without changing the routing; every component, including the models, runs on the
-local device, so no user text is transmitted; each stage has a defined fallback on failure,
-so the system never fails open; and the dialogue is bounded by the clarification counter.
+local device, so no user text is transmitted; each core stage has a defined conservative
+fallback (redaction failure returns a safe error and nothing is sent or stored; first-gate
+failure proceeds to the second gate; second-gate failure gives general information; generator
+failure gives a pre-stored text), while a failure of the emergency classifier or of the
+optional grounding verifier lets the turn continue (the second gate can still escalate, and
+the unverified draft is kept); and the dialogue is bounded by the clarification counter.
 
 ## 7. Objects of the Invention
 
@@ -253,9 +260,12 @@ local-only setting prevents any remote model provider from being contacted.
    `<untrusted_user_input>`), with tag-like sequences escaped, and the passages inside a
    separate element, so that instructions inside user text or passages are treated as data.
 10. *Persistence.* Events, messages, the route, each gate decision and its rationale are
-    written in a single transaction to append-only tables; session content is encrypted with
+    written in a single transaction; the clinical events and the audit record (route, gate
+    decisions and rationales) go to append-only tables; session content is encrypted with
     a per-session key whose destruction erases the session while the audit records remain.
-11. *Fallbacks.* Extractor failure: no events, the raw message is used. First-gate failure:
+11. *Fallbacks.* Extractor failure: no events; the redacted message is used as the intent,
+    and the redacted message expanded with clinical synonyms as the search query. First-gate
+    failure:
     PROCEED. Second-gate failure: GENERALIZE. Generator failure: a pre-stored
     general-information text.
 
@@ -275,7 +285,9 @@ non-claim sentences (greetings, referrals, emergency advice) are kept. Each clai
 scored by a natural-language-inference cross-encoder against windows of about three
 sentences from the passages it cites (all passages when uncited); it is supported when the
 highest entailment probability reaches a threshold. If the unsupported fraction is at most a
-limit τ, unsupported sentences are removed. Otherwise an ANSWER is regenerated as
+limit τ, unsupported sentences are removed (in the current implementation a draft that
+removal would leave empty is kept unchanged; [TO BE FILLED: decide with the team whether that
+case should return the pre-stored refusal before the specification is drafted]). Otherwise an ANSWER is regenerated as
 GENERALIZE and verified again; if it still fails, or the route was already GENERALIZE, the
 pre-stored refusal is returned.
 
@@ -399,9 +411,9 @@ general-information response after repeated requests. A second gate classifies t
 retrieved passages into answer, general-information, abstain or escalate. Abstain and
 escalate responses are pre-stored and bypass the generative model; answers are generated from
 the passages with validated citation markers, and unsupported answers are downgraded.
-Optional stages vote over passage orderings with calibrated evidence thresholds and verify
-generated claims by entailment, and can only make the decision more conservative. All
-models may run locally.
+Optional stages vote over passage orderings with a conservative tie-break, apply calibrated
+evidence thresholds that can only lower the decision, and verify generated claims by
+entailment. All models may run locally.
 
 ## 12. Supporting Evidence and Status
 

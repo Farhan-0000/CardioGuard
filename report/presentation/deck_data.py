@@ -12,7 +12,9 @@ so that no slide types them in by hand:
 * static test inventory (test files and test functions per suite);
 * the received prototype's pytest baseline and the code-review findings;
 * configuration defaults (application model, retrieval depths, loop-breaker threshold);
-* the LLM-judge and NLI-judge model names and which UI screenshots exist.
+* the LLM-judge and NLI-judge model names and which UI screenshots exist;
+* the number of distinct issuing organisations in the corpus, with joint labels such as
+  "AHA/ACC" split into their members (``corpus_stats.json`` counts distinct label strings).
 
 Every fact is optional: a failure leaves its key absent, and the slide then shows a
 highlighted ``[PENDING: ...]`` marker. Nothing here calls a language model or a server.
@@ -405,6 +407,30 @@ def model_selection_decision(root: Path) -> dict[str, Any] | None:
     }
 
 
+def corpus_organisations(root: Path) -> dict[str, Any] | None:
+    """Distinct issuing organisations of the corpus documents.
+
+    ``reports/corpus_stats.json`` ``totals.organisations`` counts distinct ``org`` strings,
+    so "AHA/ACC" and "ACC/AHA" (the same joint issuers) count twice. Here every joint label
+    is split on "/" into its members. Without a document list the stored total is used.
+    """
+    path = root / "reports" / "corpus_stats.json"
+    data = _read_json(path)
+    if not isinstance(data, dict):
+        return None
+    orgs = {
+        part.strip()
+        for doc in data.get("documents") or []
+        if isinstance(doc, dict) and isinstance(doc.get("org"), str)
+        for part in doc["org"].split("/")
+        if part.strip()
+    }
+    if orgs:
+        return {"organisations": len(orgs), "names": sorted(orgs), "source": _rel(path, root)}
+    total = (data.get("totals") or {}).get("organisations")
+    return {"organisations": total, "source": _rel(path, root)} if isinstance(total, int) else None
+
+
 # ----------------------------------------------------------------------
 # Aggregate
 # ----------------------------------------------------------------------
@@ -425,6 +451,7 @@ def collect(root: Path, examples: list[dict[str, Any]] | None = None) -> dict[st
         "config": config_defaults,
         "judges": judges,
         "decision": model_selection_decision,
+        "corpus": corpus_organisations,
     }
     for key, fn in steps.items():
         try:

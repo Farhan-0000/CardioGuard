@@ -37,9 +37,10 @@ deck regenerates.
 Exit codes: 0 means success. 1 means `--strict` found a problem. 2 means the content file is
 missing or invalid. 3 means a PDF or PNG was requested but LibreOffice could not convert the deck.
 
-Requirements: `python-pptx` and `Pillow`, both in `requirements.txt`. LibreOffice is needed
-only for `--pdf` and `--png`, and PyMuPDF only for `--png`. The builder never calls a language
-model or a server, so it is safe to run while an experiment is in progress.
+Requirements: `python-pptx` (in `requirements.txt`; it pulls in `Pillow`, which the text
+measurer uses). LibreOffice is needed only for `--pdf` and `--png`, and PyMuPDF only for
+`--png`. The builder never calls a language model or a server, so it is safe to run while an
+experiment is in progress.
 
 ## Slides and their data
 
@@ -51,7 +52,7 @@ model or a server, so it is safe to run while an experiment is in progress.
 | 4 | Architecture | `report/figures/architecture_pipeline.png`; defaults from `medbridge/config.py` |
 | 5 | Dual Answerability Gate | the five actions; loop-breaker threshold from the config |
 | 6 | Emergency fast-path | the classifier is run on `tests/data/emergency_cases*.json` (in-sample) and on the example messages; HalluBench emergency recall from the study |
-| 7 | Knowledge base and retrieval | `reports/corpus_stats.json`, `evaluation/results/retrieval/metrics.json`, `.../reranker_ablation/*/metrics.json`; the "CIs overlap" sentence is computed |
+| 7 | Knowledge base and retrieval | `reports/corpus_stats.json` (organisations counted with joint labels such as AHA/ACC split), `evaluation/results/retrieval/metrics.json`, `.../reranker_ablation/*/metrics.json`; the "CIs overlap" sentence is computed |
 | 8 | Privacy and security | `reports/privacy_redaction_metrics.json` |
 | 9 | UI screenshots | `report/screenshots/*.png` (placeholders until they are captured) |
 | 10 | Evaluation design | `evaluation/datasets/hallubench_v1.json`; judge models from the judge manifest and `evaluation/judges/nli_judge.py` |
@@ -67,8 +68,11 @@ model or a server, so it is safe to run while an experiment is in progress.
 Slides 12 and 13 become "pending" slides while `evaluation/results/summary.json` is missing.
 They show placeholders and the decision rule, and they quote no rate. Once the file exists
 they show the figures, a per-condition table, and a verdict line. The verdict is worked out
-mechanically from the paired McNemar tests: a comparison counts as a significant reduction
-only when the Holm-corrected p is below 0.05 and the risk difference is negative.
+mechanically from the paired McNemar tests: a comparison is a significant reduction when the
+Holm-corrected p is below 0.05 and the risk difference is negative, a significant increase when
+p is below 0.05 and the risk difference is positive, and not significant otherwise. The
+decision rule counts as met when C5 significantly reduces the same outcome (hallucination or
+unsafe answers) against both C1 and C2.
 
 ## Editing the text
 

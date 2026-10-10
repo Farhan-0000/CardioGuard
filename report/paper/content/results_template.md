@@ -40,12 +40,12 @@ move the rest to the report.
 
 ## Ablation, Variants and Cost
 
-[TO BE FILLED: contribution of each gate (C3, C4 against C1G), effect of V1/V2, and latency per condition.]
+[TO BE FILLED: contribution of each gate (C3 and C4 against C5; no gate-free run on the production prompt was made, so the waterfall's first step from C1 also contains the prompt change), effect of V1/V2, and latency per condition.]
 
 [[figure:reports/figures/ablation_waterfall.png|Change in hallucination rate as each gate is added. {#fig:waterfall}|width=3.4]]
 
 ## Judge Agreement
 
-[TO BE FILLED: Cohen's kappa between the LLM and NLI judges, and human agreement if the annotation sheet has been completed.]
+[TO BE FILLED: Cohen's kappa between the LLM and NLI judges on the test split, stating that the NLI judge labels the LLM judge's claims against the same evidence with thresholds tuned on dev to maximise this agreement (dev values {{calibration.nli.kappa_binary|f2}} binary, {{calibration.nli.kappa_3class|f2}} three-class), so κ measures the consistency of two complementary judges, not independent validation; human agreement if the annotation sheet has been completed.]
 
 [[table:judge_agreement|Agreement between the LLM judge and the NLI judge {#tab:agreement}]]
