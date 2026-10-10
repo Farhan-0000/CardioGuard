@@ -71,6 +71,25 @@ class TestContextGatePromptFormatting:
         assert "<patient_context>\n{}\n</patient_context>" in _build_user_prompt({}, "m", "i")
 
 
+class TestContextGateDrugReference:
+    def test_block_built_from_the_message(self) -> None:
+        prompt = _build_user_prompt({}, "Can I keep taking Telma before surgery?", "intent")
+        assert ("<drug_reference>\n- Telma: brand name of telmisartan (angiotensin receptor "
+                "blocker)\n</drug_reference>") in prompt
+        assert prompt.index("</patient_context>") < prompt.index("<drug_reference>")
+        assert prompt.index("</drug_reference>") < prompt.index("<untrusted_user_input>")
+
+    def test_block_ignores_the_llm_intent(self) -> None:
+        """The intent is LLM-written; only the patient's own words select notes."""
+        prompt = _build_user_prompt({}, "What is this tablet for?", "asks about amlodipine")
+        assert "<drug_reference>" not in prompt
+
+    def test_system_prompt_counts_listed_medicines_as_named(self) -> None:
+        assert "<drug_reference>" in SYSTEM_PROMPT
+        assert "counts as a NAMED medicine, whether the patient used its brand name" in (
+            SYSTEM_PROMPT)
+
+
 class TestContextGateSystemPrompt:
     def test_vocabulary_listed(self) -> None:
         for field in MISSING_FIELD_VOCABULARY:

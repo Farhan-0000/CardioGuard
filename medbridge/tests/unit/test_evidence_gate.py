@@ -127,6 +127,76 @@ class TestEvidenceGateRoutingRules:
             assert topic in SYSTEM_PROMPT
 
 
+class TestEvidenceGateDrugReference:
+    """Live RABBITS: brand names were abstained on because they never appear in guidelines."""
+
+    def test_rule_treats_listed_medicines_as_real(self) -> None:
+        assert "a medicine listed there is a REAL, recognised medicine" in SYSTEM_PROMPT
+        assert "Judge it by its generic name and drug class against the evidence" in SYSTEM_PROMPT
+        assert ("A brand name that does not appear verbatim in the guidelines is NOT a reason to "
+                "ABSTAIN or to choose GENERALIZE instead of ANSWER") in SYSTEM_PROMPT
+        assert "the same evidence must lead to the same action" in SYSTEM_PROMPT
+        assert "rule 2c never applies to it" in SYSTEM_PROMPT
+        assert "written by MedBridge from its curated medicine list, never by the patient" in (
+            SYSTEM_PROMPT)
+
+    def test_fabricated_rule_applies_only_to_names_outside_the_reference(self) -> None:
+        rule = SYSTEM_PROMPT.split("   c. ")[1].split("   d. ")[0]
+        assert "NOT listed in <drug_reference> and does not appear in the evidence" in rule
+        assert "possibly fabricated" in rule
+        assert "medicines listed in <drug_reference> (judged by their generic name" in rule
+
+    def test_examples_cover_listed_brand_and_unlisted_fabricated_name(self) -> None:
+        assert "Quilvetan is not in drug_reference" in SYSTEM_PROMPT
+        example = SYSTEM_PROMPT.split("\n8. ")[1]
+        assert "<drug_reference> lists as a brand name" in example
+        # A listed brand whose generic is directly covered gets ANSWER, like the generic would.
+        assert '"action": "ANSWER"' in example and "rule 2c does not apply" in example
+
+    def test_prompt_contains_block_before_the_question(self) -> None:
+        prompt = _build_user_prompt([_chunk(1)], {}, "What is Accupril used for?")
+        assert ("<drug_reference>\n- Accupril: brand name of quinapril (ACE inhibitor)\n"
+                "</drug_reference>") in prompt
+        assert (prompt.index("</clinical_evidence>") < prompt.index("<drug_reference>")
+                < prompt.index("<user_query>"))
+
+    def test_brand_and_generic_prompts_describe_the_same_medicine(self) -> None:
+        brand = _build_user_prompt([_chunk(1)], {}, "What is Concor used for?")
+        generic = _build_user_prompt([_chunk(1)], {}, "What is bisoprolol used for?")
+        for prompt in (brand, generic):
+            block = prompt.split("<drug_reference>")[1].split("</drug_reference>")[0]
+            assert "bisoprolol" in block and "(beta-blocker)" in block
+
+    def test_only_the_exact_listed_name_is_vouched_for(self) -> None:
+        """A product name built on a listed brand stays under rule 2c."""
+        assert "This covers only the exact name listed" in SYSTEM_PROMPT
+        assert ("a product name that adds a word or letters to a listed name" in SYSTEM_PROMPT
+                and "rule 2c applies to it" in SYSTEM_PROMPT)
+        rule = SYSTEM_PROMPT.split("   c. ")[1].split("   d. ")[0]
+        assert "only the exact listed name counts as listed" in rule
+        assert "If the list says it was shortened" in SYSTEM_PROMPT
+
+    @pytest.mark.parametrize("query", [
+        "Is Eliquis Max better for stroke prevention in AF?",
+        "Can I take Lipitor Forte?",
+        "Is Losar H a diuretic?",
+    ])
+    def test_no_note_for_a_product_name_built_on_a_brand(self, query: str) -> None:
+        assert "<drug_reference>" not in _build_user_prompt([_chunk(1)], {}, query)
+
+    @pytest.mark.parametrize("query", ["What is Quilvetan used for?", "How much salt is ok?"])
+    def test_no_block_for_unknown_names_or_no_drug(self, query: str) -> None:
+        assert "<drug_reference>" not in _build_user_prompt([_chunk(1)], {}, query)
+
+    async def test_evaluate_builds_the_block_from_the_patient_message(self) -> None:
+        mock_llm = MagicMock()
+        mock_llm.call = AsyncMock(return_value=EvidenceGateOutput(
+            rationale="r", action="GENERALIZE", evidence_sufficient=False))
+        await EvidenceGate(llm=mock_llm).evaluate(
+            [_chunk(1)], {}, query="beta-blocker uses", message="What is Concor used for?")
+        assert "- Concor: brand name of bisoprolol" in mock_llm.call.call_args.kwargs["user_prompt"]
+
+
 # ---------------------------------------------------------------------------
 # Schema validation
 # ---------------------------------------------------------------------------

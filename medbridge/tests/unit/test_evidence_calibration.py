@@ -258,6 +258,25 @@ class TestCalibratedDecision:
         assert len(set(prompts)) == 3  # diversity comes from evidence order only
         assert decision.action == "ANSWER"
 
+    async def test_every_permutation_vote_sees_the_drug_reference(self) -> None:
+        """Brand names are judged by their generic in every V1 vote, not just the first."""
+        llm = MagicMock()
+        llm.call = AsyncMock(return_value=out("GENERALIZE"))
+        await calibrated_evidence_decision(
+            EvidenceGate(llm=llm), CHUNKS, {}, "ACE inhibitor uses quinapril", votes=3,
+            settings=settings(), message="What is Accupril used for?",
+        )
+        prompts = [c.kwargs["user_prompt"] for c in llm.call.await_args_list]
+        assert len(prompts) == 3
+        note = "- Accupril: brand name of quinapril (ACE inhibitor)"
+        assert all(f"<drug_reference>\n{note}\n</drug_reference>" in p for p in prompts)
+
+    def test_entity_coverage_is_symmetric_for_brand_and_generic(self) -> None:
+        evidence = [chunk(1, "Quinapril is an ACE inhibitor used for hypertension.", rerank=2.0)]
+        brand = evidence_features("What is Accupril used for?", evidence, {})
+        generic = evidence_features("What is quinapril used for?", evidence, {})
+        assert brand == generic
+
     @pytest.mark.parametrize(("action", "rerank", "coverage", "expected"), [
         ("ANSWER", 2.0, 1.0, "ANSWER"),
         ("ANSWER", -1.0, 1.0, "GENERALIZE"),

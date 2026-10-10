@@ -124,6 +124,37 @@ class TestPromptConstruction:
         assert '<turn role="assistant">Ok.</turn>' in prompt
 
 
+class TestGeneratorDrugReference:
+    QUESTION = "I take Accupril at my usual dose. Is grapefruit juice okay with it?"
+    NOTE = "- Accupril: brand name of quinapril (ACE inhibitor)"
+
+    @pytest.mark.parametrize("action", ["ANSWER", "GENERALIZE"])
+    def test_grounded_prompt_carries_the_block(self, action: str) -> None:
+        prompt = build_full_prompt(action, [_chunk(1)], {}, self.QUESTION)
+        user = prompt.split("</system_instructions>")[1]
+        assert f"<drug_reference>\n{self.NOTE}\n</drug_reference>" in user
+        assert user.index("<drug_reference>") < user.index("<clinical_evidence>")
+
+    def test_grounded_rule_names_the_patients_medicine_by_both_names(self) -> None:
+        prompt = _build_system_prompt("ANSWER")
+        assert "by the patient's own name for it together with its generic name" in prompt
+        assert "Do not introduce other brand names" in prompt
+        assert "a medicine listed in <drug_reference> may be named as described" in prompt
+
+    @pytest.mark.parametrize(("action", "mode"), [
+        ("SOFT-ASK", "grounded"), ("ANSWER", "direct"), ("ANSWER", "vanilla"),
+        ("GENERALIZE", "prompt_safety"),
+    ])
+    def test_soft_ask_and_baselines_unchanged(self, action: str, mode: str) -> None:
+        prompt = build_full_prompt(action, [_chunk(1)], {}, self.QUESTION, mode=mode,
+                                   missing_fields=["age"])
+        assert "drug_reference" not in prompt
+
+    def test_no_block_for_unknown_drugs(self) -> None:
+        prompt = build_full_prompt("ANSWER", [_chunk(1)], {}, "Is Quilvetan safe?")
+        assert "<drug_reference>" not in prompt.split("</system_instructions>")[1]
+
+
 class TestGeneratorModes:
     def test_direct_mode_has_no_evidence_or_grounding_rules(self) -> None:
         prompt = build_full_prompt("ANSWER", [_chunk(1)], {}, "q", mode="direct")

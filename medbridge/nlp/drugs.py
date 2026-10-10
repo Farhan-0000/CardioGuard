@@ -572,22 +572,31 @@ def _is_name_bigram(text: str, spans: list[re.Match[str]], i: int) -> bool:
     return True
 
 
-def find_drugs(text: str) -> list[DrugInfo]:
-    """Find every recognised drug mentioned in free text, in order of appearance.
+@dataclass(frozen=True)
+class DrugMention:
+    """One recognised drug mention in free text, with its character span."""
 
-    Scans tokens and bigrams (so "Met XL", "Toprol XL", "isosorbide mononitrate"
-    are recognised as one drug) for brand names, generic names and aliases.
-    Fuzzy matching is applied only to words of 7+ characters to avoid
-    false positives on ordinary English words. Duplicates are removed.
+    info: DrugInfo
+    start: int
+    end: int
+    fuzzy: bool  # matched only by typo tolerance, not by an exact lexicon key
+
+
+def find_drug_mentions(text: str) -> list[DrugMention]:
+    """Every recognised drug mention in ``text`` with its span, in order (repeats kept).
+
+    The scanner behind :func:`find_drugs`: tokens and bigrams are looked up in
+    the lexicon index, and words of 7+ characters fall back to fuzzy matching
+    (flagged ``fuzzy=True``).
     """
     source = text or ""
     spans = list(_TOKEN_RE.finditer(source))
     tokens = [m.group(0) for m in spans]
-    found: list[DrugInfo] = []
-    seen: set[tuple[str, str | None]] = set()
+    mentions: list[DrugMention] = []
     i = 0
     while i < len(tokens):
         match: DrugInfo | None = None
+        fuzzy = False
         width = 1
         if i + 1 < len(tokens) and _is_name_bigram(source, spans, i):
             match = _INDEX.get(_normalise_text(f"{tokens[i]} {tokens[i + 1]}"))
@@ -597,13 +606,258 @@ def find_drugs(text: str) -> list[DrugInfo]:
             match = _INDEX.get(key) or _INDEX.get(key.replace(" ", ""))
             if match is None:
                 match = _fuzzy_scan(key)
+                fuzzy = match is not None
         if match is not None:
-            ident = (match.generic, match.brand)
-            if ident not in seen:
-                seen.add(ident)
-                found.append(match)
+            mentions.append(
+                DrugMention(match, spans[i].start(), spans[i + width - 1].end(), fuzzy)
+            )
         i += width
+    return mentions
+
+
+def find_drugs(text: str) -> list[DrugInfo]:
+    """Find every recognised drug mentioned in free text, in order of appearance.
+
+    Scans tokens and bigrams (so "Met XL", "Toprol XL", "isosorbide mononitrate"
+    are recognised as one drug) for brand names, generic names and aliases.
+    Fuzzy matching is applied only to words of 7+ characters to avoid
+    false positives on ordinary English words. Duplicates are removed.
+    """
+    found: list[DrugInfo] = []
+    seen: set[tuple[str, str | None]] = set()
+    for mention in find_drug_mentions(text):
+        ident = (mention.info.generic, mention.info.brand)
+        if ident not in seen:
+            seen.add(ident)
+            found.append(mention.info)
     return found
+
+
+def generic_components(generic: str) -> list[str]:
+    """Ingredients of a canonical generic (``"telmisartan + amlodipine"`` → two names)."""
+    return [part.strip() for part in (generic or "").split("+") if part.strip()]
+
+
+# ---------------------------------------------------------------------------
+# Lenient recognition (allow-lists only)
+# ---------------------------------------------------------------------------
+
+# Informal names and abbreviations patients use for lexicon medicines. Used only
+# by :func:`find_drugs_lenient` (never to record a medicine or write a note):
+# "ASA" is also an organisation and "HCT" also haematocrit.
+INFORMAL_DRUG_NAMES: dict[str, str] = {
+    "asa": "aspirin",
+    "nitro": "nitroglycerin",
+    "ntg": "nitroglycerin",
+    "hct": _HCTZ,
+    "amlo": "amlodipine",
+    "rosuva": "rosuvastatin",
+    "spiro": "spironolactone",
+    "metop": "metoprolol",
+    "digitalis": "digoxin",
+}
+# Common English words that the 5+ character typo tolerance of normalize_drug
+# maps to a lexicon name ("among" → Amlong, "replace" → Repace).
+_LENIENT_STOPWORDS: frozenset[str] = _SCAN_STOPWORDS | frozenset({
+    "along", "among", "replace", "concord", "cadet", "divan", "aspiring", "theoretic",
+    "oppressor", "capote", "carlo", "conor", "triace", "isatin", "fient", "trior", "tricorn",
+    "propanone", "hydrazine", "transudate", "nitrosate",
+})
+_WORD_RE = re.compile(r"[A-Za-z]+")
+
+
+def find_drugs_lenient(text: str) -> list[DrugInfo]:
+    """Drugs plausibly named in ``text``, with the typo tolerance of :func:`normalize_drug`.
+
+    :func:`find_drugs` plus every word of 5+ characters that :func:`normalize_drug`
+    resolves ("Lipitr", "Eliqis", "asprin", "norvas") and a few informal names
+    (:data:`INFORMAL_DRUG_NAMES`: "ASA", "nitro", "HCT"). Meant for allow-lists
+    (which drugs the patient may have meant), never for recording a medicine or
+    writing a trusted note. Duplicates are removed; order of first appearance.
+    """
+    found = list(find_drugs(text))
+    for word in _WORD_RE.findall(text or ""):
+        info = _lenient_word(word.lower())
+        if info is not None and info not in found:
+            found.append(info)
+    return found
+
+
+@lru_cache(maxsize=4096)
+def _lenient_word(lower: str) -> DrugInfo | None:
+    """One lower-case word resolved for :func:`find_drugs_lenient` (cached)."""
+    if lower in INFORMAL_DRUG_NAMES:
+        return normalize_drug(INFORMAL_DRUG_NAMES[lower])
+    if len(lower) >= _FUZZY_MIN_LEN and lower not in _LENIENT_STOPWORDS:
+        return normalize_drug(lower)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Trusted drug-reference notes for the LLM prompts
+# ---------------------------------------------------------------------------
+
+MAX_REFERENCE_NOTES = 10
+REFERENCE_TRUNCATED_NOTE = (
+    "(list shortened: more recognised medicines are named than are listed here)"
+)
+MAX_BRANDS_PER_NOTE = 4
+MAX_NOTE_CHARS = 240
+_DEFAULT_CLASS = "cardiovascular medicine"
+# Words that turn a brand into another product name ("Losar H", "Concor AM",
+# "Coversyl Plus", "Eliquis XR"): the brand alone does not describe that product.
+_PRODUCT_SUFFIXES: frozenset[str] = _RELEASE_SUFFIXES | frozenset({
+    "h", "hct", "hctz", "am", "at", "plus", "forte", "max", "ultra", "gold", "neo", "xt", "cc",
+    "ls", "lite", "mini", "duo", "trio", "combi", "co", "mite", "beta", "d", "m", "t", "n",
+    "ez", "extra", "super", "strong", "pro", "advance", "advanced", "rapid", "fast", "dual",
+    "triple", "new", "prime", "junior", "total", "complete", "natural", "herbal", "cardio",
+    "nova", "one",
+})
+# Product suffixes that, written in lower case after a brand, are ordinary words
+# ("Concor plus Telma", "Telma at night").
+_SUFFIX_WORDS_READ_AS_ENGLISH: frozenset[str] = _SUFFIX_ENGLISH_WORDS | frozenset({
+    "plus", "max", "extra", "super", "strong", "pro", "new", "fast", "rapid", "dual", "triple",
+    "total", "complete", "natural", "herbal", "mini", "lite", "duo", "prime", "advance",
+    "advanced", "co", "d", "m", "t", "n", "one", "gold", "la", "od", "er", "cardio",
+})
+# Capitalised words that are not part of a product name ("Eliquis I think", "Concor OK?").
+_NOT_A_PRODUCT_WORD: frozenset[str] = frozenset({
+    "i", "ok", "okay", "and", "or", "but", "the", "a", "an", "is", "are", "was", "were", "with",
+    "for", "from", "to", "in", "on", "at", "of", "my", "me", "daily", "every", "each", "tablet",
+    "tablets", "tab", "tabs", "pill", "pills", "mg", "mcg", "please", "thanks", "thank", "too",
+    "also", "then", "now", "today", "yesterday", "tomorrow", "morning", "night", "evening",
+    "pm", "bp", "dose", "doses", "safe", "yes", "no", "not",
+})
+_MODIFIER_GAP = re.compile(r"[ \t]*([-/]?)[ \t]*")
+_NEXT_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9]*")
+
+
+def _mostly_capitalised(text: str) -> bool:
+    """Whether the text is written in capitals or Title Case, so a capital carries no signal.
+
+    Sentence-initial words, "I" and lexicon drug names are not counted.
+    """
+    counted: list[str] = []
+    previous_end = 0
+    for match in _WORD_RE.finditer(text):
+        word = match.group(0)
+        gap = text[previous_end:match.start()]
+        sentence_start = (previous_end == 0 and not gap.strip()) or any(c in gap for c in ".!?:\n")
+        previous_end = match.end()
+        if sentence_start or word == "I" or word.lower() in _INDEX:
+            continue
+        counted.append(word)
+    return bool(counted) and sum(w[0].isupper() for w in counted) * 2 > len(counted)
+
+
+def _modified_brand(text: str, mention: DrugMention, title_case: bool) -> bool:
+    """Whether a brand mention is directly followed by a word that makes it another product.
+
+    "Losar H", "Concor AM", "Coversyl Plus", "Eliquis XR", "Lipitor Forte" or a
+    capitalised unknown word ("Eliquis Supreme"): the lexicon knows only the
+    brand, so a note for the brand would misdescribe that product (a missing
+    ingredient) or vouch for a product that may not exist. Lower-case English
+    readings ("Concor plus Telma", "Telma at night") and other drug names are
+    not modifiers. Two-word lexicon names ("Met XL") never reach this check.
+    """
+    if mention.info.brand is None:
+        return False
+    gap = _MODIFIER_GAP.match(text, mention.end)
+    if gap is None:
+        return False
+    token = _NEXT_TOKEN_RE.match(text, gap.end())
+    if token is None:
+        return False
+    word = token.group(0)
+    lower = word.lower()
+    joined = bool(gap.group(1))  # "Telma-AM", "Losar/H"
+    if lower in _INDEX:
+        return False  # another medicine ("Concor Telma")
+    if lower in _PRODUCT_SUFFIXES:
+        if word.islower() and lower in _SUFFIX_WORDS_READ_AS_ENGLISH and not joined:
+            return False
+        rest = text[token.end():token.end() + 16].lstrip(" ,").lower()
+        if len(word) <= 3 and rest.split(" ", 1)[0].strip(".,;:!?") in _TIME_WORDS:
+            return False  # "Amlopres AT NIGHT"
+        return True
+    return (word[0].isupper() and not title_case and lower not in _NOT_A_PRODUCT_WORD
+            and len(word) > 1)
+
+
+@lru_cache(maxsize=512)
+def brands_of(generic: str) -> tuple[str, ...]:
+    """Lexicon brands whose generic is exactly ``generic`` (sorted, case-insensitive)."""
+    return tuple(sorted(
+        (brand for brand, mapped in BRAND_TO_GENERIC.items() if mapped == generic),
+        key=lambda brand: (brand.lower(), brand),
+    ))
+
+
+def _describe_generic(generic: str) -> str:
+    """``"quinapril (ACE inhibitor)"``; combinations name each ingredient with its class."""
+    if generic in _COMBINATION_CLASS:
+        return f"{generic} ({_COMBINATION_CLASS[generic]})"
+    return " + ".join(
+        f"{part} ({GENERIC_CLASS.get(part, _DEFAULT_CLASS)})" for part in generic_components(generic)
+    )
+
+
+def drug_reference_note(info: DrugInfo) -> str:
+    """One canonical note for a recognised drug, built only from the curated lexicon.
+
+    * brand:        ``"Accupril: brand name of quinapril (ACE inhibitor)"``
+    * combination:  ``"Telma-H: brand name of a combination of telmisartan (angiotensin
+      receptor blocker) + hydrochlorothiazide (thiazide diuretic)"``
+    * generic:      ``"quinapril: generic medicine (ACE inhibitor); brands include Accupril"``
+
+    Brand and generic notes carry the same generic name and class, so the two
+    spellings of one medicine are described symmetrically. At most
+    ``MAX_BRANDS_PER_NOTE`` brands are listed (alphabetical order) and the note
+    never exceeds ``MAX_NOTE_CHARS`` characters.
+    """
+    generic = info.generic
+    combination = len(generic_components(generic)) > 1
+    if info.brand:
+        kind = "a combination of " if combination else ""
+        return f"{info.brand}: brand name of {kind}{_describe_generic(generic)}"[:MAX_NOTE_CHARS]
+    kind = "generic combination medicine" if combination else "generic medicine"
+    note = f"{generic}: {kind} ({info.drug_class})"
+    brands = list(brands_of(generic)[:MAX_BRANDS_PER_NOTE])
+    while brands and len(f"{note}; brands include {', '.join(brands)}") > MAX_NOTE_CHARS:
+        brands.pop()
+    if brands:
+        note += f"; brands include {', '.join(brands)}"
+    return note[:MAX_NOTE_CHARS]
+
+
+def _reference_infos(text: str) -> list[DrugInfo]:
+    """Exact, unmodified drug mentions in ``text`` (see :func:`drug_reference_notes`)."""
+    title_case = _mostly_capitalised(text)
+    return [
+        mention.info for mention in find_drug_mentions(text)
+        if not mention.fuzzy and not _modified_brand(text, mention, title_case)
+    ]
+
+
+def drug_reference_notes(*texts: str | None) -> list[str]:
+    """Canonical lexicon notes for every drug named in ``texts`` (see :func:`drug_reference_note`).
+
+    Only exact lexicon matches (brand, generic or alias) produce a note: unknown
+    or fabricated names, and typo-level fuzzy matches, produce none, so a note
+    always vouches for a real medicine. A brand directly followed by a word that
+    makes it another product ("Losar H", "Coversyl Plus", "Eliquis Max") gets no
+    note either: the lexicon knows only the brand, not that product. The notes
+    are built from canonical lexicon spellings only (never from the text
+    itself), in order of first mention and without duplicates. Capping is left
+    to the prompt builder (:data:`MAX_REFERENCE_NOTES`).
+    """
+    notes: list[str] = []
+    for text in texts:
+        for info in _reference_infos(text or ""):
+            note = drug_reference_note(info)
+            if note not in notes:
+                notes.append(note)
+    return notes
 
 
 def all_brand_generic_pairs() -> list[DrugInfo]:

@@ -10,7 +10,9 @@ used by all four LLM calls (ADL-018, ADL-025, Constitution §7.1):
 * ``format_history``   — recent turns in ``<conversation_history>`` (patient turns
   are themselves wrapped in ``<untrusted_user_input>``);
 * ``format_chunks``    — evidence chunks as ``<chunk index="n" source=… section=… page=…>``
-  so the generator can cite them as ``[n]``.
+  so the generator can cite them as ``[n]``;
+* ``drug_reference_block`` — trusted ``<drug_reference>`` notes for the medicines
+  named in the patient's text, built only from the curated drug lexicon.
 """
 from __future__ import annotations
 
@@ -22,7 +24,16 @@ import unicodedata
 from collections.abc import Sequence
 from typing import Any, Protocol
 
+import structlog
+
 from medbridge.config import get_settings
+from medbridge.nlp.drugs import (
+    MAX_REFERENCE_NOTES,
+    REFERENCE_TRUNCATED_NOTE,
+    drug_reference_notes,
+)
+
+logger = structlog.get_logger(__name__)
 
 DEFAULT_EMPTY_CHUNKS_PLACEHOLDER = "(No guideline evidence was retrieved for this question.)"
 HISTORY_ASSISTANT_MAX_CHARS = 300
@@ -116,6 +127,65 @@ def untrusted_block(text: str) -> str:
     return f"<untrusted_user_input>\n{neutralize_tags(text).strip()}\n</untrusted_user_input>"
 
 
+def drug_reference_block(*texts: str | None) -> str:
+    """Trusted ``<drug_reference>`` block for the lexicon medicines named in ``texts``.
+
+    Each line is a canonical note from :func:`medbridge.nlp.drugs.drug_reference_notes`
+    ("Accupril: brand name of quinapril (ACE inhibitor)"), so the block is
+    system-generated from the curated lexicon: the patient's words select which
+    notes appear but never enter the block themselves, and every note is still
+    passed through :func:`neutralize_tags` (defence in depth). Unknown or
+    fabricated names add nothing. At most ``MAX_REFERENCE_NOTES`` notes are
+    listed; a longer list ends with a fixed line saying it was shortened, so a
+    missing name is not read as a sign of fabrication. Returns ``""`` when no
+    medicine is recognised or on any unexpected error (prompt building never
+    fails because of it).
+    """
+    try:
+        notes = list(dict.fromkeys(drug_reference_notes(*texts)))
+        if len(notes) > MAX_REFERENCE_NOTES:
+            notes = [*notes[:MAX_REFERENCE_NOTES], REFERENCE_TRUNCATED_NOTE]
+    except Exception as exc:  # deterministic helper; never let it break a prompt
+        logger.warning("drug_reference_failed", error=type(exc).__name__)
+        return ""
+    if not notes:
+        return ""
+    body = "\n".join(f"- {neutralize_tags(note)}" for note in notes)
+    return f"<drug_reference>\n{body}\n</drug_reference>"
+
+
+def _shown_assistant_text(content: str, max_chars: int) -> str:
+    """An assistant turn as :func:`format_history` shows it (cut at a word boundary)."""
+    if len(content) > max_chars:
+        return content[:max_chars].rsplit(" ", 1)[0] + " …"
+    return content
+
+
+def history_texts(
+    history: Sequence[ChatTurnLike] | None,
+    max_turns: int,
+    *,
+    patient_only: bool = False,
+    assistant_max_chars: int = HISTORY_ASSISTANT_MAX_CHARS,
+) -> list[str]:
+    """Texts of the last ``max_turns`` turns exactly as :func:`format_history` shows them.
+
+    Patient turns in full, assistant turns truncated like the rendered history
+    (so nothing the LLM cannot see is used); ``patient_only`` keeps patient
+    turns only (e.g. for notes about the medicines the patient named).
+    """
+    if not history or max_turns <= 0:
+        return []
+    texts: list[str] = []
+    for turn in list(history)[-max_turns:]:
+        content = (turn.content or "").strip()
+        if turn.role == "user":
+            texts.append(content)
+        elif not patient_only:
+            texts.append(_shown_assistant_text(content, assistant_max_chars))
+    return texts
+
+
 def format_snapshot(snapshot: dict[str, Any] | None) -> str:
     """Render the patient context snapshot as compact JSON (``{}`` when nothing is known)."""
     if not snapshot:
@@ -143,8 +213,7 @@ def format_history(
         if turn.role == "user":
             lines.append(f'<turn role="patient">{untrusted_block(content)}</turn>')
         else:
-            if len(content) > assistant_max_chars:
-                content = content[:assistant_max_chars].rsplit(" ", 1)[0] + " …"
+            content = _shown_assistant_text(content, assistant_max_chars)
             lines.append(f'<turn role="assistant">{neutralize_tags(content)}</turn>')
     return "\n".join(lines)
 

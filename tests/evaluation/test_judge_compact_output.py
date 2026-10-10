@@ -1,5 +1,4 @@
 """Compact judge output: claims reference numbered sentences, labels carry no rationale."""
-from medbridge.ai.llm_wrapper import llm_format_schema
 from evaluation.judges.llm_judge import (
     ClaimDecomposition,
     ClaimLabelling,
@@ -7,6 +6,7 @@ from evaluation.judges.llm_judge import (
     build_decompose_prompt,
     reply_sentences,
 )
+from medbridge.ai.llm_wrapper import llm_format_schema
 
 
 def test_decompose_prompt_numbers_reply_sentences():

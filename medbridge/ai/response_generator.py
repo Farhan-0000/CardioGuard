@@ -24,6 +24,12 @@ behaviour).
 Evidence chunks are rendered as ``<chunk index="n" …>`` and cited inline as
 ``[n]``; the server rebuilds citations from the markers.
 
+In grounded ANSWER/GENERALIZE prompts, medicines named in the question get a
+trusted ``<drug_reference>`` block built from the curated drug lexicon, and the
+model refers to such a medicine by the patient's own name for it and its
+generic name (the guidelines use generic names). The baseline modes are left
+unchanged so that completed baseline runs stay comparable.
+
 ABSTAIN and ESCALATE never reach the LLM (deterministic templates, ADL-015).
 Constitution §7.2: temperature 0.3. Constitution §7.1: user text inside
 <untrusted_user_input>.
@@ -39,6 +45,7 @@ import structlog
 from medbridge.ai.llm_wrapper import ResilientLLMWrapper, get_llm_wrapper
 from medbridge.ai.prompt_utils import (
     ChatTurnLike,
+    drug_reference_block,
     format_chunks,
     format_history,
     format_snapshot,
@@ -100,7 +107,13 @@ MUST end with the marker [n], where n is the index of the chunk that supports it
 "Eating less salt lowers blood pressure [2]." Cite only chunks that really support the \
 statement; a sentence without a marker must not contain clinical facts.
 - Never state numbers (doses, targets, percentages, timings) that are not written in the \
-evidence. Never mention drugs, tests or treatments that are not in the evidence.
+evidence. Never mention drugs, tests or treatments that are not in the evidence, except that \
+a medicine listed in <drug_reference> may be named as described in the next rule.
+- <drug_reference>, when present, is written by MedBridge from its curated medicine list (not \
+by the patient) and gives the generic name and drug class of each medicine the patient named. \
+Refer to such a medicine by the patient's own name for it together with its generic name, for \
+example: BrandName (generic name). The guidelines usually use generic names, so evidence about \
+the generic name applies to it. Do not introduce other brand names.
 - If the question contains a mistaken belief, say clearly and kindly that it is not correct \
 and explain what the guidelines say instead.
 - Do not tell the patient to start, stop or change a medicine or dose; suggest they discuss \
@@ -251,7 +264,11 @@ def _build_user_prompt(
     missing_fields: Sequence[str] | None = None,
     max_history_turns: int | None = None,
 ) -> str:
-    """User prompt: patient context, history, evidence (or missing info) and the question."""
+    """User prompt: patient context, history, evidence (or missing info) and the question.
+
+    Grounded ANSWER/GENERALIZE prompts also carry the trusted ``<drug_reference>``
+    block for the medicines named in the question (lexicon notes only).
+    """
     turns = max_history_turns
     if turns is None:
         turns = get_settings().EXTRACTOR_HISTORY_TURNS
@@ -264,6 +281,10 @@ def _build_user_prompt(
             f"<missing_information>\n{_missing_information(missing_fields)}\n</missing_information>"
         )
     elif mode != "direct":
+        if mode == "grounded":
+            reference = drug_reference_block(query)
+            if reference:
+                parts.append(reference)
         parts.append(f"<clinical_evidence>\n{_format_chunks(chunks)}\n</clinical_evidence>")
     parts.append(f"<user_query>\n{untrusted_block(query)}\n</user_query>")
     return "\n\n".join(parts)
