@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     LOCAL_ONLY_MODE: bool = True
     # Native Ollama endpoint (``/api/chat``). A trailing ``/v1`` is tolerated.
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
-    LLM_MODEL: str = "qwen3:8b"
+    LLM_MODEL: str = "qwen3.5:4b"
     # Optional per-role overrides (empty string = use LLM_MODEL).
     LLM_MODEL_GATES: str = ""
     LLM_MODEL_GENERATOR: str = ""

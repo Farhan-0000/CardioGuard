@@ -1,0 +1,230 @@
+{
+  "run_id": "20261010T050605Z-01944a",
+  "status": "finished",
+  "started_at": "2026-10-10T05:06:05+00:00",
+  "finished_at": "2026-10-10T05:16:24+00:00",
+  "command": "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/run.py --conditions C5 --split dev --model gemma3:4b --dataset /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/datasets/hallubench_v1.json --out /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/results/model_selection/runs/gemma3_4b --fresh --max-consecutive-degraded 0",
+  "git": {
+    "commit": "10aef5e56e39988451ba39ac016f6fa29029b284",
+    "dirty": true
+  },
+  "dataset": {
+    "path": "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/datasets/hallubench_v1.json",
+    "sha256": "7e0245168ff8334bb32e4e6c605a1f3123c59abdcd492e7d0ae35352f31ea3fc",
+    "n_items_selected": 49,
+    "item_ids": [
+      "HB-0008",
+      "HB-0010",
+      "HB-0019",
+      "HB-0020",
+      "HB-0023",
+      "HB-0024",
+      "HB-0026",
+      "HB-0034",
+      "HB-0041",
+      "HB-0043",
+      "HB-0046",
+      "HB-0047",
+      "HB-0060",
+      "HB-0066",
+      "HB-0069",
+      "HB-0074",
+      "HB-0078",
+      "HB-0081",
+      "HB-0095",
+      "HB-0097",
+      "HB-0102",
+      "HB-0111",
+      "HB-0112",
+      "HB-0114",
+      "HB-0129",
+      "HB-0131",
+      "HB-0132",
+      "HB-0142",
+      "HB-0145",
+      "HB-0147",
+      "HB-0151",
+      "HB-0162",
+      "HB-0172",
+      "HB-0176",
+      "HB-0181",
+      "HB-0182",
+      "HB-0187",
+      "HB-0190",
+      "HB-0196",
+      "HB-0198",
+      "HB-0200",
+      "HB-0202",
+      "HB-0210",
+      "HB-0218",
+      "HB-0219",
+      "HB-0234",
+      "HB-0239",
+      "HB-0241",
+      "HB-0244"
+    ]
+  },
+  "conditions": [
+    "C5"
+  ],
+  "split": "dev",
+  "limit": null,
+  "workers": 1,
+  "mode": {
+    "resume": false,
+    "fresh": true,
+    "retry_degraded": false,
+    "max_consecutive_degraded": 0,
+    "preflight": true
+  },
+  "model_override": "gemma3:4b",
+  "models": {
+    "gates": "gemma3:4b",
+    "generator": "gemma3:4b"
+  },
+  "ollama_base_url": "http://127.0.0.1:11434",
+  "ollama": {
+    "gemma3:4b": {
+      "digest": "68ceab7e468a31c988b44d5a4984a0e21f58c4f7158c6ce29c1804babac38df7",
+      "size_bytes": 3350272403,
+      "family": "gemma3",
+      "parameter_size": "3.9B",
+      "quantization_level": "Q4_K_M",
+      "modified_at": "2026-10-09T15:19:57.969630936+05:30"
+    }
+  },
+  "seeds": {
+    "llm_seed": 42,
+    "temperature_gates": 0.0,
+    "temperature_generator": 0.3
+  },
+  "hardware": {
+    "platform": "macOS-26.7.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "cpu": "Apple M5",
+    "cpu_count": 10,
+    "ram_gb": 24.0,
+    "python": "3.11.15"
+  },
+  "packages": {
+    "numpy": "2.4.6",
+    "scipy": "1.17.1",
+    "matplotlib": "3.11.2",
+    "openpyxl": "3.1.5",
+    "sentence-transformers": "6.1.0",
+    "torch": "2.14.1",
+    "fastembed": "0.9.0",
+    "qdrant-client": "1.19.1",
+    "pydantic": "2.14.0"
+  },
+  "settings": {
+    "LLM_PROVIDER": "ollama",
+    "LOCAL_ONLY_MODE": true,
+    "OLLAMA_BASE_URL": "http://127.0.0.1:11434",
+    "LLM_MODEL": "gemma3:4b",
+    "LLM_MODEL_GATES": "",
+    "LLM_MODEL_GENERATOR": "",
+    "LLM_KEEP_ALIVE": "30m",
+    "LLM_NUM_CTX": 8192,
+    "LLM_THINK": false,
+    "LLM_TIMEOUT": 120.0,
+    "LLM_TEMPERATURE_GATES": 0.0,
+    "LLM_TEMPERATURE_GENERATOR": 0.3,
+    "LLM_SEED": 42,
+    "LLM_MAX_RETRIES": 3,
+    "LLM_RETRY_BASE_DELAY": 1.0,
+    "GROQ_MODEL": "llama-3.1-8b-instant",
+    "OPENAI_MODEL": "gpt-4o-mini",
+    "DATABASE_URL": "postgresql+asyncpg://medbridge_app:***@127.0.0.1:5433/medbridge_eval",
+    "QDRANT_URL": "http://127.0.0.1:6333",
+    "QDRANT_COLLECTION": "clinical_guidelines",
+    "RETRIEVAL_TOP_K_CANDIDATES": 20,
+    "RETRIEVAL_TOP_K_RERANKED": 5,
+    "RERANKER_MODEL": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "EMBEDDING_MODEL": "BAAI/bge-small-en-v1.5",
+    "SPARSE_MODEL": "Qdrant/bm25",
+    "RETRIEVAL_CACHE_SIZE": 512,
+    "RETRIEVAL_CACHE_TTL_SECONDS": 900,
+    "SPECULATIVE_RETRIEVAL": true,
+    "EVIDENCE_MAX_CHARS_PER_CHUNK": 2400,
+    "SOFT_ASK_MAX_COUNT": 2,
+    "EXTRACTOR_HISTORY_TURNS": 4,
+    "CITATION_VALIDATION_ENABLED": true,
+    "SMALL_TALK_ENABLED": true,
+    "EVIDENCE_GATE_CALIBRATION_ENABLED": false,
+    "EVIDENCE_GATE_VOTES": 3,
+    "EVIDENCE_MIN_RERANK_ANSWER": 0.0,
+    "EVIDENCE_MIN_RERANK_ANY": -6.0,
+    "EVIDENCE_MIN_ENTITY_COVERAGE": 0.0,
+    "GROUNDING_VERIFIER_ENABLED": false,
+    "GROUNDING_NLI_MODEL": "cross-encoder/nli-MiniLM2-L6-H768",
+    "GROUNDING_ENTAILMENT_THRESHOLD": 0.5,
+    "GROUNDING_MAX_UNSUPPORTED_FRACTION": 0.34,
+    "WARMUP_ON_STARTUP": true,
+    "PII_REDACTION_ENABLED": true,
+    "ENCRYPTION_ENABLED": true,
+    "AUTH_REQUIRED": true,
+    "ADMIN_USERNAME": "admin",
+    "RATE_LIMIT_PER_MINUTE": 30,
+    "MAX_REQUEST_BYTES": 32768,
+    "DATA_RETENTION_DAYS": 30,
+    "HOST": "127.0.0.1",
+    "PORT": 8000,
+    "CORS_ORIGINS": [
+      "http://127.0.0.1:8000",
+      "http://localhost:8000",
+      "http://localhost:8501"
+    ],
+    "APP_NAME": "MedBridge",
+    "EMERGENCY_NUMBER": "112",
+    "AMBULANCE_NUMBER": "108",
+    "EMERGENCY_REGION_LABEL": "India"
+  },
+  "calibration": {
+    "path": "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/results/calibration.json",
+    "sha256": null,
+    "status": "not_required",
+    "required": [],
+    "values": {},
+    "missing": [],
+    "complete_blocks": [],
+    "effective": {},
+    "per_condition": {
+      "C5": {
+        "required": [],
+        "status": "not_required"
+      }
+    },
+    "allow_uncalibrated": false
+  },
+  "preflight": {
+    "ran": true,
+    "problems": []
+  },
+  "cache": {
+    "status": "enabled",
+    "path": "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/cache/llm_cache.d3191a276666.sqlite",
+    "entries": 168,
+    "hits": 0,
+    "misses": 169,
+    "writes": 168,
+    "bypassed_reads": 0,
+    "rejected_incomplete": 0,
+    "model_digests": {
+      "gemma3:4b": "68ceab7e468a31c988b44d5a4984a0e21f58c4f7158c6ce29c1804babac38df7"
+    },
+    "key_includes_digest": true
+  },
+  "counts": {
+    "C5": {
+      "items": 49,
+      "skipped": 0,
+      "run": 49,
+      "errors": 0,
+      "degraded": 1,
+      "retried": 0,
+      "not_started": 0
+    }
+  },
+  "warnings": []
+}
