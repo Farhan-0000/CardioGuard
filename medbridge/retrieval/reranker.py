@@ -24,6 +24,7 @@ import structlog
 from sentence_transformers import CrossEncoder
 
 from medbridge.config import get_settings
+from medbridge.core.inference_lock import TORCH_INFERENCE_LOCK
 from medbridge.retrieval.hybrid_retriever import RetrievedChunk
 
 logger = structlog.get_logger(__name__)
@@ -79,7 +80,7 @@ class CrossEncoderReranker:
 
     def _get_model(self) -> CrossEncoder:
         if self._model is None:
-            with self._init_lock:
+            with self._init_lock, TORCH_INFERENCE_LOCK:
                 if self._model is None:
                     self._model = CrossEncoder(self.model_name, device=self.device)
                     logger.info("reranker_loaded", model=self.model_name, device=self.device)
@@ -87,7 +88,7 @@ class CrossEncoderReranker:
 
     def _score(self, query: str, texts: list[str]) -> list[float]:
         model = self._get_model()
-        with self._predict_lock:
+        with self._predict_lock, TORCH_INFERENCE_LOCK:
             scores = model.predict([(query, text) for text in texts])
         return [float(s) for s in scores]
 

@@ -31,6 +31,7 @@ import structlog
 
 from medbridge.ai.prompt_utils import chunk_text
 from medbridge.config import get_settings
+from medbridge.core.inference_lock import TORCH_INFERENCE_LOCK
 from medbridge.core.templates import get_loop_breaker_prefix
 
 if TYPE_CHECKING:
@@ -375,7 +376,7 @@ class GroundingVerifier:
     def _load(self) -> NLIModel | None:
         if self._model is not None or self._load_error is not None:
             return self._model
-        with self._lock:
+        with self._lock, TORCH_INFERENCE_LOCK:
             if self._model is None and self._load_error is None:
                 try:
                     from sentence_transformers import CrossEncoder
@@ -409,7 +410,8 @@ class GroundingVerifier:
         if model is None or not pairs:
             return []
         entail, contra = self._label_indices(model)
-        probabilities = model.predict(pairs, apply_softmax=True, show_progress_bar=False)
+        with TORCH_INFERENCE_LOCK:
+            probabilities = model.predict(pairs, apply_softmax=True, show_progress_bar=False)
         rows: list[tuple[float, float]] = []
         for row in probabilities:
             values = [float(v) for v in row]
