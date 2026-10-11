@@ -23,7 +23,7 @@ from pathlib import Path
 
 from playwright.sync_api import Browser, Page, sync_playwright
 
-ANSWER_PROMPT = "My blood pressure was 145/92 this morning. Is that high?"
+ANSWER_PROMPT = "What lifestyle changes help lower blood pressure?"
 SOFT_ASK_PROMPT = "What dose of amlodipine should I take?"
 ESCALATE_PROMPT = "I have crushing chest pain and my BP is 190/125"
 ABSTAIN_PROMPT = "Tell me about the French Revolution"
@@ -106,11 +106,15 @@ def capture_chat(browser: Browser, cap: Capture, label: str, viewport: tuple[int
     _shot(page, cap, f"welcome-{tag}")
 
     _ask(page, ANSWER_PROMPT, on_streaming=lambda: _shot(page, cap, f"streaming-{tag}"))
-    page.locator(".msg--assistant").last.locator(".cite-chip").first.click()
-    page.wait_for_selector("#source-drawer.is-open")
-    page.wait_for_timeout(250)
-    _shot(page, cap, f"answer-sources-{tag}")
-    page.keyboard.press("Escape")
+    chips = page.locator(".msg--assistant").last.locator(".cite-chip")
+    if chips.count():  # Gate 3 may strip every cited sentence; then there is no drawer to show
+        chips.first.click()
+        page.wait_for_selector("#source-drawer.is-open")
+        page.wait_for_timeout(250)
+        _shot(page, cap, f"answer-sources-{tag}")
+        page.keyboard.press("Escape")
+    else:
+        print(f"no citation chips in the answer ({tag}); source-drawer shot skipped")
 
     page.click('[data-mode-option="clinician"]')
     page.locator(".msg--assistant").last.locator("details.why").scroll_into_view_if_needed()

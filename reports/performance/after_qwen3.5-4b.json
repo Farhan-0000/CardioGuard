@@ -1,0 +1,2196 @@
+{
+  "label": "after_qwen3.5-4b",
+  "base_url": "http://127.0.0.1:8000",
+  "cold": [
+    {
+      "scenario": "S1",
+      "turn": 1,
+      "status": 200,
+      "action": "ESCALATE",
+      "latency_s": 0.051,
+      "server_total_ms": 42.8,
+      "server_stage_ms": {
+        "privacy": 0.05,
+        "emergency": 0.18,
+        "load_state": 7.68,
+        "persistence": 34.57
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.05,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.18,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 7.68,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "extraction",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "rerank",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 34.57,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 0
+    },
+    {
+      "scenario": "S2",
+      "turn": 1,
+      "status": 200,
+      "action": "ABSTAIN",
+      "latency_s": 12.636,
+      "server_total_ms": 12633.0,
+      "server_stage_ms": {
+        "privacy": 0.05,
+        "emergency": 0.11,
+        "load_state": 8.02,
+        "small_talk": 0.07,
+        "extraction": 3378.65,
+        "context_gate": 2249.1,
+        "retrieval": 145.3,
+        "rerank": 4750.21,
+        "evidence_gate": 4339.56,
+        "persistence": 7.46
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.05,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.11,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 8.02,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.07,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 3378.65,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2249.1,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 145.3,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 4750.21,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 4339.56,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 7.46,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S3",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 6.546,
+      "server_total_ms": 6543.4,
+      "server_stage_ms": {
+        "privacy": 0.05,
+        "emergency": 0.15,
+        "load_state": 2.96,
+        "small_talk": 0.04,
+        "extraction": 1940.1,
+        "context_gate": 2550.28,
+        "generation": 2042.28,
+        "persistence": 7.3
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.05,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.15,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 2.96,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.04,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 1940.1,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2550.28,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 13.7,
+          "status": "discarded"
+        },
+        {
+          "stage": "rerank",
+          "ms": 142.2,
+          "status": "discarded"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 2042.28,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 7.3,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S4",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 3.957,
+      "server_total_ms": 3954.5,
+      "server_stage_ms": {
+        "privacy": 0.05,
+        "emergency": 0.11,
+        "load_state": 2.62,
+        "small_talk": 0.01,
+        "extraction": 823.62,
+        "context_gate": 1360.44,
+        "generation": 1762.88,
+        "persistence": 4.55
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.05,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.11,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 2.62,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 823.62,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 1360.44,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.01,
+          "status": "discarded"
+        },
+        {
+          "stage": "rerank",
+          "ms": 123.79,
+          "status": "discarded"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 1762.88,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 4.55,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S4",
+      "turn": 2,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 26.045,
+      "server_total_ms": 26041.5,
+      "server_stage_ms": {
+        "privacy": 0.08,
+        "emergency": 0.17,
+        "load_state": 13.7,
+        "small_talk": 0.0,
+        "extraction": 5516.68,
+        "context_gate": 2605.75,
+        "retrieval": 12.89,
+        "rerank": 175.39,
+        "evidence_gate": 5455.1,
+        "generation": 9283.34,
+        "verification": 3134.77,
+        "persistence": 29.67
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.08,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.17,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 13.7,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.0,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 5516.68,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2605.75,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 12.89,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 175.39,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 5455.1,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 9283.34,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 3134.77,
+          "status": "ok"
+        },
+        {
+          "stage": "persistence",
+          "ms": 29.67,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 4
+    },
+    {
+      "scenario": "S5",
+      "turn": 1,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 16.163,
+      "server_total_ms": 16160.3,
+      "server_stage_ms": {
+        "privacy": 0.05,
+        "emergency": 0.23,
+        "load_state": 2.56,
+        "small_talk": 0.01,
+        "extraction": 1987.43,
+        "context_gate": 2204.12,
+        "retrieval": 20.35,
+        "rerank": 195.79,
+        "evidence_gate": 4745.21,
+        "generation": 6737.01,
+        "verification": 473.45,
+        "persistence": 8.59
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.05,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.23,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 2.56,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 1987.43,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2204.12,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 20.35,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 195.79,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 4745.21,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 6737.01,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 473.45,
+          "status": "ok"
+        },
+        {
+          "stage": "persistence",
+          "ms": 8.59,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 4
+    }
+  ],
+  "warm": [
+    {
+      "scenario": "S1",
+      "turn": 1,
+      "status": 200,
+      "action": "ESCALATE",
+      "latency_s": 0.008,
+      "server_total_ms": 5.6,
+      "server_stage_ms": {
+        "privacy": 0.05,
+        "emergency": 0.19,
+        "load_state": 1.25,
+        "persistence": 3.9
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.05,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.19,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 1.25,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "extraction",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "rerank",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 3.9,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 0
+    },
+    {
+      "scenario": "S2",
+      "turn": 1,
+      "status": 200,
+      "action": "ABSTAIN",
+      "latency_s": 6.62,
+      "server_total_ms": 6616.8,
+      "server_stage_ms": {
+        "privacy": 0.04,
+        "emergency": 0.08,
+        "load_state": 2.77,
+        "small_talk": 0.01,
+        "extraction": 1816.03,
+        "context_gate": 2019.61,
+        "retrieval": 0.02,
+        "rerank": 254.23,
+        "evidence_gate": 2765.09,
+        "persistence": 12.54
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.04,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.08,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 2.77,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 1816.03,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2019.61,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.02,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 254.23,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 2765.09,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 12.54,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S3",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 6.025,
+      "server_total_ms": 6019.3,
+      "server_stage_ms": {
+        "privacy": 0.14,
+        "emergency": 0.27,
+        "load_state": 4.08,
+        "small_talk": 0.01,
+        "extraction": 1872.88,
+        "context_gate": 2415.19,
+        "generation": 1715.36,
+        "persistence": 10.67
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.14,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.27,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 4.08,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 1872.88,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2415.19,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.01,
+          "status": "discarded"
+        },
+        {
+          "stage": "rerank",
+          "ms": 279.61,
+          "status": "discarded"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 1715.36,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 10.67,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S4",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 3.948,
+      "server_total_ms": 3943.6,
+      "server_stage_ms": {
+        "privacy": 0.14,
+        "emergency": 0.27,
+        "load_state": 4.04,
+        "small_talk": 0.01,
+        "extraction": 809.36,
+        "context_gate": 1374.67,
+        "generation": 1745.0,
+        "persistence": 9.36
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.14,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.27,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 4.04,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 809.36,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 1374.67,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.01,
+          "status": "discarded"
+        },
+        {
+          "stage": "rerank",
+          "ms": 148.73,
+          "status": "discarded"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 1745.0,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 9.36,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S4",
+      "turn": 2,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 20.321,
+      "server_total_ms": 20315.8,
+      "server_stage_ms": {
+        "privacy": 0.19,
+        "emergency": 0.37,
+        "load_state": 4.22,
+        "small_talk": 0.0,
+        "extraction": 5395.18,
+        "context_gate": 2573.28,
+        "retrieval": 0.01,
+        "rerank": 273.48,
+        "evidence_gate": 5851.28,
+        "generation": 5837.17,
+        "verification": 637.09,
+        "persistence": 15.31
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.19,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.37,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 4.22,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.0,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 5395.18,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2573.28,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 273.48,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 5851.28,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 5837.17,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 637.09,
+          "status": "ok"
+        },
+        {
+          "stage": "persistence",
+          "ms": 15.31,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 4
+    },
+    {
+      "scenario": "S5",
+      "turn": 1,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 14.933,
+      "server_total_ms": 14930.5,
+      "server_stage_ms": {
+        "privacy": 0.04,
+        "emergency": 0.1,
+        "load_state": 2.56,
+        "small_talk": 0.01,
+        "extraction": 2089.35,
+        "context_gate": 2623.2,
+        "retrieval": 0.01,
+        "rerank": 322.12,
+        "evidence_gate": 6097.8,
+        "generation": 3566.34,
+        "verification": 542.91,
+        "persistence": 7.24
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.04,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.1,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 2.56,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 2089.35,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2623.2,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 322.12,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 6097.8,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 3566.34,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 542.91,
+          "status": "ok"
+        },
+        {
+          "stage": "persistence",
+          "ms": 7.24,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 4
+    },
+    {
+      "scenario": "S1",
+      "turn": 1,
+      "status": 200,
+      "action": "ESCALATE",
+      "latency_s": 0.01,
+      "server_total_ms": 6.6,
+      "server_stage_ms": {
+        "privacy": 0.07,
+        "emergency": 0.18,
+        "load_state": 1.46,
+        "persistence": 4.63
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.07,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.18,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 1.46,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "extraction",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "rerank",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 4.63,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 0
+    },
+    {
+      "scenario": "S2",
+      "turn": 1,
+      "status": 200,
+      "action": "ABSTAIN",
+      "latency_s": 7.69,
+      "server_total_ms": 7685.7,
+      "server_stage_ms": {
+        "privacy": 0.06,
+        "emergency": 0.11,
+        "load_state": 3.68,
+        "small_talk": 0.01,
+        "extraction": 2150.05,
+        "context_gate": 2286.2,
+        "retrieval": 0.02,
+        "rerank": 304.08,
+        "evidence_gate": 3235.7,
+        "persistence": 9.2
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.06,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.11,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 3.68,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 2150.05,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2286.2,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.02,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 304.08,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 3235.7,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 9.2,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S3",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 6.637,
+      "server_total_ms": 6630.6,
+      "server_stage_ms": {
+        "privacy": 0.09,
+        "emergency": 0.2,
+        "load_state": 4.3,
+        "small_talk": 0.01,
+        "extraction": 2070.7,
+        "context_gate": 2753.6,
+        "generation": 1790.24,
+        "persistence": 10.83
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.09,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.2,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 4.3,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 2070.7,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2753.6,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.03,
+          "status": "discarded"
+        },
+        {
+          "stage": "rerank",
+          "ms": 303.14,
+          "status": "discarded"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 1790.24,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 10.83,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S4",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 3.906,
+      "server_total_ms": 3900.2,
+      "server_stage_ms": {
+        "privacy": 0.16,
+        "emergency": 0.37,
+        "load_state": 5.47,
+        "small_talk": 0.02,
+        "extraction": 805.48,
+        "context_gate": 1362.41,
+        "generation": 1716.68,
+        "persistence": 8.8
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.16,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.37,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 5.47,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.02,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 805.48,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 1362.41,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.01,
+          "status": "discarded"
+        },
+        {
+          "stage": "rerank",
+          "ms": 149.77,
+          "status": "discarded"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 1716.68,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 8.8,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S4",
+      "turn": 2,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 19.853,
+      "server_total_ms": 19848.9,
+      "server_stage_ms": {
+        "privacy": 0.19,
+        "emergency": 0.44,
+        "load_state": 4.56,
+        "small_talk": 0.0,
+        "extraction": 5325.03,
+        "context_gate": 2520.5,
+        "retrieval": 0.02,
+        "rerank": 254.89,
+        "evidence_gate": 5652.52,
+        "generation": 5745.9,
+        "verification": 587.07,
+        "persistence": 10.67
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.19,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.44,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 4.56,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.0,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 5325.03,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2520.5,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.02,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 254.89,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 5652.52,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 5745.9,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 587.07,
+          "status": "ok"
+        },
+        {
+          "stage": "persistence",
+          "ms": 10.67,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 4
+    },
+    {
+      "scenario": "S5",
+      "turn": 1,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 12.864,
+      "server_total_ms": 12856.2,
+      "server_stage_ms": {
+        "privacy": 0.04,
+        "emergency": 0.11,
+        "load_state": 14.22,
+        "small_talk": 0.01,
+        "extraction": 1996.23,
+        "context_gate": 2255.33,
+        "retrieval": 0.02,
+        "rerank": 257.85,
+        "evidence_gate": 4832.48,
+        "generation": 3314.5,
+        "verification": 425.86,
+        "persistence": 15.78
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.04,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.11,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 14.22,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 1996.23,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2255.33,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.02,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 257.85,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 4832.48,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 3314.5,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 425.86,
+          "status": "ok"
+        },
+        {
+          "stage": "persistence",
+          "ms": 15.78,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 4
+    },
+    {
+      "scenario": "S1",
+      "turn": 1,
+      "status": 200,
+      "action": "ESCALATE",
+      "latency_s": 0.008,
+      "server_total_ms": 5.0,
+      "server_stage_ms": {
+        "privacy": 0.05,
+        "emergency": 0.15,
+        "load_state": 1.49,
+        "persistence": 3.17
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.05,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.15,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 1.49,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "extraction",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "rerank",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 3.17,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 0
+    },
+    {
+      "scenario": "S2",
+      "turn": 1,
+      "status": 200,
+      "action": "ABSTAIN",
+      "latency_s": 6.543,
+      "server_total_ms": 6540.3,
+      "server_stage_ms": {
+        "privacy": 0.04,
+        "emergency": 0.07,
+        "load_state": 2.07,
+        "small_talk": 0.01,
+        "extraction": 1786.32,
+        "context_gate": 1921.87,
+        "retrieval": 0.02,
+        "rerank": 262.93,
+        "evidence_gate": 2822.49,
+        "persistence": 6.76
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.04,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.07,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 2.07,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 1786.32,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 1921.87,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.02,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 262.93,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 2822.49,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 6.76,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S3",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 7.371,
+      "server_total_ms": 7365.9,
+      "server_stage_ms": {
+        "privacy": 0.13,
+        "emergency": 0.24,
+        "load_state": 5.26,
+        "small_talk": 0.01,
+        "extraction": 2160.37,
+        "context_gate": 2886.99,
+        "generation": 2290.13,
+        "persistence": 20.77
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.13,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.24,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 5.26,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 2160.37,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2886.99,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.02,
+          "status": "discarded"
+        },
+        {
+          "stage": "rerank",
+          "ms": 319.78,
+          "status": "discarded"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 2290.13,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 20.77,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S4",
+      "turn": 1,
+      "status": 200,
+      "action": "SOFT-ASK",
+      "latency_s": 5.287,
+      "server_total_ms": 5279.5,
+      "server_stage_ms": {
+        "privacy": 0.13,
+        "emergency": 0.25,
+        "load_state": 4.62,
+        "small_talk": 0.01,
+        "extraction": 1095.29,
+        "context_gate": 1900.85,
+        "generation": 2263.38,
+        "persistence": 14.28
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.13,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.25,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 4.62,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.01,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 1095.29,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 1900.85,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.02,
+          "status": "discarded"
+        },
+        {
+          "stage": "rerank",
+          "ms": 589.12,
+          "status": "discarded"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "generation",
+          "ms": 2263.38,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 0.0,
+          "status": "skipped"
+        },
+        {
+          "stage": "persistence",
+          "ms": 14.28,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 3
+    },
+    {
+      "scenario": "S4",
+      "turn": 2,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 25.732,
+      "server_total_ms": 25719.0,
+      "server_stage_ms": {
+        "privacy": 0.22,
+        "emergency": 0.53,
+        "load_state": 6.68,
+        "small_talk": 0.0,
+        "extraction": 7062.38,
+        "context_gate": 3314.41,
+        "retrieval": 0.15,
+        "rerank": 782.79,
+        "evidence_gate": 6978.46,
+        "generation": 7361.57,
+        "verification": 962.34,
+        "persistence": 29.92
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.22,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.53,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 6.68,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.0,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 7062.38,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 3314.41,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.15,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 782.79,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 6978.46,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 7361.57,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 962.34,
+          "status": "ok"
+        },
+        {
+          "stage": "persistence",
+          "ms": 29.92,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 4
+    },
+    {
+      "scenario": "S5",
+      "turn": 1,
+      "status": 200,
+      "action": "ANSWER",
+      "latency_s": 16.332,
+      "server_total_ms": 16324.4,
+      "server_stage_ms": {
+        "privacy": 0.09,
+        "emergency": 0.43,
+        "load_state": 7.28,
+        "small_talk": 0.03,
+        "extraction": 2466.21,
+        "context_gate": 2943.65,
+        "retrieval": 0.32,
+        "rerank": 282.16,
+        "evidence_gate": 6292.48,
+        "generation": 3881.34,
+        "verification": 715.66,
+        "persistence": 15.57
+      },
+      "timings": [
+        {
+          "stage": "privacy",
+          "ms": 0.09,
+          "status": "ok"
+        },
+        {
+          "stage": "emergency",
+          "ms": 0.43,
+          "status": "ok"
+        },
+        {
+          "stage": "load_state",
+          "ms": 7.28,
+          "status": "ok"
+        },
+        {
+          "stage": "small_talk",
+          "ms": 0.03,
+          "status": "ok"
+        },
+        {
+          "stage": "extraction",
+          "ms": 2466.21,
+          "status": "ok"
+        },
+        {
+          "stage": "context_gate",
+          "ms": 2943.65,
+          "status": "ok"
+        },
+        {
+          "stage": "retrieval",
+          "ms": 0.32,
+          "status": "ok"
+        },
+        {
+          "stage": "rerank",
+          "ms": 282.16,
+          "status": "ok"
+        },
+        {
+          "stage": "evidence_gate",
+          "ms": 6292.48,
+          "status": "ok"
+        },
+        {
+          "stage": "generation",
+          "ms": 3881.34,
+          "status": "ok"
+        },
+        {
+          "stage": "verification",
+          "ms": 715.66,
+          "status": "ok"
+        },
+        {
+          "stage": "persistence",
+          "ms": 15.57,
+          "status": "ok"
+        }
+      ],
+      "llm_calls": 4
+    }
+  ],
+  "cold_summary": {
+    "S1-t1:ESCALATE": {
+      "n": 1,
+      "p50": 0.051,
+      "p95": 0.051,
+      "mean": 0.051,
+      "server_total_ms_p50": 42.8,
+      "server_stage_ms_p50": {
+        "privacy": 0.1,
+        "emergency": 0.2,
+        "load_state": 7.7,
+        "persistence": 34.6
+      }
+    },
+    "S2-t1:ABSTAIN": {
+      "n": 1,
+      "p50": 12.636,
+      "p95": 12.636,
+      "mean": 12.636,
+      "server_total_ms_p50": 12633.0,
+      "server_stage_ms_p50": {
+        "privacy": 0.1,
+        "emergency": 0.1,
+        "load_state": 8.0,
+        "small_talk": 0.1,
+        "extraction": 3378.7,
+        "context_gate": 2249.1,
+        "retrieval": 145.3,
+        "rerank": 4750.2,
+        "evidence_gate": 4339.6,
+        "persistence": 7.5
+      }
+    },
+    "S3-t1:SOFT-ASK": {
+      "n": 1,
+      "p50": 6.546,
+      "p95": 6.546,
+      "mean": 6.546,
+      "server_total_ms_p50": 6543.4,
+      "server_stage_ms_p50": {
+        "privacy": 0.1,
+        "emergency": 0.1,
+        "load_state": 3.0,
+        "small_talk": 0.0,
+        "extraction": 1940.1,
+        "context_gate": 2550.3,
+        "generation": 2042.3,
+        "persistence": 7.3
+      }
+    },
+    "S4-t1:SOFT-ASK": {
+      "n": 1,
+      "p50": 3.957,
+      "p95": 3.957,
+      "mean": 3.957,
+      "server_total_ms_p50": 3954.5,
+      "server_stage_ms_p50": {
+        "privacy": 0.1,
+        "emergency": 0.1,
+        "load_state": 2.6,
+        "small_talk": 0.0,
+        "extraction": 823.6,
+        "context_gate": 1360.4,
+        "generation": 1762.9,
+        "persistence": 4.5
+      }
+    },
+    "S4-t2:ANSWER": {
+      "n": 1,
+      "p50": 26.045,
+      "p95": 26.045,
+      "mean": 26.045,
+      "server_total_ms_p50": 26041.5,
+      "server_stage_ms_p50": {
+        "privacy": 0.1,
+        "emergency": 0.2,
+        "load_state": 13.7,
+        "small_talk": 0.0,
+        "extraction": 5516.7,
+        "context_gate": 2605.8,
+        "retrieval": 12.9,
+        "rerank": 175.4,
+        "evidence_gate": 5455.1,
+        "generation": 9283.3,
+        "verification": 3134.8,
+        "persistence": 29.7
+      }
+    },
+    "S5-t1:ANSWER": {
+      "n": 1,
+      "p50": 16.163,
+      "p95": 16.163,
+      "mean": 16.163,
+      "server_total_ms_p50": 16160.3,
+      "server_stage_ms_p50": {
+        "privacy": 0.1,
+        "emergency": 0.2,
+        "load_state": 2.6,
+        "small_talk": 0.0,
+        "extraction": 1987.4,
+        "context_gate": 2204.1,
+        "retrieval": 20.4,
+        "rerank": 195.8,
+        "evidence_gate": 4745.2,
+        "generation": 6737.0,
+        "verification": 473.4,
+        "persistence": 8.6
+      }
+    }
+  },
+  "warm_summary": {
+    "S1-t1:ESCALATE": {
+      "n": 3,
+      "p50": 0.008,
+      "p95": 0.01,
+      "mean": 0.009,
+      "server_total_ms_p50": 5.6,
+      "server_stage_ms_p50": {
+        "privacy": 0.1,
+        "emergency": 0.2,
+        "load_state": 1.5,
+        "persistence": 3.9
+      }
+    },
+    "S2-t1:ABSTAIN": {
+      "n": 3,
+      "p50": 6.62,
+      "p95": 7.69,
+      "mean": 6.951,
+      "server_total_ms_p50": 6616.8,
+      "server_stage_ms_p50": {
+        "privacy": 0.0,
+        "emergency": 0.1,
+        "load_state": 2.8,
+        "small_talk": 0.0,
+        "extraction": 1816.0,
+        "context_gate": 2019.6,
+        "retrieval": 0.0,
+        "rerank": 262.9,
+        "evidence_gate": 2822.5,
+        "persistence": 9.2
+      }
+    },
+    "S3-t1:SOFT-ASK": {
+      "n": 3,
+      "p50": 6.637,
+      "p95": 7.371,
+      "mean": 6.678,
+      "server_total_ms_p50": 6630.6,
+      "server_stage_ms_p50": {
+        "privacy": 0.1,
+        "emergency": 0.2,
+        "load_state": 4.3,
+        "small_talk": 0.0,
+        "extraction": 2070.7,
+        "context_gate": 2753.6,
+        "generation": 1790.2,
+        "persistence": 10.8
+      }
+    },
+    "S4-t1:SOFT-ASK": {
+      "n": 3,
+      "p50": 3.948,
+      "p95": 5.287,
+      "mean": 4.38,
+      "server_total_ms_p50": 3943.6,
+      "server_stage_ms_p50": {
+        "privacy": 0.1,
+        "emergency": 0.3,
+        "load_state": 4.6,
+        "small_talk": 0.0,
+        "extraction": 809.4,
+        "context_gate": 1374.7,
+        "generation": 1745.0,
+        "persistence": 9.4
+      }
+    },
+    "S4-t2:ANSWER": {
+      "n": 3,
+      "p50": 20.321,
+      "p95": 25.732,
+      "mean": 21.969,
+      "server_total_ms_p50": 20315.8,
+      "server_stage_ms_p50": {
+        "privacy": 0.2,
+        "emergency": 0.4,
+        "load_state": 4.6,
+        "small_talk": 0.0,
+        "extraction": 5395.2,
+        "context_gate": 2573.3,
+        "retrieval": 0.0,
+        "rerank": 273.5,
+        "evidence_gate": 5851.3,
+        "generation": 5837.2,
+        "verification": 637.1,
+        "persistence": 15.3
+      }
+    },
+    "S5-t1:ANSWER": {
+      "n": 3,
+      "p50": 14.933,
+      "p95": 16.332,
+      "mean": 14.71,
+      "server_total_ms_p50": 14930.5,
+      "server_stage_ms_p50": {
+        "privacy": 0.0,
+        "emergency": 0.1,
+        "load_state": 7.3,
+        "small_talk": 0.0,
+        "extraction": 2089.3,
+        "context_gate": 2623.2,
+        "retrieval": 0.0,
+        "rerank": 282.2,
+        "evidence_gate": 6097.8,
+        "generation": 3566.3,
+        "verification": 542.9,
+        "persistence": 15.6
+      }
+    }
+  }
+}

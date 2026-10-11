@@ -1,0 +1,7 @@
+Scenario turn,Scenario,Action before,Action after,Cold before s,Cold after s,Warm p50 before s,Warm p95 before s,Warm p50 after s,Warm p95 after s,Speed-up (p50)
+S1-t1,Emergency fast-path,ESCALATE,ESCALATE,0.03,0.03,0.02,0.03,0.01,0.01,3.0×
+S2-t1,Out-of-domain,ABSTAIN,ABSTAIN,15.75,13.34,5.15,5.16,8.12,8.15,0.6×
+S3-t1,Clarification gate,SOFT-ASK,SOFT-ASK,7.55,6.75,7.63,8.01,6.02,6.03,1.3×
+S4-t1,Clinical guidance (2 turns),SOFT-ASK,SOFT-ASK,6.71,4.30,7.23,7.39,4.32,4.75,1.7×
+S4-t2,Clinical guidance (2 turns),ANSWER,ANSWER,19.73,24.34,17.77,18.06,18.20,18.47,1.0×
+S5-t1,Lifestyle,ANSWER,ANSWER,37.48,17.64,31.12,52.07,14.39,14.43,2.2×

@@ -1697,3 +1697,175 @@ scripts/run_post_study.sh: line 39: 84569 Terminated: 15          LLM_MODEL="$1"
 scripts/run_post_study.sh: line 39: 86274 Terminated: 15          LLM_MODEL="$1" OLLAMA_BASE_URL="$APP_OLLAMA" RATE_LIMIT_PER_MINUTE="${RATE_LIMIT:-30}" nohup "$PY" -m uvicorn medbridge.main:app --host 127.0.0.1 --port "$PORT" > "evaluation/results/logs/uvicorn_post_$(date +%H%M%S).log" 2>&1
 
 [2026-10-11 17:35:06] === Load test (1, 5, 10 users) ===
+users=1: ok=3/3 429=0 p50=28.0 ms p95=23075.3 ms throughput=0.13 req/s
+users=5: ok=15/15 429=0 p50=56248.4 ms p95=83853.2 ms throughput=0.077 req/s
+users=10: ok=30/30 429=0 p50=88343.8 ms p95=162026.5 ms throughput=0.09 req/s
+Wrote reports/performance/load_test.json and reports/performance/load_test.md
+scripts/run_post_study.sh: line 39: 86416 Terminated: 15          LLM_MODEL="$1" OLLAMA_BASE_URL="$APP_OLLAMA" RATE_LIMIT_PER_MINUTE="${RATE_LIMIT:-30}" nohup "$PY" -m uvicorn medbridge.main:app --host 127.0.0.1 --port "$PORT" > "evaluation/results/logs/uvicorn_post_$(date +%H%M%S).log" 2>&1
+
+[2026-10-11 17:44:29] === Smoke test ===
+CHECK                  STATUS  EXPECTED              OBSERVED                                          MS     NOTE                      
+health                 PASS    200 healthy|degraded  200 degraded                                      14     degraded: see details     
+create_session         PASS    201 + session_token   201 + token                                       15                               
+escalate_fastpath      PASS    ESCALATE              ESCALATE                                          34                               
+abstain_out_of_domain  PASS    ABSTAIN/GENERALIZE    ABSTAIN                                           10182                            
+generalize             PASS    ANSWER/GENERALIZE     GENERALIZE                                        18942                            
+pii_redaction          PASS    redaction_count > 0   redaction_count=2                                 17142                            
+sse_stream             PASS    stage..token..done    events {'stage': 24, 'meta': 1, 'token': 11, 'do  13388                            
+feedback               PASS    201                   201                                               18                               
+context                PASS    200                   200                                               13                               
+summary                PASS    200                   200                                               17                               
+auth_missing_token     PASS    401                   401                                               2                                
+create_session         PASS    201 + session_token   201 + token                                       5                                
+soft_ask               PASS    GENERALIZE/SOFT-ASK   SOFT-ASK                                          6071                             
+follow_up_answer       PASS    ANSWER/GENERALIZE     GENERALIZE                                        31837  primary expectation ANSWER
+delete_session         PASS    204                   204                                               15                               
+after_delete_gone      PASS    410                   410                                               3                                
+
+{'PASS': 16, 'FAIL': 0, 'SKIP': 0} -> PASS; report reports/smoke_test_latest.json
+scripts/run_post_study.sh: line 39: 87444 Terminated: 15          LLM_MODEL="$1" OLLAMA_BASE_URL="$APP_OLLAMA" RATE_LIMIT_PER_MINUTE="${RATE_LIMIT:-30}" nohup "$PY" -m uvicorn medbridge.main:app --host 127.0.0.1 --port "$PORT" > "evaluation/results/logs/uvicorn_post_$(date +%H%M%S).log" 2>&1
+
+[2026-10-11 17:46:20] === UI screenshots ===
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 202, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 191, in main
+    capture_chat(browser, cap, label, size, theme)
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 109, in capture_chat
+    page.locator(".msg--assistant").last.locator(".cite-chip").first.click()
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/sync_api/_generated.py", line 18032, in click
+    self._sync(
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
+    return task.result()
+           ^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_locator.py", line 165, in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_frame.py", line 594, in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_connection.py", line 76, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_connection.py", line 632, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator(".msg--assistant").last.locator(".cite-chip").first
+
+saved report/screenshots/raw/desktop_light/consent-desktop-light.png
+saved report/screenshots/raw/desktop_light/welcome-desktop-light.png
+saved report/screenshots/raw/desktop_light/streaming-desktop-light.png
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 202, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 191, in main
+    capture_chat(browser, cap, label, size, theme)
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 109, in capture_chat
+    page.locator(".msg--assistant").last.locator(".cite-chip").first.click()
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/sync_api/_generated.py", line 18032, in click
+    self._sync(
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
+    return task.result()
+           ^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_locator.py", line 165, in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_frame.py", line 594, in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_connection.py", line 76, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_connection.py", line 632, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator(".msg--assistant").last.locator(".cite-chip").first
+
+saved report/screenshots/raw/desktop_dark/consent-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/welcome-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/streaming-desktop-dark.png
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 202, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 191, in main
+    capture_chat(browser, cap, label, size, theme)
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 109, in capture_chat
+    page.locator(".msg--assistant").last.locator(".cite-chip").first.click()
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/sync_api/_generated.py", line 18032, in click
+    self._sync(
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
+    return task.result()
+           ^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_locator.py", line 165, in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_frame.py", line 594, in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_connection.py", line 76, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_connection.py", line 632, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator(".msg--assistant").last.locator(".cite-chip").first
+
+saved report/screenshots/raw/mobile_light/consent-mobile-light.png
+saved report/screenshots/raw/mobile_light/welcome-mobile-light.png
+saved report/screenshots/raw/mobile_light/streaming-mobile-light.png
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 202, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 191, in main
+    capture_chat(browser, cap, label, size, theme)
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/medbridge/web/screenshots.py", line 109, in capture_chat
+    page.locator(".msg--assistant").last.locator(".cite-chip").first.click()
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/sync_api/_generated.py", line 18032, in click
+    self._sync(
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
+    return task.result()
+           ^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_locator.py", line 165, in click
+    return await self._frame._click(self._selector, strict=True, **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_frame.py", line 594, in _click
+    await self._channel.send("click", self._timeout, locals_to_params(locals()))
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_connection.py", line 76, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/playwright/_impl/_connection.py", line 632, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator(".msg--assistant").last.locator(".cite-chip").first
+
+saved report/screenshots/raw/mobile_dark/consent-mobile-dark.png
+saved report/screenshots/raw/mobile_dark/welcome-mobile-dark.png
+saved report/screenshots/raw/mobile_dark/streaming-mobile-dark.png
+scripts/run_post_study.sh: line 39: 87587 Terminated: 15          LLM_MODEL="$1" OLLAMA_BASE_URL="$APP_OLLAMA" RATE_LIMIT_PER_MINUTE="${RATE_LIMIT:-30}" nohup "$PY" -m uvicorn medbridge.main:app --host 127.0.0.1 --port "$PORT" > "evaluation/results/logs/uvicorn_post_$(date +%H%M%S).log" 2>&1
+
+[2026-10-11 17:53:54] === Human annotation sheet ===
+[human_annotation] wrote /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/annotation/human_annotation_sheet.xlsx
+[human_annotation] wrote /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/annotation/human_annotation_sheet.csv
+[human_annotation] wrote /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/annotation/annotation_key.csv
+[human_annotation] 872 claims from 50 items
+
+[2026-10-11 17:53:55] === Before/after latency table (same model, gemma3:4b, for an apples-to-apples comparison) ===
+[perf] wrote /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/reports/performance/latency_table.md
+[perf] wrote /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/reports/performance/latency_table.csv
+[perf] wrote /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/reports/figures/latency_before_after.png
+[perf] wrote /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/reports/figures/latency_before_after.svg
+
+[2026-10-11 17:53:56] === post-study steps complete: rabbits_after adversarial_after perf_after load smoke screenshots annotation perf_table ===

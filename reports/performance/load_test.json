@@ -1,0 +1,611 @@
+{
+  "generated_at": "2026-10-11T12:14:27.590416+00:00",
+  "base_url": "http://127.0.0.1:8000",
+  "levels": [
+    {
+      "users": 1,
+      "requests": 3,
+      "ok": 3,
+      "errors": 0,
+      "rate_limited": 0,
+      "error_rate": 0.0,
+      "wall_s": 23.13,
+      "throughput_rps": 0.13,
+      "p50_ms": 28.0,
+      "p95_ms": 23075.3,
+      "max_ms": 23075.3,
+      "session_wait_s": 0.0,
+      "by_kind": {
+        "emergency": {
+          "n": 1,
+          "ok": 1,
+          "p50_ms": 28.0,
+          "max_ms": 28.0
+        },
+        "small_talk": {
+          "n": 1,
+          "ok": 1,
+          "p50_ms": 24.5,
+          "max_ms": 24.5
+        },
+        "general": {
+          "n": 1,
+          "ok": 1,
+          "p50_ms": 23075.3,
+          "max_ms": 23075.3
+        }
+      },
+      "actions": {
+        "ESCALATE": 1,
+        "GENERALIZE": 1,
+        "ANSWER": 1
+      }
+    },
+    {
+      "users": 5,
+      "requests": 15,
+      "ok": 15,
+      "errors": 0,
+      "rate_limited": 0,
+      "error_rate": 0.0,
+      "wall_s": 194.64,
+      "throughput_rps": 0.077,
+      "p50_ms": 56248.4,
+      "p95_ms": 83853.2,
+      "max_ms": 83853.2,
+      "session_wait_s": 0.0,
+      "by_kind": {
+        "emergency": {
+          "n": 2,
+          "ok": 2,
+          "p50_ms": 13.9,
+          "max_ms": 27.1
+        },
+        "small_talk": {
+          "n": 2,
+          "ok": 2,
+          "p50_ms": 15.3,
+          "max_ms": 18.0
+        },
+        "general": {
+          "n": 3,
+          "ok": 3,
+          "p50_ms": 69746.1,
+          "max_ms": 83853.2
+        },
+        "out_of_domain": {
+          "n": 3,
+          "ok": 3,
+          "p50_ms": 46649.5,
+          "max_ms": 52683.1
+        },
+        "personal": {
+          "n": 3,
+          "ok": 3,
+          "p50_ms": 79337.1,
+          "max_ms": 83835.2
+        },
+        "clarification": {
+          "n": 2,
+          "ok": 2,
+          "p50_ms": 79448.5,
+          "max_ms": 81919.0
+        }
+      },
+      "actions": {
+        "ESCALATE": 2,
+        "GENERALIZE": 3,
+        "ANSWER": 6,
+        "ABSTAIN": 4
+      }
+    },
+    {
+      "users": 10,
+      "requests": 30,
+      "ok": 30,
+      "errors": 0,
+      "rate_limited": 0,
+      "error_rate": 0.0,
+      "wall_s": 331.88,
+      "throughput_rps": 0.09,
+      "p50_ms": 88343.8,
+      "p95_ms": 162026.5,
+      "max_ms": 168321.3,
+      "session_wait_s": 0.0,
+      "by_kind": {
+        "emergency": {
+          "n": 4,
+          "ok": 4,
+          "p50_ms": 17.0,
+          "max_ms": 51.8
+        },
+        "small_talk": {
+          "n": 5,
+          "ok": 5,
+          "p50_ms": 21.3,
+          "max_ms": 48.1
+        },
+        "general": {
+          "n": 6,
+          "ok": 6,
+          "p50_ms": 150463.5,
+          "max_ms": 168321.3
+        },
+        "out_of_domain": {
+          "n": 6,
+          "ok": 6,
+          "p50_ms": 84162.9,
+          "max_ms": 95494.0
+        },
+        "personal": {
+          "n": 5,
+          "ok": 5,
+          "p50_ms": 133528.4,
+          "max_ms": 154350.8
+        },
+        "clarification": {
+          "n": 4,
+          "ok": 4,
+          "p50_ms": 87193.8,
+          "max_ms": 133293.7
+        }
+      },
+      "actions": {
+        "ESCALATE": 4,
+        "GENERALIZE": 7,
+        "ANSWER": 11,
+        "ABSTAIN": 7,
+        "SOFT-ASK": 1
+      }
+    }
+  ],
+  "requests_per_user": 3,
+  "required_rate_limit": 30,
+  "query_mix": [
+    "emergency",
+    "small_talk",
+    "general",
+    "out_of_domain",
+    "personal",
+    "clarification"
+  ],
+  "median_ok_latency_all_ms": 78701.70000000001,
+  "notes": [
+    "A single local Ollama server serialises LLM calls (one at a time), so concurrent requests queue and per-request latency grows with the number of users; the emergency fast-path and small-talk paths make no LLM call and are not affected.",
+    "The API rate limiter counts per client IP. All simulated users share one IP, so the server under test needs RATE_LIMIT_PER_MINUTE at least as large as the number of message requests sent within one minute (or 0 to disable). Session creation is limited to 10/min per IP; the load test waits for Retry-After and does not count that wait as latency."
+  ],
+  "requests": [
+    {
+      "level": 1,
+      "user": 0,
+      "kind": "emergency",
+      "status": 200,
+      "latency_ms": 28.0,
+      "action": "ESCALATE",
+      "error": null
+    },
+    {
+      "level": 1,
+      "user": 0,
+      "kind": "small_talk",
+      "status": 200,
+      "latency_ms": 24.5,
+      "action": "GENERALIZE",
+      "error": null
+    },
+    {
+      "level": 1,
+      "user": 0,
+      "kind": "general",
+      "status": 200,
+      "latency_ms": 23075.3,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 0,
+      "kind": "emergency",
+      "status": 200,
+      "latency_ms": 13.9,
+      "action": "ESCALATE",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 0,
+      "kind": "small_talk",
+      "status": 200,
+      "latency_ms": 15.3,
+      "action": "GENERALIZE",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 0,
+      "kind": "general",
+      "status": 200,
+      "latency_ms": 83853.2,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 1,
+      "kind": "small_talk",
+      "status": 200,
+      "latency_ms": 18.0,
+      "action": "GENERALIZE",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 1,
+      "kind": "general",
+      "status": 200,
+      "latency_ms": 69746.1,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 1,
+      "kind": "out_of_domain",
+      "status": 200,
+      "latency_ms": 46649.5,
+      "action": "ABSTAIN",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 2,
+      "kind": "general",
+      "status": 200,
+      "latency_ms": 56248.4,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 2,
+      "kind": "out_of_domain",
+      "status": 200,
+      "latency_ms": 52683.1,
+      "action": "ABSTAIN",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 2,
+      "kind": "personal",
+      "status": 200,
+      "latency_ms": 79337.1,
+      "action": "GENERALIZE",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 3,
+      "kind": "out_of_domain",
+      "status": 200,
+      "latency_ms": 31352.1,
+      "action": "ABSTAIN",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 3,
+      "kind": "personal",
+      "status": 200,
+      "latency_ms": 83835.2,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 3,
+      "kind": "clarification",
+      "status": 200,
+      "latency_ms": 79448.5,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 4,
+      "kind": "personal",
+      "status": 200,
+      "latency_ms": 78451.3,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 4,
+      "kind": "clarification",
+      "status": 200,
+      "latency_ms": 81919.0,
+      "action": "ABSTAIN",
+      "error": null
+    },
+    {
+      "level": 5,
+      "user": 4,
+      "kind": "emergency",
+      "status": 200,
+      "latency_ms": 27.1,
+      "action": "ESCALATE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 0,
+      "kind": "emergency",
+      "status": 200,
+      "latency_ms": 17.0,
+      "action": "ESCALATE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 0,
+      "kind": "small_talk",
+      "status": 200,
+      "latency_ms": 21.3,
+      "action": "GENERALIZE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 0,
+      "kind": "general",
+      "status": 200,
+      "latency_ms": 155701.8,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 1,
+      "kind": "small_talk",
+      "status": 200,
+      "latency_ms": 28.0,
+      "action": "GENERALIZE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 1,
+      "kind": "general",
+      "status": 200,
+      "latency_ms": 139400.9,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 1,
+      "kind": "out_of_domain",
+      "status": 200,
+      "latency_ms": 95494.0,
+      "action": "ABSTAIN",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 2,
+      "kind": "general",
+      "status": 200,
+      "latency_ms": 123974.2,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 2,
+      "kind": "out_of_domain",
+      "status": 200,
+      "latency_ms": 88343.8,
+      "action": "ABSTAIN",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 2,
+      "kind": "personal",
+      "status": 200,
+      "latency_ms": 109536.6,
+      "action": "GENERALIZE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 3,
+      "kind": "out_of_domain",
+      "status": 200,
+      "latency_ms": 54138.6,
+      "action": "ABSTAIN",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 3,
+      "kind": "personal",
+      "status": 200,
+      "latency_ms": 153419.5,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 3,
+      "kind": "clarification",
+      "status": 200,
+      "latency_ms": 108002.9,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 4,
+      "kind": "personal",
+      "status": 200,
+      "latency_ms": 133528.4,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 4,
+      "kind": "clarification",
+      "status": 200,
+      "latency_ms": 133293.7,
+      "action": "ABSTAIN",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 4,
+      "kind": "emergency",
+      "status": 200,
+      "latency_ms": 51.8,
+      "action": "ESCALATE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 5,
+      "kind": "clarification",
+      "status": 200,
+      "latency_ms": 48692.5,
+      "action": "SOFT-ASK",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 5,
+      "kind": "emergency",
+      "status": 200,
+      "latency_ms": 15.9,
+      "action": "ESCALATE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 5,
+      "kind": "small_talk",
+      "status": 200,
+      "latency_ms": 16.2,
+      "action": "GENERALIZE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 6,
+      "kind": "emergency",
+      "status": 200,
+      "latency_ms": 44.7,
+      "action": "ESCALATE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 6,
+      "kind": "small_talk",
+      "status": 200,
+      "latency_ms": 13.6,
+      "action": "GENERALIZE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 6,
+      "kind": "general",
+      "status": 200,
+      "latency_ms": 168321.3,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 7,
+      "kind": "small_talk",
+      "status": 200,
+      "latency_ms": 48.1,
+      "action": "GENERALIZE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 7,
+      "kind": "general",
+      "status": 200,
+      "latency_ms": 162026.5,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 7,
+      "kind": "out_of_domain",
+      "status": 200,
+      "latency_ms": 78952.1,
+      "action": "ABSTAIN",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 8,
+      "kind": "general",
+      "status": 200,
+      "latency_ms": 150463.5,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 8,
+      "kind": "out_of_domain",
+      "status": 200,
+      "latency_ms": 89268.0,
+      "action": "ABSTAIN",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 8,
+      "kind": "personal",
+      "status": 200,
+      "latency_ms": 92150.9,
+      "action": "GENERALIZE",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 9,
+      "kind": "out_of_domain",
+      "status": 200,
+      "latency_ms": 84162.9,
+      "action": "ABSTAIN",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 9,
+      "kind": "personal",
+      "status": 200,
+      "latency_ms": 154350.8,
+      "action": "ANSWER",
+      "error": null
+    },
+    {
+      "level": 10,
+      "user": 9,
+      "kind": "clarification",
+      "status": 200,
+      "latency_ms": 87193.8,
+      "action": "ANSWER",
+      "error": null
+    }
+  ]
+}

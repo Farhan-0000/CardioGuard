@@ -1,0 +1,168 @@
+INFO:     Started server process [87444]
+INFO:     Waiting for application startup.
+{"host": "[IP]", "port": 8000, "event": "app_startup_begin", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T12:14:38.662851Z"}
+{"event": "Database connection established successfully.", "logger": "medbridge.db.connection", "level": "info", "timestamp": "2026-10-11T12:14:38.705691Z"}
+{"event": "db_initialized_successfully", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T12:14:38.705849Z"}
+{"warmup": true, "event": "app_startup_complete", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T12:14:38.706335Z"}
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:38.840897Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:38.844972Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:39.055836Z"}
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+{"event": "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.", "logger": "huggingface_hub.utils._http", "level": "warning", "timestamp": "2026-10-11T12:14:39.056938Z"}
+{"event": "No modules.json found for cross-encoder/nli-MiniLM2-L6-H768, initializing a new CrossEncoder model.", "logger": "sentence_transformers.base.model", "level": "info", "timestamp": "2026-10-11T12:14:39.058238Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:39.277067Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:39.521040Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:39.755379Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:39.882354Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:39.886756Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:39.994540Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:40.220139Z"}
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 18994.30it/s]
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:40.526235Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:40.770595Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:40.964255Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:40.965850Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:40.967457Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:40.977894Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:40.978879Z"}
+INFO:     127.0.0.1:62306 - "GET /health HTTP/1.1" 200 OK
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:40.998965Z"}
+{"model": "cross-encoder/nli-MiniLM2-L6-H768", "device": "mps", "event": "grounding_model_loaded", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T12:14:41.180518Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:41.199589Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:41.200344Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:41.201149Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:41.202861Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:41.203476Z"}
+INFO:     127.0.0.1:62310 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62310 - "POST /api/sessions HTTP/1.1" 201 Created
+{"session_id": "fa4e59e7-1e5a-493d-887d-b3d25afee055", "event": "emergency_fastpath_escalate", "logger": "medbridge.core.orchestrator", "level": "warning", "timestamp": "2026-10-11T12:14:41.229183Z"}
+{"session_id": "fa4e59e7-1e5a-493d-887d-b3d25afee055", "action": "ESCALATE", "latency_ms": 4, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T12:14:41.252684Z"}
+INFO:     127.0.0.1:62310 - "POST /api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/messages HTTP/1.1" 200 OK
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:41.412795Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:41.629746Z"}
+{"event": "No modules.json found for cross-encoder/ms-marco-MiniLM-L-6-v2, initializing a new CrossEncoder model.", "logger": "sentence_transformers.base.model", "level": "info", "timestamp": "2026-10-11T12:14:41.634034Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:41.883029Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:42.109653Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:42.342901Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:42.577621Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:42.821418Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:43.040764Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:43.264107Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:43.497658Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:43.736792Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:43.957341Z"}
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 10385.86it/s]
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:44.237526Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:44.477509Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:44.708985Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:44.812341Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 3544.6, "prompt_tokens": 1571, "completion_tokens": 27, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:14:44.815084Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:44.831819Z"}
+{"mode": "hybrid", "count": 20, "collection": "clinical_guidelines", "event": "retrieval_complete", "logger": "medbridge.retrieval.hybrid_retriever", "level": "info", "timestamp": "2026-10-11T12:14:44.833360Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:44.940121Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:45.180170Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:45.428691Z"}
+{"model": "cross-encoder/ms-marco-MiniLM-L-6-v2", "device": "mps", "event": "reranker_loaded", "logger": "medbridge.retrieval.reranker", "level": "info", "timestamp": "2026-10-11T12:14:45.618117Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.48it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]{"embedder_dense": true, "embedder_sparse": true, "retriever": true, "llm": true, "llm_models": {"qwen3.5:4b": true}, "reranker": true, "nli_verifier": true, "warmup_ms": 7060.2, "event": "pipeline_warmup_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T12:14:45.766746Z"}
+Batches: 100%|██████████| 1/1 [00:00<00:00, 64.80it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:47.178035Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2364.1, "prompt_tokens": 1369, "completion_tokens": 29, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:14:47.180226Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:51.404173Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 4224.7, "prompt_tokens": 2452, "completion_tokens": 55, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:14:51.406243Z"}
+{"session_id": "fa4e59e7-1e5a-493d-887d-b3d25afee055", "action": "ABSTAIN", "latency_ms": 10159, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T12:14:51.433798Z"}
+INFO:     127.0.0.1:62310 - "POST /api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/messages HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:53.621290Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2173.6, "prompt_tokens": 1666, "completion_tokens": 35, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:14:53.622499Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:53.654992Z"}
+{"mode": "hybrid", "count": 20, "collection": "clinical_guidelines", "event": "retrieval_complete", "logger": "medbridge.retrieval.hybrid_retriever", "level": "info", "timestamp": "2026-10-11T12:14:53.656539Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 36.60it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:14:55.736715Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2093.8, "prompt_tokens": 1373, "completion_tokens": 34, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:14:55.738921Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:00.535388Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 4796.7, "prompt_tokens": 3982, "completion_tokens": 68, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:00.537699Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:09.841588Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 9302.9, "prompt_tokens": 3249, "completion_tokens": 219, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:09.843685Z"}
+{"n_claims": 7, "n_unsupported": 5, "available": true, "latency_ms": 525.4, "event": "grounding_verified", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T12:15:10.369599Z"}
+{"session_id": "fa4e59e7-1e5a-493d-887d-b3d25afee055", "action": "GENERALIZE", "latency_ms": 18929, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T12:15:10.377583Z"}
+INFO:     127.0.0.1:62310 - "POST /api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/messages HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:13.609378Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 3226.5, "prompt_tokens": 1683, "completion_tokens": 78, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:13.610694Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:13.634610Z"}
+{"mode": "hybrid", "count": 20, "collection": "clinical_guidelines", "event": "retrieval_complete", "logger": "medbridge.retrieval.hybrid_retriever", "level": "info", "timestamp": "2026-10-11T12:15:13.635744Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.24it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:16.025700Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2413.0, "prompt_tokens": 1398, "completion_tokens": 42, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:16.027652Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:20.388146Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 4360.5, "prompt_tokens": 2723, "completion_tokens": 109, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:20.389559Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:27.197375Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 6807.4, "prompt_tokens": 1990, "completion_tokens": 180, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:27.199436Z"}
+{"n_claims": 6, "n_unsupported": 3, "available": true, "latency_ms": 311.5, "event": "grounding_verified", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T12:15:27.511379Z"}
+{"session_id": "fa4e59e7-1e5a-493d-887d-b3d25afee055", "action": "ANSWER", "latency_ms": 17130, "ablation": "C5", "citations": 1, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T12:15:27.520059Z"}
+INFO:     127.0.0.1:62310 - "POST /api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/messages HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62310 - "POST /api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:29.600319Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2073.5, "prompt_tokens": 1666, "completion_tokens": 36, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:29.602313Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:29.627443Z"}
+{"mode": "hybrid", "count": 20, "collection": "clinical_guidelines", "event": "retrieval_complete", "logger": "medbridge.retrieval.hybrid_retriever", "level": "info", "timestamp": "2026-10-11T12:15:29.629092Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 36.05it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:31.729960Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2116.5, "prompt_tokens": 1376, "completion_tokens": 36, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:31.732240Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:35.087788Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 3355.9, "prompt_tokens": 3061, "completion_tokens": 59, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:35.089885Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:40.647358Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 5557.3, "prompt_tokens": 2328, "completion_tokens": 119, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:40.649188Z"}
+{"n_claims": 3, "n_unsupported": 2, "available": true, "latency_ms": 101.9, "event": "grounding_verified", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T12:15:40.751559Z"}
+{"session_id": "fa4e59e7-1e5a-493d-887d-b3d25afee055", "action": "ANSWER", "latency_ms": 13227, "ablation": "C5", "citations": 1, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T12:15:40.760784Z"}
+INFO:     127.0.0.1:62310 - "POST /api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/feedback HTTP/1.1" 201 Created
+INFO:     127.0.0.1:62310 - "GET /api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/context HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62310 - "GET /api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/summary?format=json HTTP/1.1" 200 OK
+{"status_code": 401, "error_code": "UNAUTHORIZED", "detail": "Session token required.", "path": "/api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/history", "event": "http_exception", "logger": "medbridge.api.middleware.error_handler", "level": "warning", "timestamp": "2026-10-11T12:15:40.958923Z"}
+INFO:     127.0.0.1:62310 - "GET /api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/history HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:62310 - "POST /api/sessions HTTP/1.1" 201 Created
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:42.746598Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1777.7, "prompt_tokens": 1438, "completion_tokens": 29, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:42.748795Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:42.772108Z"}
+{"mode": "hybrid", "count": 20, "collection": "clinical_guidelines", "event": "retrieval_complete", "logger": "medbridge.retrieval.hybrid_retriever", "level": "info", "timestamp": "2026-10-11T12:15:42.773523Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 40.75it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:45.111041Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2362.2, "prompt_tokens": 1376, "completion_tokens": 47, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:45.112124Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:47.019972Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1909.4, "prompt_tokens": 267, "completion_tokens": 64, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:47.021858Z"}
+{"session_id": "f64c71cc-6a70-4d47-b9a0-45a1d3e18617", "action": "SOFT-ASK", "latency_ms": 6055, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T12:15:47.033813Z"}
+INFO:     127.0.0.1:62310 - "POST /api/sessions/f64c71cc-6a70-4d47-b9a0-45a1d3e18617/messages HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:52.045130Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 5005.1, "prompt_tokens": 1599, "completion_tokens": 154, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:52.047250Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:52.072388Z"}
+{"mode": "hybrid", "count": 20, "collection": "clinical_guidelines", "event": "retrieval_complete", "logger": "medbridge.retrieval.hybrid_retriever", "level": "info", "timestamp": "2026-10-11T12:15:52.073490Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 40.92it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:54.535360Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2481.5, "prompt_tokens": 1542, "completion_tokens": 44, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:54.537417Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:15:59.772525Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 5235.9, "prompt_tokens": 3994, "completion_tokens": 85, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:15:59.773394Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:16:08.615749Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 8847.5, "prompt_tokens": 3141, "completion_tokens": 210, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:16:08.620153Z"}
+{"n_claims": 7, "n_unsupported": 7, "available": true, "latency_ms": 642.2, "event": "grounding_verified", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T12:16:09.262651Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:16:18.258847Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 9001.2, "prompt_tokens": 3157, "completion_tokens": 217, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T12:16:18.263237Z"}
+{"n_claims": 7, "n_unsupported": 6, "available": true, "latency_ms": 585.1, "event": "grounding_verified", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T12:16:18.848639Z"}
+{"session_id": "f64c71cc-6a70-4d47-b9a0-45a1d3e18617", "action": "GENERALIZE", "latency_ms": 31820, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T12:16:18.860655Z"}
+INFO:     127.0.0.1:62310 - "POST /api/sessions/f64c71cc-6a70-4d47-b9a0-45a1d3e18617/messages HTTP/1.1" 200 OK
+{"session_id": "fa4e59e7-1e5a-493d-887d-b3d25afee055", "event": "session_erased", "logger": "medbridge.state.turn_store", "level": "info", "timestamp": "2026-10-11T12:16:18.876141Z"}
+INFO:     127.0.0.1:62310 - "DELETE /api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055 HTTP/1.1" 204 No Content
+{"session_id": "fa4e59e7-1e5a-493d-887d-b3d25afee055", "path": "/api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/history", "event": "session_erased_access", "logger": "medbridge.api.middleware.error_handler", "level": "info", "timestamp": "2026-10-11T12:16:18.878847Z"}
+INFO:     127.0.0.1:62310 - "GET /api/sessions/fa4e59e7-1e5a-493d-887d-b3d25afee055/history HTTP/1.1" 410 Gone
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "app_shutdown_begin", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T12:16:19.093502Z"}
+{"component": "llm_client", "event": "shutdown_closed", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T12:16:19.095974Z"}
+{"component": "qdrant_client", "event": "shutdown_closed", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T12:16:19.097585Z"}
+{"event": "Database connection pool disposed.", "logger": "medbridge.db.connection", "level": "info", "timestamp": "2026-10-11T12:16:19.107752Z"}
+{"component": "database", "event": "shutdown_closed", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T12:16:19.107951Z"}
+{"event": "app_shutdown_complete", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T12:16:19.108065Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [87444]
+/Users/yahmad/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

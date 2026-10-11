@@ -1,0 +1,116 @@
+INFO:     Started server process [88441]
+INFO:     Waiting for application startup.
+{"host": "[IP]", "port": 8000, "event": "app_startup_begin", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T12:27:20.544035Z"}
+{"event": "Database connection established successfully.", "logger": "medbridge.db.connection", "level": "info", "timestamp": "2026-10-11T12:27:20.583300Z"}
+{"event": "db_initialized_successfully", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T12:27:20.583434Z"}
+{"warmup": true, "event": "app_startup_complete", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T12:27:20.583895Z"}
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:20.707978Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:20.709372Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:20.928118Z"}
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+{"event": "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.", "logger": "huggingface_hub.utils._http", "level": "warning", "timestamp": "2026-10-11T12:27:20.929229Z"}
+{"event": "No modules.json found for cross-encoder/nli-MiniLM2-L6-H768, initializing a new CrossEncoder model.", "logger": "sentence_transformers.base.model", "level": "info", "timestamp": "2026-10-11T12:27:20.932526Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:21.173774Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:21.395131Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:21.621166Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:21.713162Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:21.717365Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:21.845301Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:22.086892Z"}
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 15858.34it/s]
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:22.407532Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:22.705973Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:22.938869Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:23.118753Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:23.120296Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:23.120520Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:23.129203Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:23.130067Z"}
+INFO:     127.0.0.1:64148 - "GET /health HTTP/1.1" 200 OK
+{"model": "cross-encoder/nli-MiniLM2-L6-H768", "device": "mps", "event": "grounding_model_loaded", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T12:27:23.272956Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:23.495313Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:23.730333Z"}
+{"event": "No modules.json found for cross-encoder/ms-marco-MiniLM-L-6-v2, initializing a new CrossEncoder model.", "logger": "sentence_transformers.base.model", "level": "info", "timestamp": "2026-10-11T12:27:23.730931Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:23.947718Z"}
+INFO:     127.0.0.1:64155 - "GET / HTTP/1.1" 200 OK
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:24.170907Z"}
+INFO:     127.0.0.1:64158 - "GET /static/css/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64159 - "GET /static/js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64155 - "GET /static/css/base.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64161 - "GET /static/css/print.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64160 - "GET /static/img/logo.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64161 - "GET /static/js/normalize.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64159 - "GET /static/js/errors.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64160 - "GET /static/js/api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64155 - "GET /static/js/sse.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64162 - "GET /static/js/store.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64158 - "GET /static/js/format.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64155 - "GET /static/js/ui/dom.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64160 - "GET /static/js/ui/composer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64161 - "GET /static/js/ui/emergency.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64158 - "GET /static/js/ui/icons.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64162 - "GET /static/js/ui/drawer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64159 - "GET /static/js/ui/context.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64162 - "GET /static/js/writeguard.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64158 - "GET /static/js/ui/theme.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64161 - "GET /static/js/ui/sidebar.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64155 - "GET /static/js/ui/messages.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64160 - "GET /static/js/ui/overlay.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64159 - "GET /static/js/actions.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64155 - "GET /static/js/markdown.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64162 - "GET /static/js/bp.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64160 - "GET /static/js/ui/stepper.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64158 - "GET /static/js/ui/bpchart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64161 - "GET /static/js/ui/explanation.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64160 - "GET /static/js/ui/charts.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64160 - "GET /api/config/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64160 - "GET /static/img/favicon.svg HTTP/1.1" 200 OK
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:24.427996Z"}
+INFO:     127.0.0.1:64165 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64167 - "GET /static/js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64169 - "GET /static/css/print.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64165 - "GET /static/css/base.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64168 - "GET /static/img/logo.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64166 - "GET /static/css/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64168 - "GET /static/js/format.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64167 - "GET /static/js/sse.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64165 - "GET /static/js/errors.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64166 - "GET /static/js/api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64169 - "GET /static/js/normalize.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64170 - "GET /static/js/store.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64166 - "GET /static/js/ui/composer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64168 - "GET /static/js/ui/context.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64167 - "GET /static/js/ui/dom.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64165 - "GET /static/js/ui/drawer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64170 - "GET /static/js/ui/emergency.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64167 - "GET /static/js/ui/messages.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64169 - "GET /static/js/ui/icons.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64165 - "GET /static/js/ui/sidebar.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64168 - "GET /static/js/ui/overlay.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64170 - "GET /static/js/writeguard.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64166 - "GET /static/js/ui/theme.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64167 - "GET /static/js/bp.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64169 - "GET /static/js/actions.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64170 - "GET /static/js/ui/explanation.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64165 - "GET /static/js/markdown.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64166 - "GET /static/js/ui/stepper.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64168 - "GET /static/js/ui/bpchart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64166 - "GET /static/js/ui/charts.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64166 - "GET /api/config/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64166 - "GET /static/img/favicon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64166 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:64166 - "POST /api/sessions/2e0d2ff9-1e69-47d4-abed-212dbf7e2ffa/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:24.845729Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:25.067371Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:25.286569Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:25.505999Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:25.727044Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:25.952105Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:26.173464Z"}
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 11228.73it/s]
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:26.454647Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:26.701620Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:26.937547Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T12:27:27.158310Z"}
