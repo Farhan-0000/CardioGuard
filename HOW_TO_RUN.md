@@ -671,7 +671,8 @@ If the folder contains a `.venv` copied from a Windows machine (it has `Scripts\
 
 If the shell scripts fail with `bad interpreter: /bin/bash^M`, they were checked out with
 Windows line endings. Fix with `sed -i '' 's/\r$//' scripts/*.sh` (and set
-`git config core.autocrlf input`).
+`git config core.autocrlf input`). If they fail with `permission denied` (a copy that lost
+the executable bit, for example from a zip or a Windows drive), run `chmod +x scripts/*.sh`.
 
 ### 5.3 Option A: automatic setup (recommended)
 
