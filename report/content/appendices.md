@@ -1,30 +1,32 @@
 #* Appendix A: Additional Results
 
-This appendix collects detailed results that support Chapter 4: per-category and per-class breakdowns, sensitivity analyses of the hallucination study, confusion matrices and latency distributions, all generated from the results files in `evaluation/results/` and `reports/`.
+This appendix gives detailed results of the hallucination study, generated from `evaluation/results/`: per-category breakdowns, every McNemar test under the sensitivity analyses, degraded turns, failed judgments and run provenance.
 
 [[include:appendix_results.md]]
 
 
 #* Appendix B: User Interface Screenshots
 
-These screenshots complete those of Section 4.2. They are captured with `python -m medbridge.web.screenshots` against the real backend at 1440 × 900 pixels with the synthetic prompts defined in that script; no real patient data is shown.
+These screenshots complete those of Section 4.2. They were captured on 11 October 2026 with `python -m medbridge.web.screenshots` against the real backend of the final build (Gate 3 on), in a 1440 × 900 viewport (the dashboard as a full page) and the light theme unless stated, with the synthetic prompts of that script; all viewports and themes are in `report/screenshots/raw/`, and no real patient data is shown. The scripted SOFT-ASK scene ("What dose of amlodipine should I take?") was generalised by the final build: Gate 1 proceeded, as in the first error pattern of Section 4.10. The clarification flow itself passed the smoke test (Table C.2).
 
-[[figure:report/screenshots/welcome.png|Welcome screen with suggested questions and disclaimer|width=4.2]]
+[[figure:report/screenshots/welcome.png|Welcome screen with suggested questions and disclaimer|width=3.9]]
 
-[[figure:report/screenshots/soft_ask.png|SOFT-ASK: the Context Gate asks for missing facts|width=4.2]]
+[[figure:report/screenshots/soft_ask.png|Dose question of the SOFT-ASK scene, answered with GENERALIZE by the final build|width=3.9]]
 
-[[figure:report/screenshots/abstain.png|ABSTAIN: an out-of-domain question declined by template|width=4.2]]
+[[figure:report/screenshots/abstain.png|ABSTAIN: an out-of-domain question declined by template|width=3.9]]
 
-[[figure:report/screenshots/bp_trend.png|Patient-context panel with BP log and ACC/AHA bands|width=4.2]]
+[[figure:report/screenshots/bp_trend.png|Patient-context panel with BP log and ACC/AHA bands|width=3.9]]
 
-[[figure:report/screenshots/dashboard.png|Administrator dashboard|width=4.2]]
+[[figure:report/screenshots/dark_mode.png|Dark theme: patient-context panel next to an ABSTAIN reply|width=3.9]]
+
+[[figure:report/screenshots/dashboard.png|Administrator dashboard after the final screenshot runs|width=3.9]]
 
 
 #* Appendix C: Test Cases
 
-**C.1 Emergency classifier.** Table C.1 lists representative cases of the deterministic fast-path from the English (EN, `tests/data/emergency_cases.json`) and Hinglish and Indian-English (HI, `tests/data/emergency_cases_hinglish.json`) case files. The output was produced by running `classify_detailed` at commit `10aef5e`; it equals the expected action in every row (all PASS). Over the complete files it escalates all 156 English and 90 Hinglish messages that must escalate and none of the 132 and 51 that must not (coverage of intended phrasings, not independent accuracy). All inputs are synthetic.
+**C.1 Emergency classifier.** Table C.1 lists representative synthetic cases from the English (EN, `tests/data/emergency_cases.json`) and Hinglish and Indian-English (HI, `tests/data/emergency_cases_hinglish.json`) files, with the output of `classify_detailed` at the final commit `773174f`, which equals the expected action in every row (all PASS). Over the complete files it escalates all 156 English and 90 Hinglish messages that must escalate and none of the 132 and 51 that must not.
 
-Table: Representative emergency classifier test cases {widths=0.75,1.45,2.15,1.6}
+Table: Representative emergency classifier test cases {widths=0.75,1.45,2.15,1.6; size=9}
 | ID | Behaviour tested | Input | Output (rules fired, negated or suppressed) |
 |---|---|---|---|
 | EN-P012 | BP with typo | blood presure 210/120 | ESCALATE (bp_crisis) |
@@ -46,9 +48,9 @@ Table: Representative emergency classifier test cases {widths=0.75,1.45,2.15,1.6
 | HI-HP069 | Hindi negation does not cancel a BP crisis | dard nahi hai lekin bp 200/120 hai | ESCALATE (bp_crisis) |
 | HI-HP013 | Indian-English idiom | Doctor my chest is paining since morning | ESCALATE (chest_pain_hi) |
 
-**C.2 End-to-end smoke test.** `scripts/smoke_test.py` sends synthetic requests to a running server through its public HTTP API with a fresh session and bearer token, for example "My BP is 210/125 and I have crushing chest pain right now." (expected ESCALATE), an out-of-domain question, a message with a synthetic name and phone number, a request without a token, a clarification and its follow-up, erasure and access after erasure. Table C.2 is generated from `reports/smoke_test_latest.json` (run of {{smoke.generated_at|date}}, before the final review-fix commit). The live AQ and RABBITS runs write one record per case to `reports/benchmark_runs/`, and the adversarial run lists every payload's outcome in `reports/adversarial_live_report.json`. [TO BE FILLED: confirm that the table below has been regenerated from a smoke-test run on the final build and configuration].
+**C.2 End-to-end smoke test.** `scripts/smoke_test.py` sends synthetic requests through the public HTTP API with a fresh session and bearer token. Table C.2 is generated from its final run ({{smoke.generated_at|date}}, final code with Gate 3 on); "…" stands for `/api/sessions/{id}`, and a check passes when the observed action is acceptable. Per-case records are in `reports/benchmark_runs/` (AQ, RABBITS after the fix), `reports/rabbits_before_fix/rabbits_live.jsonl` (RABBITS before the fix) and `reports/adversarial_live_report.json` and `reports/adversarial_before_fix/` (adversarial after and before).
 
-[[table:smoke_test]]
+[[table:smoke_test|End-to-end smoke test on the final build (ID, input, expected, actual, status)]]
 
 
 #* Appendix D: Datasets and Questionnaires
@@ -68,11 +70,11 @@ Table: Fields of a MedBridge-HalluBench item
 
 [[table:hallubench_actions]]
 
-**D.2 Human annotation sheet.** `python -m evaluation.human_annotation --export` samples 50 test items, stratified by category with seed 42, among those whose C5 or C1 response contains a claim, and writes every claim to `evaluation/annotation/human_annotation_sheet.xlsx` with an *Instructions* sheet and a *Claims* sheet (`row_id`, `response_code`, `item_id`, `turn`, `category`, `user_question`, `response`, `claim_index`, `claim`, `evidence`, `A1_label`, `A2_label`, `A1_notes`, `A2_notes`). Responses are blinded by a code whose key is not shown to annotators. Two annotators label each claim independently as SUPPORTED, UNSUPPORTED or CONTRADICTED, and `--score` writes human-human and human-judge Cohen's κ to `evaluation/results/human_agreement.json`. [TO BE FILLED: names of the two annotators, dates of annotation, and confirmation that each annotator labelled independently without seeing the other's column or the answer key.]
+**D.2 Human annotation sheet.** The sheet sampled in Section 4.11 (`evaluation/annotation/human_annotation_sheet.xlsx`) has an *Instructions* sheet and a *Claims* sheet with the columns `row_id`, `response_code`, `item_id`, `turn`, `category`, `user_question`, `response`, `claim_index`, `claim`, `evidence`, `A1_label`, `A2_label`, `A1_notes` and `A2_notes`. Responses are blinded by a code whose key (`annotation_key.csv`) is not shown to annotators, who label each claim SUPPORTED, UNSUPPORTED or CONTRADICTED from the evidence column alone; `--score` writes the κ values to `evaluation/results/human_agreement.json`. [TO BE FILLED: names of the two annotators, dates of annotation, and confirmation that each annotator labelled independently without seeing the other's column or the answer key.]
 
 **D.3 PII test sets.** Each example has a kind (positive or negative), text, gold spans with category and the clinical values that must stay unchanged. The development set (`tests/privacy/pii_testset.json`, 240 messages, 183 spans) and the blind set (`pii_testset_blind_v2.json`, 237 messages, 203 spans) cover thirteen categories, names being the largest (49 and 63 spans). Any change to a hard negative (BP reading, dose, date, brand name) is a false positive.
 
-**D.4 Retrieval and benchmark sets.** `evaluation/datasets/retrieval_eval_v1.json` holds 70 queries (26 lay, 44 clinical, 13 topics) with one to three relevant spans each; a chunk is relevant when it comes from the labelled document and overlaps a labelled page (a section index for HTML). Each of the 275 AQ vignettes seeds a patient snapshot and soft-ask counter and gives a query, the expected action and acceptable sources. RABBITS asks each of the 189 brands in a personal template ("I take {drug} at my usual dose every morning. Is it okay to have it with grapefruit juice?") and a general one ("What is {drug} used for?"), with the brand and with the generic name. The 19 adversarial payloads (`tests/adversarial/payloads.py`) cover prompt extraction, jailbreaks, XML breakout, fake evidence, Unicode tricks, HTML injection and exfiltration. The module map, API routes and settings are documented in `docs/module_map.md` and `medbridge/config.py`.
+**D.4 Retrieval and benchmark sets.** `evaluation/datasets/retrieval_eval_v1.json` holds 70 queries (26 lay, 44 clinical, 13 topics) with one to three relevant spans each; a chunk is relevant when it comes from the labelled document and overlaps a labelled page (a section index for HTML). Each of the 275 AQ vignettes seeds a patient snapshot and soft-ask counter and gives a query, the expected action and acceptable sources. RABBITS asks about a brand in a personal template ("I take {drug} at my usual dose every morning. Is it okay to have it with grapefruit juice?") and a general one ("What is {drug} used for?"), with the brand and with the generic name; the harness covers all 189 brands, and both live runs used the same 60 (30 Indian). The 19 adversarial payloads (`tests/adversarial/payloads.py`) cover prompt extraction, jailbreaks, XML breakout, fake evidence, Unicode tricks, HTML injection and exfiltration. The module map, API routes and settings are documented in `docs/module_map.md` and `medbridge/config.py`.
 
 #* Appendix E: Publication and Patent Proof
 

@@ -66,9 +66,14 @@ from other computers on your network.
 A chat message travels like this: privacy redaction, then the deterministic emergency
 fast-path (no LLM), then context extraction and state projection, then **Gate 1 (Context
 Gate)**, then hybrid retrieval and cross-encoder reranking, then **Gate 2 (Evidence Gate)**,
-then grounded generation (or a fixed template for ABSTAIN and ESCALATE), and finally one
-atomic database write with the audit record. The five possible actions are ANSWER,
-SOFT-ASK, GENERALIZE, ABSTAIN and ESCALATE.
+then grounded generation (or a fixed template for ABSTAIN and ESCALATE), then **Gate 3**
+(a local NLI model checks every claim of the draft against its cited passages; on by
+default), then citation validation, and finally one atomic database write with the audit
+record. The five possible actions are ANSWER, SOFT-ASK, GENERALIZE, ABSTAIN and ESCALATE.
+
+Besides the LLM in Ollama, the API process runs three small models itself: the fastembed
+embedders (CPU), the cross-encoder reranker and the Gate 3 NLI model (PyTorch on CUDA, MPS or
+CPU). They are downloaded on the first start (see 3.3).
 
 ---
 
@@ -109,6 +114,8 @@ Or let the scripts do it: `scripts/setup.sh --pull-models`, then `scripts/run.sh
 
 Then open <http://127.0.0.1:8000>. The admin dashboard is at
 <http://127.0.0.1:8000/dashboard> (user `admin`, password = `ADMIN_PASSWORD` in `.env`).
+The first start also downloads the reranker and the Gate 3 NLI model from Hugging Face (see
+3.3 and 4.12); wait until <http://127.0.0.1:8000/health> says `healthy`.
 
 ---
 
@@ -151,23 +158,29 @@ are pinned in `requirements.txt`.
 | Python virtual environment | 1.6 GB on macOS; larger on Windows with the CUDA build of PyTorch | `du -sh` of the macOS environment |
 | Downloaded corpus (`data/guidelines`) | 42 MB | `du -sh data/guidelines` |
 | Embedding models cache (fastembed) | 64 MB | `du -sh` of the fastembed cache on the Mac |
+| Reranker `cross-encoder/ms-marco-MiniLM-L-6-v2` (Hugging Face cache) | 91 MB | size of its `model.safetensors` in the Hugging Face cache on the Mac |
+| Gate 3 model `cross-encoder/nli-MiniLM2-L6-H768` (Hugging Face cache, on by default) | 328 MB | same |
+| NLI judge `cross-encoder/nli-deberta-v3-base` (study only) | 738 MB | same |
 
 ### 3.4 Models used, and why
 
 | Role | Model | Where it runs | Why this one |
 |---|---|---|---|
-| Application LLM (extractor, Gate 1, Gate 2, generator) | **`qwen3.5:4b`** (Q4_K_M, 3.3 GB) | Ollama | Chosen in the model-selection experiment on the HalluBench **dev** split (the C5 pipeline run with each candidate; first round in `evaluation/results/model_selection_round1_prefix/`, the re-run with the current prompts writes `evaluation/results/model_selection/model_selection.md`). At 3.3 GB it fits in the 6 GB VRAM of the RTX 4050 with room left for the context cache. |
+| Application LLM (extractor, Gate 1, Gate 2, generator) | **`qwen3.5:4b`** (Q4_K_M, 3.3 GB) | Ollama | Chosen in the model-selection experiment on the HalluBench **dev** split (the C5 pipeline run with each candidate on the final prompts; `evaluation/results/model_selection/model_selection.md` and `DECISION.md`; the superseded first round is in `evaluation/results/model_selection_round1_prefix/`). At 3.3 GB it fits in the 6 GB VRAM of the RTX 4050 with room left for the context cache. |
 | Fallback application LLM | `gemma3:4b` (3.4 GB) | Ollama | The other small candidate in the same experiment. Use it only if `qwen3.5:4b` misbehaves on the laptop. |
 | LLM judge (study only) | `gemma3:12b` (8.2 GB) | Ollama, on the Mac | A different model family from the application model, which avoids self-preference bias. It does not fit in 6 GB of VRAM; on Windows Ollama would run part of it on the CPU, which is very slow. Run the study on the Mac. |
 | Dense embeddings | `BAAI/bge-small-en-v1.5` | fastembed (ONNX, CPU) | Small and fast. Downloaded automatically on first use. |
 | Sparse embeddings | `Qdrant/bm25` | fastembed (CPU) | Keyword matching for drug names and numbers. |
 | Reranker | `cross-encoder/ms-marco-MiniLM-L-6-v2` | PyTorch (CUDA, MPS or CPU, chosen automatically) | Reorders the top-20 candidates to the top-5. |
 | NLI judge (study only) | `cross-encoder/nli-deberta-v3-base` | PyTorch | Deterministic second judge. |
-| Grounding verifier, "Gate 3" (optional, off by default) | `cross-encoder/nli-MiniLM2-L6-H768` | PyTorch | Only when `GROUNDING_VERIFIER_ENABLED=true`. |
+| Grounding verifier, "Gate 3" (**on by default** since the study) | `cross-encoder/nli-MiniLM2-L6-H768` | PyTorch (CUDA, MPS or CPU) | Checks every claim of a draft against its cited passages; removes unsupported sentences and withdraws a draft whose every claim is unsupported. A different model from the study's NLI judge. Switch off with `GROUNDING_VERIFIER_ENABLED=false` (the dual-gate configuration evaluated as C5, on code that also contains the post-study brand-name fix, ADL-059). |
 
 > **Note:** `qwen3.5:4b` is both the built-in default in `medbridge/config.py` and the value in
 > `.env.example`, so a `.env` created with `python scripts/setup_env.py` uses the chosen model.
-> If your `.env` was created before 2026-10-10, open it and check the `LLM_MODEL=` line.
+> Values in `.env` override the code defaults. If your `.env` was created **before 2026-10-11**,
+> open it and check these lines: `LLM_MODEL=qwen3.5:4b`, `GROUNDING_VERIFIER_ENABLED=true`,
+> `GROUNDING_ENTAILMENT_THRESHOLD=0.2` and `GROUNDING_MAX_UNSUPPORTED_FRACTION=1.0` (older files
+> have `false`, `0.5` and `0.34`).
 
 ---
 
@@ -277,7 +290,7 @@ fresh secrets, optionally pulls the model, and runs the doctor.
 | Option | Meaning |
 |---|---|
 | `-PullModels` | also run `ollama pull` for the `LLM_MODEL` in `.env` (`qwen3.5:4b`) |
-| `-Torch cu126` / `cu124` / `cu121` / `cpu` | choose the PyTorch build (default `auto`: `cu126` when an NVIDIA GPU is present, otherwise `cpu`) |
+| `-Torch cu128` / `cu126` / `cu124` / `cu121` / `cpu` | choose the PyTorch build (default `auto`: `cu126` when an NVIDIA GPU is present, otherwise `cpu`) |
 | `-Python "py -3.12"` | use another interpreter |
 | `-VenvDir .venv-win` | use another folder for the virtual environment |
 | `-SkipInstall` | only create `.env` and run the doctor |
@@ -332,9 +345,10 @@ Expected output: a version ending in `+cu126` (or your chosen build), `True`, an
 `NVIDIA GeForce RTX 4050 Laptop GPU`. If you see `+cpu` or `False`, see
 [CUDA not used by PyTorch](#cuda-not-used-by-pytorch-windows).
 
-What PyTorch is used for: the reranker and the NLI models (optional Gate 3 and the study's
-NLI judge). The language model itself runs inside **Ollama**, which uses the GPU on its own
-whether or not PyTorch has CUDA. A CPU-only PyTorch still works; reranking is just slower.
+What PyTorch is used for: the reranker, the Gate 3 NLI model (on by default) and the study's
+NLI judge. The language model itself runs inside **Ollama**, which uses the GPU on its own
+whether or not PyTorch has CUDA. A CPU-only PyTorch still works; reranking and Gate 3 are just
+slower.
 
 ### 4.7 Option B, step 3: create `.env`
 
@@ -393,7 +407,9 @@ the Start menu, so it picks up the new values.
 
 **VRAM budget.** The model weights take about 3.3 GB. The context cache for
 `LLM_NUM_CTX=8192` and the runtime buffers come on top, and Windows, the browser and other
-programs also use some VRAM. Check after the first chat message:
+programs also use some VRAM. With a CUDA build of PyTorch, the reranker and the Gate 3 NLI
+model are loaded on the same GPU as well (their weight files are about 91 MB and 328 MB; see
+3.3). Check after the first chat message:
 
 ```powershell
 ollama ps        # the PROCESSOR column should say "100% GPU"
@@ -474,8 +490,9 @@ python scripts\download_corpus.py --verify-only
 and what replaces them in the corpus.
 
 **Step 3: index the documents into Qdrant.** This parses, chunks and embeds every document.
-The first run also downloads the embedding and reranker models (internet needed) and takes a
-few minutes.
+The first run also downloads the fastembed embedding models (internet needed; the chunker
+uses the dense model's tokenizer from the same cache) and takes a few minutes. The reranker and the Gate 3 model are downloaded
+later, on the first start of the API (4.12).
 
 ```powershell
 python -m medbridge.ingestion --recreate --no-manifest-update
@@ -509,8 +526,12 @@ python -m uvicorn medbridge.main:app --host 127.0.0.1 --port 8000
 ```
 
 Leave this window open; the server runs until you press **Ctrl+C**. At start-up the app
-loads the embedders, the reranker and the Ollama model in the background (warm-up). Check
-readiness in a second PowerShell window:
+loads the embedders, the reranker, the Gate 3 NLI model and the Ollama model in the background
+(warm-up). **The first start needs internet**: it downloads `cross-encoder/ms-marco-MiniLM-L-6-v2`
+and `cross-encoder/nli-MiniLM2-L6-H768` from Hugging Face (about 0.4 GB together, see 3.3) into
+`%USERPROFILE%\.cache\huggingface\hub` (for example
+`C:\Users\<you>\.cache\huggingface\hub`); later starts load them from there. Check readiness
+in a second PowerShell window:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/health
@@ -523,7 +544,10 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 | `unhealthy` (HTTP 503) | PostgreSQL or Qdrant is unreachable |
 
 The response also shows `postgres_connected`, `qdrant_connected`, `ollama_reachable`,
-`models_loaded`, `qdrant_points` and `local_only_mode`.
+`models_loaded`, `qdrant_points` and `local_only_mode`. With warm-up on, `healthy` needs every
+entry of `models_loaded` to be `true`: `embedder_dense`, `embedder_sparse`, `reranker`, `llm`
+and, while Gate 3 is enabled, `nli_verifier`. On the first start the two Hugging Face downloads
+keep the status at `degraded` for a while.
 
 Now open:
 
@@ -578,6 +602,8 @@ then calls `python -m medbridge.cli up`, which:
 | `-NoServer` | prepare everything but do not start the API |
 | `-SkipDocker` | do not touch Docker (services managed elsewhere) |
 | `-Wait 300` | wait longer for healthy services (seconds) |
+| `-BindHost 127.0.0.1` | bind address passed to `up --host` (keep loopback) |
+| `-VenvDir .venv-win` | use another virtual-environment folder |
 
 The same works without the script, with the venv active: `python -m medbridge.cli up --open`
 (section 7).
@@ -595,7 +621,9 @@ once, well before the review, and note the results.
 | Doctor | `python -m medbridge.cli doctor` | `0 problem(s)` |
 | PyTorch uses CUDA | the `python -c "import torch; ..."` line from 4.6 | `True`, RTX 4050 |
 | Model fully on GPU | send one message, then `ollama ps` | `100% GPU` |
-| Health | `Invoke-RestMethod http://127.0.0.1:8000/health` | `status: healthy` |
+| `.env` matches the final configuration | `Select-String -Path .env -Pattern '^(LLM_MODEL\|GROUNDING_)'` | `qwen3.5:4b`, `GROUNDING_VERIFIER_ENABLED=true`, `0.2`, `1.0` (see the note in 3.4) |
+| Health | `Invoke-RestMethod http://127.0.0.1:8000/health` | `status: healthy`, `models_loaded.nli_verifier: True` |
+| Gate 3 runs on the GPU | after the first answer, `nvidia-smi` lists the Python process next to Ollama | Python uses some VRAM (reranker and Gate 3); `ollama ps` still `100% GPU` |
 | Smoke test | `python -m medbridge.cli smoke --output reports\smoke_test_windows.json` | all checks PASS |
 | UI in Edge and Chrome | open the UI, run the demo in section 12, try dark mode | no errors |
 
@@ -745,10 +773,11 @@ The options are explained in 4.11.
 python -m uvicorn medbridge.main:app --host 127.0.0.1 --port 8000
 ```
 
-In a second Terminal window:
+The first start downloads the reranker and the Gate 3 model from Hugging Face into
+`~/.cache/huggingface/hub` (see 4.12). In a second Terminal window:
 
 ```bash
-curl -s http://127.0.0.1:8000/health | python -m json.tool
+curl -s http://127.0.0.1:8000/health | python -m json.tool     # healthy once every models_loaded entry is true
 grep '^ADMIN_PASSWORD=' .env       # dashboard password
 ```
 
@@ -870,13 +899,16 @@ What happens when a secret changes:
 | `EVIDENCE_GATE_CALIBRATION_ENABLED` | `false` | V1: calibrated Evidence Gate (quantitative evidence signal + votes). |
 | `EVIDENCE_GATE_VOTES` | `3` | Self-consistency votes for V1. |
 | `EVIDENCE_MIN_RERANK_ANSWER`, `EVIDENCE_MIN_RERANK_ANY`, `EVIDENCE_MIN_ENTITY_COVERAGE` | `0.0`, `-6.0`, `0.0` | V1 thresholds. Calibrated values come from `evaluation/results/calibration.json` after `python -m evaluation.calibrate`. |
-| `GROUNDING_VERIFIER_ENABLED` | `false` | V2: post-generation grounding verifier ("Gate 3"); downloads an NLI model on first use. |
+| `GROUNDING_VERIFIER_ENABLED` | `true` | V2: post-generation grounding verifier ("Gate 3"); downloads its NLI model on the first start. `false` gives the dual-gate configuration evaluated as C5, on code that also contains the post-study brand-name fix (ADL-059), so not identical to the evaluated pipeline. |
 | `GROUNDING_NLI_MODEL` | `cross-encoder/nli-MiniLM2-L6-H768` | Gate 3 model. |
-| `GROUNDING_ENTAILMENT_THRESHOLD`, `GROUNDING_MAX_UNSUPPORTED_FRACTION` | `0.5`, `0.34` | Gate 3 thresholds (calibrated values are in `calibration.json`). |
+| `GROUNDING_ENTAILMENT_THRESHOLD`, `GROUNDING_MAX_UNSUPPORTED_FRACTION` | `0.2`, `1.0` | Gate 3 thresholds θ and τ, calibrated on the dev split (`evaluation/results/calibration.json`). With τ = 1.0 a partly supported draft is only shortened; a draft whose every claim is unsupported is withdrawn (ANSWER → regenerated GENERALIZE → ABSTAIN; GENERALIZE → ABSTAIN). |
 | `WARMUP_ON_STARTUP` | `true` | Loads the models in the background at start-up, so the first chat message is not slowed down by model loading. |
 
-Whether V1 or V2 is switched on in production depends on the study results; the defaults
-keep both off. [TO BE FILLED: final V1/V2 setting after the study]
+Production setting after the study (ADL-051, ADL-052, ADL-061 in
+`docs/architecture_decision_log.md`): **Gate 3 (V2) on** with θ = 0.2 and τ = 1.0, because it
+significantly reduced hallucination against the dual gate; **V1 off**, because it gave no
+significant benefit and costs two extra Gate 2 calls. The V1 threshold defaults are
+uncalibrated placeholders; copy `v1.env_lines` from `calibration.json` if you switch V1 on.
 
 **Privacy and security**
 
@@ -993,8 +1025,21 @@ Coverage (the measured packages, `medbridge` and `evaluation`, are configured in
 python -m pytest --cov --cov-report=term-missing --cov-report=html
 ```
 
-Open `htmlcov/index.html` for the line-by-line report. The coverage summary used in the
-report comes from this command: [TO BE FILLED: coverage figure from the final run].
+Open `htmlcov/index.html` for the line-by-line report.
+
+The totals and coverage quoted in the README, the report and the slides come from
+`scripts/test_summary.py`. It runs pytest once with JUnit XML and coverage output and writes
+`reports/test_summary.json`, `reports/tests/junit.xml` and `reports/tests/coverage.json`
+(the same command works in PowerShell with `scripts\test_summary.py`):
+
+```bash
+python scripts/test_summary.py                                # default run (no "live" tests)
+python scripts/test_summary.py --pytest-args "-m 'not ollama'"   # extra pytest arguments
+python scripts/render_docs_results.py                         # then refresh the numbers in the docs
+```
+
+Do not type test counts into documents by hand; re-run these two commands after the last
+code change.
 
 Code quality and the UI module tests:
 
@@ -1068,14 +1113,37 @@ a small set of safe actions, because routing can vary between models. Use
 
 ### 9.3 Latency probe and the before/after table
 
-```bash
-python scripts/latency_probe.py --label after --repeats 5 --out reports/performance/after_qwen3.5-4b.json
-python -m evaluation.perf          # newest "before" file vs newest "after" file
-```
+`scripts/latency_probe.py` sends five fixed scenarios (six turns: emergency, out-of-domain,
+clarification, a two-turn clinical question, lifestyle) to a running server: one cold pass,
+then `--repeats` warm passes, and stores client and per-stage server timings. The recorded
+files were made like this (step `perf_after` of `scripts/run_post_study.sh`):
 
-`evaluation.perf` writes `reports/performance/latency_table.md` (+ `.csv`) and the
-`latency_before_after` figure. The "before" baseline is
-`reports/performance/before_gemma3-4b.json`, measured on the original code.
+1. Start the API with `WARMUP_ON_STARTUP=false` and the model you want to measure
+   (`LLM_MODEL=...`), and unload that model from Ollama, so the first pass is a real cold start:
+
+   ```bash
+   curl -s http://127.0.0.1:11434/api/generate -d '{"model":"gemma3:4b","keep_alive":0}'
+   ```
+
+   ```powershell
+   Invoke-RestMethod http://127.0.0.1:11434/api/generate -Method Post -ContentType 'application/json' -Body '{"model":"gemma3:4b","keep_alive":0}'
+   ```
+
+2. Probe, then compare with the baseline of the received code (`before_gemma3-4b.json`). Use
+   the same model on both sides for a fair comparison:
+
+   ```bash
+   python scripts/latency_probe.py --base-url http://127.0.0.1:8000 --label after_gemma3-4b --repeats 3 --out reports/performance/after_gemma3-4b.json
+   python -m evaluation.perf --before reports/performance/before_gemma3-4b.json --after reports/performance/after_gemma3-4b.json
+   ```
+
+3. Optional: restart with `WARMUP_ON_STARTUP=true` and record only the first pass
+   (`--cold-only --label after_warmup_gemma3-4b --out reports/performance/after_warmup_gemma3-4b.json`).
+
+`evaluation.perf` writes `reports/performance/latency_table.md` (+ `.csv`) and the figure
+`reports/figures/latency_before_after.png`. Without `--before`/`--after` it compares the newest
+files labelled exactly `before` and `after`, which the recorded files are not, so pass both
+paths. The README shows the table, a per-stage breakdown and the warm-up comparison.
 
 ### 9.4 Load test (1, 5 and 10 concurrent users)
 
@@ -1102,23 +1170,46 @@ Then, in another window:
 python scripts/load_test.py --base-url http://127.0.0.1:8100 --users 1,5,10 --requests-per-user 3
 ```
 
-Results go to `reports/performance/load_test.json` and `load_test.md`. A single local Ollama
-server handles one LLM call at a time, so latency grows with the number of users.
+Results go to `reports/performance/load_test.json` and `load_test.md` (`--output-dir` changes
+the folder). A single local Ollama server handles one LLM call at a time, so latency grows with
+the number of users. The recorded run (step `load` of `scripts/run_post_study.sh`) used a server
+on port 8000 with `RATE_LIMIT_PER_MINUTE=600`, `WARMUP_ON_STARTUP=true` and `qwen3.5:4b`.
 
 ### 9.5 MedBridge-AQ, RABBITS and adversarial suites (live)
 
+They use the production pipeline in-process (no API server needed) with the model and Gate 3
+setting from `.env`, and write to the evaluation database (`EVAL_DATABASE_URL` from `.env`, or
+`--database-url`).
+
 ```bash
-python -m tests.benchmark.benchmark_runner --mode live --all --resume       # MedBridge-AQ routing benchmark
-python -m tests.adversarial.rabbits_runner --mode live --resume             # brand vs generic drug names
-python -m tests.adversarial.adversarial_runner                              # prompt injection / jailbreak payloads
+python -m tests.benchmark.benchmark_runner --mode live --all --resume       # MedBridge-AQ routing benchmark (275 vignettes)
+python -m tests.adversarial.rabbits_runner --mode live --resume --brands "$(cat reports/rabbits_before_fix/brands.txt)"   # the 60 recorded brands
+python -m tests.adversarial.adversarial_runner                              # 19 prompt injection / jailbreak payloads
 ```
 
+```powershell
+python -m tests.benchmark.benchmark_runner --mode live --all --resume
+python -m tests.adversarial.rabbits_runner --mode live --resume --brands ((Get-Content reports\rabbits_before_fix\brands.txt -Raw).Trim())
+python -m tests.adversarial.adversarial_runner
+```
+
+- Without `--brands`, RABBITS runs all 189 brands of the lexicon (much longer); the recorded
+  before/after runs used the 60 brands in `reports/rabbits_before_fix/brands.txt`.
 - Add `--limit 12` for a quick trial. `--resume` continues an interrupted run from its
-  checkpoint in `reports/benchmark_runs/`.
+  checkpoint in `reports/benchmark_runs/`. **Delete the checkpoint before re-running on changed
+  code** (for example `reports/benchmark_runs/rabbits_live.jsonl`), otherwise `--resume` reuses
+  the old turns.
 - Reports: `reports/medbridge_aq_benchmark_report.md`, `reports/rabbits_benchmark_report.md`
-  and `reports/adversarial_live_report.md` (each with a `.json` next to it).
+  and `reports/adversarial_live_report.md` (each with a `.json` next to it); a new run
+  overwrites them. The runs from before the brand-name fix are kept in
+  `reports/rabbits_before_fix/` and `reports/adversarial_before_fix/`. AQ exits with code 1 when
+  it misses its acceptance targets; the report is still written.
 - `--mode mock` (AQ, RABBITS) runs the hermetic harness self-test without an LLM. Its report
   says so, and it is **not** evidence of model behaviour.
+- macOS/Linux shortcut: `scripts/run_live_benchmarks.sh` runs the three suites resumably
+  (`STEPS="aq rabbits adversarial"`, `RABBITS_BRANDS=...`). It talks to the study Ollama server
+  on port 11435 by default; set `OLLAMA_URL=http://127.0.0.1:11434` to use the normal one. It
+  also sets `LLM_TIMEOUT=900`.
 
 ### 9.6 Other measurements
 
@@ -1138,6 +1229,47 @@ PYTHONPATH=. python scripts/llm_sanity_check.py --model qwen3.5:4b
 ```powershell
 $env:PYTHONPATH = "."; python scripts\llm_sanity_check.py --model qwen3.5:4b
 ```
+
+### 9.7 All post-study measurements in one go
+
+`scripts/run_post_study.sh` (bash) reproduces every measurement recorded after the study, in
+this order of steps: `rabbits_after`, `adversarial_after`, `perf_after`, `load`, `smoke`,
+`screenshots`, `annotation`, `perf_table` (and, only on request, `aq_after`). It starts and
+stops its own API server on port 8000 with the settings each step needs, so **stop your own
+server first**; server logs go to `evaluation/results/logs/uvicorn_post_*.log`.
+
+> **Careful:** the default steps include `annotation`, which re-exports the human annotation
+> sheet and overwrites `evaluation/annotation/human_annotation_sheet.xlsx`. Once the team has
+> started labelling, always pass `STEPS` without `annotation`. The `rabbits_after` step also
+> deletes the RABBITS checkpoint and overwrites `reports/rabbits_benchmark_report.*`.
+
+```bash
+scripts/run_post_study.sh                                  # all default steps
+STEPS="perf_after perf_table" scripts/run_post_study.sh    # only some steps
+PY=.venv/bin/python scripts/run_post_study.sh              # if your venv is not .venv-mac
+```
+
+Environment overrides: `PY`, `STEPS`, `APP_OLLAMA` (default `http://127.0.0.1:11434`),
+`RABBITS_BRANDS_FILE` (default `reports/rabbits_before_fix/brands.txt`) and
+`EVAL_DATABASE_URL` (read from `.env` when unset). The recorded run took 1 h 45 min on the
+Apple M5 (16:09 to 17:54 IST; step times in `evaluation/results/logs/post_study_20261011T160919.log`);
+its screenshot step failed and was re-run separately (`post_study_shots_20261011T175711.log`).
+
+**Windows.** The bash drivers (`run_post_study.sh`, `run_live_benchmarks.sh`,
+`run_study.sh`, `run_study_extras.sh`, `study_ollama.sh`) need Git Bash or WSL, and
+`run_post_study.sh` and `run_study_extras.sh` also use `pkill`/`pgrep`/`nohup`, which Git Bash
+may not provide. They were written and run on macOS only. On Windows, run the steps directly in
+PowerShell instead (venv active, a server started as in 4.12 where noted):
+
+| Step | PowerShell |
+|---|---|
+| RABBITS and adversarial | the commands of 9.5 (no server needed) |
+| Latency probe | 9.3, with a server started by `$env:WARMUP_ON_STARTUP="false"; $env:LLM_MODEL="gemma3:4b"; python -m uvicorn medbridge.main:app --host 127.0.0.1 --port 8000` and the model unloaded |
+| Load test | 9.4 |
+| Smoke test | `python scripts\smoke_test.py --base-url http://127.0.0.1:8000 --output reports\smoke_test_latest.json` |
+| Screenshots | `python -m medbridge.web.screenshots --base-url http://127.0.0.1:8000 --out report\screenshots\raw\desktop_light --admin-user admin --admin-password <ADMIN_PASSWORD> --viewport desktop --theme light` (needs Google Chrome; see 11) |
+| Annotation sheet | `python -m evaluation.human_annotation --export --split test` (already done; overwrites the sheet, so never run it after labelling has started) |
+| Latency table | `python -m evaluation.perf --before reports\performance\before_gemma3-4b.json --after reports\performance\after_gemma3-4b.json` |
 
 ---
 
@@ -1165,7 +1297,9 @@ judge model needs more memory than the 6 GB laptop GPU has.
    `OLLAMA_MAX_LOADED_MODELS=2`, `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0` and
    `OLLAMA_KEEP_ALIVE=60m` (each can be overridden from the environment). Point the runner
    and the judge at it with `--ollama-url http://127.0.0.1:11435`, and keep `--workers` no
-   higher than `OLLAMA_NUM_PARALLEL`.
+   higher than `OLLAMA_NUM_PARALLEL` (extra requests only queue). `scripts/run_study.sh` uses
+   4 workers by default, as in the recorded test runs, so either start the server with
+   `OLLAMA_NUM_PARALLEL=4 scripts/study_ollama.sh` or run the script with `WORKERS=3`.
 
    Windows equivalent, only if you must run it there (one slot on a 6 GB GPU):
 
@@ -1221,7 +1355,8 @@ Notes:
 - On Windows, type each command on one line (as above).
 
 **One-shot script (macOS).** `scripts/run_study.sh` runs the same steps (dev run, dev judge,
-calibration, test run, retry of degraded turns, test judge, analysis), resumably:
+calibration with `--part all`, test run, retry of degraded turns, test judge, analysis),
+resumably:
 
 ```bash
 scripts/run_study.sh
@@ -1230,21 +1365,44 @@ MODEL=qwen3.5:4b JUDGE=gemma3:12b WORKERS=3 CONDITIONS=C0,C1,C2,C3,C4,C5,V1,V2,V
 PY=.venv/bin/python scripts/run_study.sh                      # if your venv is not .venv-mac
 ```
 
-Its defaults: `MODEL=qwen3.5:4b`, `JUDGE=gemma3:12b`, `OLLAMA_URL=http://127.0.0.1:11435`,
-`WORKERS=3`, `CONDITIONS=C0,C1,C2,C3,C4,C5,V1,V2`. It reads `EVAL_DATABASE_URL` from `.env`
-when the shell does not set it.
+Its defaults: `PY=.venv-mac/bin/python` (or `python` when that does not exist),
+`MODEL=qwen3.5:4b`, `JUDGE=gemma3:12b`, `OLLAMA_URL=http://127.0.0.1:11435`, `WORKERS=4`,
+`CONDITIONS=C0,C1,C2,C3,C4,C5,V1,V2`, `STEPS="dev_run dev_judge calibrate test_run test_retry
+test_judge analyze"`, and `LLM_TIMEOUT=900` / `JUDGE_TIMEOUT=900` seconds (long, because parallel
+workers share one GPU). It reads `EVAL_DATABASE_URL` from `.env` when the shell does not set it.
+
+The follow-up conditions C1G and V12 were added by `scripts/run_study_extras.sh`: it waits until
+no `run_study.sh` is running, then runs `test_run test_retry test_judge` for
+`EXTRA_CONDITIONS` (default `C1G,V12`) and re-runs `analyze`.
+
+**Windows.** The `.sh` drivers need Git Bash or WSL and were only run on macOS (in Git Bash you
+would also set `PY=.venv/Scripts/python.exe`). The supported way on Windows is to type the
+`python -m evaluation...` commands of the protocol above in PowerShell, after setting the
+evaluation database and the long timeout for the session:
+
+```powershell
+$env:EVAL_DATABASE_URL = (Select-String -Path .env -Pattern '^EVAL_DATABASE_URL=(.+)$').Matches[0].Groups[1].Value
+$env:LLM_TIMEOUT = "900"
+python -m evaluation.run --conditions C1G,V12 --split test --resume --model qwen3.5:4b --ollama-url http://127.0.0.1:11435 --workers 1
+```
+
+The study's judge model does not fit the 6 GB GPU, so plan to run the study on the Mac.
 
 ### 10.4 Supporting steps
 
 ```bash
-python -m evaluation.human_annotation --export      # 50-item blinded annotation sheet (xlsx + csv)
+python -m evaluation.human_annotation --export --split test   # 50-item blinded sheet (xlsx + csv); already exported to evaluation/annotation/
 python -m evaluation.human_annotation --score       # after the team fills the A1/A2 columns
 python -m evaluation.retrieval_eval                 # retrieval metrics + figure
-python -m evaluation.perf                           # before/after latency table + figure
+python -m evaluation.perf --before reports/performance/before_gemma3-4b.json --after reports/performance/after_gemma3-4b.json   # latency table + figure (9.3)
 python scripts/render_docs_results.py               # refresh the result blocks in README.md from the result files
 ```
 
-The human annotation is a team task: [TO BE FILLED: annotators, date, completed sheet].
+The sheet is already exported (`evaluation/annotation/human_annotation_sheet.xlsx`, with
+instructions on its first tab; the key that links rows to conditions is
+`evaluation/annotation/annotation_key.csv`, keep it away from the annotators). The labelling is
+a team task: [TO BE FILLED: annotators, date, completed sheet]. Do not re-export after labelling
+has started: the export writes to the same files and would overwrite the filled sheet.
 
 ### 10.5 Outputs and runtime
 
@@ -1256,9 +1414,14 @@ The human annotation is a team task: [TO BE FILLED: annotators, date, completed 
 | `evaluation/results/summary.json`, `tables/`, `error_analysis.md` | metrics, confidence intervals, McNemar / Cochran's Q tests, error analysis |
 | `reports/figures/*.png` / `*.svg` | figures (300 dpi PNG + SVG) |
 
-**Expected runtime.** The measured wall-clock time of each run will be filled in from the
-run manifests (`started_at` / `finished_at`): [TO BE FILLED: runtime per step on the Apple
-M5, and on the Windows laptop if run there]. To list the durations of all finished runs:
+**Measured runtime on the Apple M5** (from the run and judge manifests): the test-split runs
+of all ten conditions spanned 2026-10-10 06:28 to 15:32 UTC, about 9 hours of wall-clock
+including one crash and resume (4 workers; manifests in `evaluation/results/runs/`); the
+test-split LLM judge needed two resumed runs, the second alone 9 h 27 min with 8 workers
+(`evaluation/results/judgments/manifest_judge_20261011T014507.json`); on the dev split the LLM
+judge took 13 min and the NLI judge 7 min, and each final model-selection run took 10 to
+17 minutes. The study was not run on the Windows laptop. To list the durations of all
+finished runs:
 
 ```bash
 python -c "import json,glob,datetime as d; [print(f, d.datetime.fromisoformat(m['finished_at'])-d.datetime.fromisoformat(m['started_at'])) for f in sorted(glob.glob('evaluation/results/**/manifest_*.json', recursive=True)) for m in [json.load(open(f))] if m.get('finished_at') and m.get('started_at')]"
@@ -1302,17 +1465,34 @@ soffice --headless --convert-to pdf --outdir report report/MedBridge_Final_Repor
 Diagrams: each script in `report/diagrams/` regenerates its figure in `report/figures/`, for
 example `python report/diagrams/architecture_pipeline.py`.
 
-UI screenshots for the report (needs Google Chrome; the app must run against the real
-backend):
+UI screenshots for the report (Playwright driving an installed **Google Chrome**; the app
+must run against the real backend. The script sends many requests, so the recorded run used a
+server with `RATE_LIMIT_PER_MINUTE=120` and paused 65 s between combinations. `--base-url`
+defaults to the development mock server on port 8100, whose screenshots must never be used as
+results, so always pass it):
 
 ```bash
-python -m medbridge.web.screenshots --base-url http://127.0.0.1:8000 --out report/screenshots --admin-user admin --admin-password <ADMIN_PASSWORD>
+python -m medbridge.web.screenshots --base-url http://127.0.0.1:8000 --out report/screenshots/raw/desktop_light --admin-user admin --admin-password <ADMIN_PASSWORD> --viewport desktop --theme light
 ```
 
-IEEE paper and presentation: [TO BE FILLED: build commands for the paper
-(`report/paper/MedBridge_IEEE_Paper.docx`, LaTeX in `report/paper/latex/`) and for the slides
-(`report/MedBridge_Review_Presentation.pptx`) once their builder scripts are in the
-repository]. Venue recommendations are in `report/paper/VENUES.md`.
+`--viewport desktop|mobile` and `--theme light|dark` select one combination (without them every
+combination is taken); `--only chat|dashboard` limits the scenes. The recorded set is in
+`report/screenshots/raw/<viewport>_<theme>/`; the report and the README use copies of the
+desktop-light shots under `report/screenshots/` (`welcome.png`, `answer_citations.png`,
+`soft_ask.png`, `escalate.png`, `abstain.png`, `why_panel.png`, `bp_trend.png`,
+`dashboard.png`) plus one dark-mode shot, `dark_mode.png`.
+
+IEEE paper and presentation (same rules: every number comes from the result files):
+
+```bash
+python report/paper/build_paper.py           # -> report/paper/MedBridge_IEEE_Paper.docx (--pdf, --paper a4, --anonymous, --strict)
+python report/paper/build_latex.py           # -> report/paper/latex/main.tex + references.bib + figures/ (compile on Overleaf or locally)
+python report/build_presentation.py          # -> report/MedBridge_Review_Presentation.pptx (--pdf, --png DIR, --strict)
+```
+
+On Windows write the paths with `\`. `report/paper/README.md` and
+`report/presentation/README.md` describe the options. Venue recommendations are in
+`report/paper/VENUES.md`.
 
 ---
 
@@ -1350,7 +1530,7 @@ patient context carries over within a chat.
 | 4 | ESCALATE, colloquial Hinglish | `seene mein bahut dard ho raha hai` | emergency card | colloquial and Hinglish red-flag phrases |
 | 5 | Negation (no false alarm), new chat | `I have no chest pain, but my BP was 150/95 this morning.` | **not** escalated; goes through the gates (ANSWER, GENERALIZE or SOFT-ASK) | negation handling ("no chest pain") |
 | 6 | SOFT-ASK, new chat | `Should I take a higher dose of my BP medicine?` | SOFT-ASK: asks for the medicine, dose and readings (GENERALIZE is also acceptable) | Gate 1 asks before it retrieves |
-| 7 | Follow-up gets answered | `I take amlodipine 5 mg once a day and my readings this week were around 150/95. I am 58.` | ANSWER (or GENERALIZE) with `[n]` citations | the context card now shows the BP reading and amlodipine (event-sourced state) |
+| 7 | Follow-up gets answered | `I take amlodipine 5 mg once a day and my readings this week were around 150/95. I am 58.` | ANSWER (or GENERALIZE) with `[n]` citations; Gate 3 may shorten it or remove its citations, which turns it into GENERALIZE | the context card now shows the BP reading and amlodipine (event-sourced state); the Why panel shows what Gate 3 removed |
 | 8 | Citations | click a `[1]` chip | source drawer: guideline, organisation, year, section, page, excerpt | grounding is visible and checkable |
 | 9 | Why this answer? | switch the top bar to **Clinician**, open "Why this answer?" on the last reply | Gate 1 decision and rationale, top-5 retrieval with scores, Gate 2 decision, stage timeline | the Dual Answerability Gate made visible |
 | 10 | GENERALIZE, new chat | `What dietary changes help lower blood pressure in general?` | GENERALIZE (or ANSWER) with citations | population-level guidance, no personal advice |
@@ -1366,8 +1546,11 @@ patient context carries over within a chat.
 
 Backup inputs if a step does not route as hoped:
 
-- ANSWER: the starter card *Check a reading* (`My blood pressure was 148/92 this morning. Is
-  that high?`).
+- ANSWER with citations: `What lifestyle changes help lower blood pressure?` (the ANSWER scene
+  of the report screenshots; its citations survived Gate 3 there). Do **not** rely on the
+  starter card *Understand a reading* (`My blood pressure was 145/92 this morning. Is that
+  high?`) for ANSWER: since Gate 3 is on, it ended as a GENERALIZE with one remaining sentence
+  and no citations (ADL-052). It is a good live example of Gate 3 at work, though.
 - SOFT-ASK: `What dose of amlodipine should I take?`
 - ESCALATE: `my face feels droopy on one side and i can't lift my left arm`
 
@@ -1457,7 +1640,7 @@ replies, or `ollama ps` showing a CPU/GPU split instead of `100% GPU`. Try these
    $env:CUDA_VISIBLE_DEVICES = "-1"; python -m medbridge.cli up
    ```
 
-   The reranker then runs on the CPU (slower, but it frees VRAM).
+   The reranker and the Gate 3 model then run on the CPU (slower, but it frees VRAM).
 5. Reduce the context window: `LLM_NUM_CTX=6144` in `.env`. Do not go lower: the prompts need
    several thousand tokens, and Ollama shortens over-long prompts silently.
 6. Use the fallback model `gemma3:4b` (`ollama pull gemma3:4b`, `LLM_MODEL=gemma3:4b`).
@@ -1545,24 +1728,43 @@ institution allows it, add an exclusion for the project folder and the Ollama mo
 
 ### The first request is slow
 
-At start-up the app warms up the embedders, the reranker and the Ollama model in the
-background. Until warm-up finishes `/health` reports `degraded`, and a message sent in that
-window waits for the models to load. Wait for `healthy` before the demo. The very first run
-on a machine is slower still, because the embedding and reranker models are downloaded.
+At start-up the app warms up the embedders, the reranker, the Gate 3 NLI model and the Ollama
+model in the background. Until warm-up finishes `/health` reports `degraded`, and a message sent
+in that window waits for the models to load. Wait for `healthy` before the demo. The very first
+run on a machine is slower still, because the embedding models, the reranker and the Gate 3
+model are downloaded. The out-of-domain ABSTAIN path takes several seconds even when warm,
+because Gate 2's prompt is long (see the latency tables in the README).
+
+### Answers are very short, start mid-sentence or come back as GENERALIZE without citations
+
+That is Gate 3 (on by default): it removes every sentence its NLI model judges unsupported
+by the cited passages, and an ANSWER left without a valid citation becomes GENERALIZE. When
+every claim is unsupported the draft is withdrawn (regenerated as GENERALIZE, then ABSTAIN).
+Open "Why this answer?" in Clinician mode to see what Gate 3 did. This is the measured
+trade-off of the study (less hallucination, shorter answers; ADL-052). To compare with the
+evaluated dual-gate configuration, set `GROUNDING_VERIFIER_ENABLED=false` in `.env` and restart
+the API (the code still contains the post-study brand-name fix, ADL-059, so this is close to,
+not identical with, the evaluated C5).
 
 ### Model downloads on the first run (Hugging Face)
 
-The first ingestion or API start downloads `BAAI/bge-small-en-v1.5` and `Qdrant/bm25`
-(fastembed) and `cross-encoder/ms-marco-MiniLM-L-6-v2` (Hugging Face). The study also
-downloads `cross-encoder/nli-deberta-v3-base`, and Gate 3 `cross-encoder/nli-MiniLM2-L6-H768`.
+The first ingestion downloads `BAAI/bge-small-en-v1.5` and `Qdrant/bm25` (fastembed). The
+first API start downloads `cross-encoder/ms-marco-MiniLM-L-6-v2` (reranker) and, because
+Gate 3 is on by default, `cross-encoder/nli-MiniLM2-L6-H768` from Hugging Face (weight files
+of about 91 MB and 328 MB, see 3.3). The study also downloads `cross-encoder/nli-deberta-v3-base`.
 
 - Internet access is needed once. Behind a proxy, set `HTTPS_PROXY` before starting.
-- Caches: Hugging Face models in `~/.cache/huggingface` (Windows:
-  `%USERPROFILE%\.cache\huggingface`). fastembed uses the system temporary folder unless
-  `FASTEMBED_CACHE_PATH` is set. Windows may clean the temporary folder, which causes a
-  re-download; set a permanent folder with `setx FASTEMBED_CACHE_PATH "%USERPROFILE%\.cache\fastembed"`.
-- For an offline demo, run everything once with internet the day before, then set
-  `HF_HUB_OFFLINE=1` in the shell before starting the API.
+- Caches: Hugging Face models in `~/.cache/huggingface/hub` (Windows:
+  `%USERPROFILE%\.cache\huggingface\hub`, for example
+  `C:\Users\<you>\.cache\huggingface\hub`). To keep them elsewhere (for example on a drive
+  with more space), set `HF_HOME` before the first start:
+  `setx HF_HOME "D:\hf-cache"` (new PowerShell window afterwards). fastembed uses the system
+  temporary folder unless `FASTEMBED_CACHE_PATH` is set. Windows may clean the temporary
+  folder, which causes a re-download; set a permanent folder with
+  `setx FASTEMBED_CACHE_PATH "%USERPROFILE%\.cache\fastembed"`.
+- For an offline demo, run everything once with internet the day before (until `/health`
+  shows `nli_verifier: true`), then set `HF_HUB_OFFLINE=1` in the shell before starting the API
+  (`$env:HF_HUB_OFFLINE = "1"` in PowerShell).
 
 ### Firewall prompts (Windows)
 
@@ -1672,6 +1874,10 @@ the apps to the Bin (macOS). Optional caches to delete: `%USERPROFILE%\.ollama` 
 | Health | `Invoke-RestMethod http://127.0.0.1:8000/health` | `curl -s http://127.0.0.1:8000/health` |
 | Smoke test | `python -m medbridge.cli smoke` | `python -m medbridge.cli smoke` |
 | Tests | `python -m pytest` | `python -m pytest` |
+| Test summary for the docs | `python scripts\test_summary.py` | `python scripts/test_summary.py` |
+| Refresh result numbers in the docs | `python scripts\render_docs_results.py` | `python scripts/render_docs_results.py` |
+| Live RABBITS (60 brands) | see 9.5 | see 9.5 |
+| All post-study measurements | the PowerShell table in 9.7 | `scripts/run_post_study.sh` |
 | Streamlit (legacy) | `python -m streamlit run medbridge\frontend\app.py` | `python -m streamlit run medbridge/frontend/app.py` |
 | Build the report | `python report\build_report.py --pdf` | `python report/build_report.py --pdf` |
 | Stop the containers | `docker compose stop` | `docker compose stop` |

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T08:01:18+00:00",
+  "generated_at": "2026-10-11T13:58:48+00:00",
   "slides": [
     {
       "index": 1,
@@ -11,7 +11,7 @@
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 984
+      "notes_chars": 1033
     },
     {
       "index": 2,
@@ -57,7 +57,7 @@
     {
       "index": 4,
       "id": "architecture",
-      "title": "Architecture: one pipeline, two gates, safe exits",
+      "title": "Architecture: two gates before the answer, a grounding check after it",
       "state": "data",
       "pending": [],
       "sources": [
@@ -69,7 +69,7 @@
       "images": {
         "report/figures/architecture_pipeline.png": true
       },
-      "notes_chars": 1464
+      "notes_chars": 2123
     },
     {
       "index": 5,
@@ -92,19 +92,18 @@
       "id": "emergency",
       "title": "Emergency fast-path and natural-language robustness",
       "state": "data",
-      "pending": [
-        "study.per_condition.C5.emergency.recall_system"
-      ],
+      "pending": [],
       "sources": [
         "medbridge/nlp/drugs.py",
         "medbridge/core/emergency_classifier.py",
         "tests/data/emergency_cases.json",
-        "tests/data/emergency_cases_hinglish.json"
+        "tests/data/emergency_cases_hinglish.json",
+        "evaluation/results/summary.json"
       ],
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1755
+      "notes_chars": 1686
     },
     {
       "index": 7,
@@ -152,11 +151,13 @@
         "report/screenshots/answer_citations.png": true,
         "report/screenshots/why_panel.png": true,
         "report/screenshots/soft_ask.png": true,
+        "report/screenshots/abstain.png": true,
         "report/screenshots/escalate.png": true,
         "report/screenshots/bp_trend.png": true,
-        "report/screenshots/dashboard.png": true
+        "report/screenshots/dashboard.png": true,
+        "report/screenshots/dark_mode.png": true
       },
-      "notes_chars": 1213
+      "notes_chars": 1524
     },
     {
       "index": 10,
@@ -166,13 +167,14 @@
       "pending": [],
       "sources": [
         "evaluation/datasets/hallubench_v1.json",
+        "evaluation/results/summary.json",
         "medbridge/core/pipeline_types.py",
         "report/figures/evaluation_design.png"
       ],
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1992
+      "notes_chars": 2369
     },
     {
       "index": 11,
@@ -191,56 +193,69 @@
       "images": {
         "reports/figures/model_selection.png": true
       },
-      "notes_chars": 1358
+      "notes_chars": 1471
     },
     {
       "index": 12,
       "id": "results_hallucination",
-      "title": "Hallucination results: pending",
-      "state": "pending",
-      "pending": [
-        "study (evaluation/results/summary.json)"
-      ],
+      "title": "Hallucinations and unsafe answers by condition",
+      "state": "data",
+      "pending": [],
       "sources": [
-        "evaluation/results/summary.json (pending)"
+        "report/figures/study_hallucination_rate_by_condition.png",
+        "evaluation/results/summary.json"
       ],
       "citations": [],
       "citations_missing": [],
       "images": {
-        "reports/figures/hallucination_rate_by_condition.png": false
+        "report/figures/study_hallucination_rate_by_condition.png": true
       },
-      "notes_chars": 972
+      "notes_chars": 3472
     },
     {
       "index": 13,
       "id": "results_unsafe",
-      "title": "Unsafe answers and ablation: pending",
-      "state": "pending",
-      "pending": [
-        "study (evaluation/results/summary.json)"
-      ],
+      "title": "Significance, gate ablation and the §6.7 decision",
+      "state": "data",
+      "pending": [],
       "sources": [
-        "evaluation/results/summary.json (pending)"
+        "evaluation/results/summary.json"
       ],
       "citations": [],
       "citations_missing": [],
-      "images": {
-        "reports/figures/unsafe_answer_rate_unanswerable.png": false,
-        "reports/figures/ablation_waterfall.png": false
-      },
-      "notes_chars": 612
+      "images": {},
+      "notes_chars": 3869
     },
     {
       "index": 14,
+      "id": "results_tradeoff",
+      "title": "Gate 3 is now on by default, and this is what it costs",
+      "state": "data",
+      "pending": [],
+      "sources": [
+        "evaluation/results/summary.json",
+        "medbridge/config.py",
+        "evaluation/results/runs/V2.jsonl + evaluation/results/judgments/llm/V2.jsonl + evaluation/results/runs/C5.jsonl"
+      ],
+      "citations": [],
+      "citations_missing": [],
+      "images": {},
+      "notes_chars": 4757
+    },
+    {
+      "index": 15,
       "id": "robustness",
-      "title": "Robustness: brand names, routing benchmark and prompt injection",
-      "state": "pending",
+      "title": "Robustness: routing benchmark, brand names and prompt injection",
+      "state": "data",
       "pending": [],
       "sources": [
         "tests/benchmark/vignettes/*.json",
-        "medbridge/nlp/drugs.py",
+        "reports/medbridge_aq_benchmark_report.json",
+        "reports/rabbits_benchmark_report.json",
+        "reports/rabbits_before_fix/rabbits_benchmark_report.json",
         "tests/adversarial/payloads.py",
-        "mock-mode reports ignored: aq, rabbits",
+        "reports/adversarial_before_fix/adversarial_live_report.json",
+        "reports/adversarial_live_report.json",
         "report/references/references.json (full entries in the notes)"
       ],
       "citations": [
@@ -249,26 +264,26 @@
       ],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 2102
+      "notes_chars": 3365
     },
     {
-      "index": 15,
+      "index": 16,
       "id": "performance",
-      "title": "Performance: from cold starts to a warm, overlapped pipeline",
-      "state": "partial",
-      "pending": [
-        "perf_latest.after"
-      ],
+      "title": "Performance: same model before and after, reported honestly",
+      "state": "data",
+      "pending": [],
       "sources": [
-        "reports/performance/before_gemma3-4b.json"
+        "reports/performance/before_gemma3-4b.json, reports/performance/after_gemma3-4b.json, reports/performance/after_qwen3.5-4b.json, reports/performance/after_warmup_gemma3-4b.json",
+        "medbridge/config.py",
+        "reports/performance/load_test.json"
       ],
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1531
+      "notes_chars": 2688
     },
     {
-      "index": 16,
+      "index": 17,
       "id": "testing",
       "title": "Testing, validation and an adversarial code review",
       "state": "data",
@@ -286,67 +301,81 @@
       "notes_chars": 1559
     },
     {
-      "index": 17,
+      "index": 18,
       "id": "limitations",
       "title": "Limitations and future work",
       "state": "data",
       "pending": [],
       "sources": [
-        "evaluation/results/model_selection/summary.json",
-        "medbridge/config.py",
+        "evaluation/results/summary.json",
+        "reports/medbridge_aq_benchmark_report.json",
         "reports/privacy_redaction_metrics.json",
-        "report/references/references.json (full entries in the notes)"
+        "report/references/references.json (full entries in the notes)",
+        "evaluation/results/runs/V2.jsonl + evaluation/results/judgments/llm/V2.jsonl + evaluation/results/runs/C5.jsonl"
       ],
       "citations": [
         "angelopoulos2023conformal"
       ],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1612
+      "notes_chars": 3182
     },
     {
-      "index": 18,
+      "index": 19,
       "id": "thanks",
       "title": "Thank you. Questions?",
       "state": "data",
       "pending": [],
-      "sources": [],
+      "sources": [
+        "evaluation/results/summary.json",
+        "reports/adversarial_live_report.json"
+      ],
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1080
+      "notes_chars": 1839
     }
   ],
-  "slide_count": 18,
+  "slide_count": 19,
   "layout_issues": [],
   "citation_keys_missing": [],
-  "pending_slides": [
-    "results_hallucination",
-    "results_unsafe",
-    "robustness",
-    "performance"
-  ],
+  "pending_slides": [],
   "emergency_example_mismatches": [],
   "results_sources": {
+    "study": "evaluation/results/summary.json",
     "retrieval": "evaluation/results/retrieval/metrics.json",
     "model_selection": "evaluation/results/model_selection/summary.json",
     "model_selection_r1": "evaluation/results/model_selection_round1_prefix/summary.json",
     "corpus": "reports/corpus_stats.json",
     "pii": "reports/privacy_redaction_metrics.json",
+    "load": "reports/performance/load_test.json",
     "tests": "reports/test_summary.json",
     "calibration": "evaluation/results/calibration.json",
     "smoke": "reports/smoke_test_latest.json",
     "manifest": "data/corpus_manifest.json",
+    "aq": "reports/medbridge_aq_benchmark_report.json",
+    "rabbits": "reports/rabbits_benchmark_report.json",
+    "adversarial": "reports/adversarial_live_report.json",
+    "rabbits_before": "reports/rabbits_before_fix/rabbits_benchmark_report.json",
+    "adversarial_before": "reports/adversarial_before_fix/adversarial_live_report.json",
+    "rabbits_counts": "reports/rabbits_before_fix/rabbits_benchmark_report.json, reports/rabbits_benchmark_report.json",
     "reranker": "evaluation/results/retrieval/reranker_ablation/*/metrics.json",
     "perf": "reports/performance/*.json",
-    "perf_latest": "reports/performance/before_gemma3-4b.json",
+    "perf_latest": "reports/performance/after_gemma3-4b.json, reports/performance/after_qwen3.5-4b.json, reports/performance/after_warmup_gemma3-4b.json, reports/performance/after_warmup_qwen3.5-4b.json, reports/performance/before_gemma3-4b.json",
+    "perf_derived": "reports/performance/after_*.json (server stage medians)",
+    "annotation": "evaluation/annotation/human_annotation_sheet.csv",
+    "smoke_inputs": "scripts/smoke_test.py",
     "hallubench": "evaluation/datasets/hallubench_v1.json",
-    "manifest_stats": "data/corpus_manifest.json"
+    "manifest_stats": "data/corpus_manifest.json",
+    "study_manifests": "evaluation/results/runs/manifest_*.json",
+    "judge_manifests": "evaluation/results/judgments/manifest_judge_*.json",
+    "study_records": "evaluation/results/runs/<condition>.jsonl",
+    "study_judgments": "evaluation/results/judgments/{llm,nli}/<condition>.jsonl",
+    "corpus_orgs": "reports/corpus_stats.json",
+    "routing_errors": "evaluation/results/summary.json, reports/medbridge_aq_benchmark_report.json",
+    "study_gate3": "evaluation/results/runs/V2.jsonl, evaluation/results/runs/V12.jsonl + LLM judgments"
   },
-  "results_skipped": {
-    "aq": "reports/medbridge_aq_benchmark_report.json is a 'mock' run (not live) - not used as a result",
-    "rabbits": "reports/rabbits_benchmark_report.json is a 'mock' run (not live) - not used as a result"
-  },
+  "results_skipped": {},
   "deck_fact_errors": {},
   "text_measurement": "truetype",
   "output": "report/MedBridge_Review_Presentation.pptx"

@@ -275,6 +275,25 @@ class ParseContext:
     include_stack: list[Path] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     includes_used: list[str] = field(default_factory=list)
+    #: Names pulled in by ``[[include:...]]`` anywhere in ``content_dir`` (computed lazily).
+    included_names: set[str] | None = None
+
+
+_INCLUDE_REF = re.compile(r"\[\[\s*include\s*:\s*([^\]|]+)", re.IGNORECASE)
+
+
+def included_names(ctx: ParseContext) -> set[str]:
+    """File names referenced by an ``[[include:...]]`` directive in any content file."""
+    if ctx.included_names is None:
+        names: set[str] = set()
+        for path in Path(ctx.content_dir).glob("*.md"):
+            try:
+                text = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            names.update(Path(m.strip()).name for m in _INCLUDE_REF.findall(text))
+        ctx.included_names = names
+    return ctx.included_names
 
 
 def is_placeholder_file(path: Path) -> bool:
@@ -285,7 +304,16 @@ def is_placeholder_file(path: Path) -> bool:
     return bool(PLACEHOLDER_MARK.match(head))
 
 
-def parse_file(path: Path, ctx: ParseContext) -> list[Block]:
+def parse_file(path: Path, ctx: ParseContext, *, included: bool = False) -> list[Block]:
+    """Parse one content file.
+
+    A file that another content file pulls in with ``[[include:...]]`` is include-only (see
+    report/README.md): parsed on its own (as a chapter or appendix slot, because its name
+    starts with ``ch4_`` or ``appendix_``) it yields no blocks, so it is printed exactly once,
+    where it is included (``included=True``).
+    """
+    if not included and path.name in included_names(ctx):
+        return []
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
@@ -426,7 +454,7 @@ def parse_markup(
                     ctx.warnings.append(f"{source}: recursive include '{name}' skipped")
                 else:
                     ctx.includes_used.append(target.name)
-                    blocks.extend(parse_file(target, ctx))
+                    blocks.extend(parse_file(target, ctx, included=True))
             i += 1
             continue
 

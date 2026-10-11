@@ -41,6 +41,7 @@ COLORS: dict[str, tuple[str, str]] = {
     "gate": ("#FDE9B5", "#A86A12"),
     "template": ("#DDF1E1", "#2F7D45"),
     "optional": ("#FFF7E0", "#A86A12"),
+    "gate3": ("#FDE9B5", "#A86A12"),  # gate colours, regular weight (long label)
 }
 FONT = 6.0
 SMALL = 5.1
@@ -119,7 +120,7 @@ def gate_pipeline(out_dir: Path = FIG_DIR) -> list[Path]:
             "template",
             False,
         ),
-        ("g3", "gen", "Gate 3 (optional):\nNLI grounding\nverifier", "optional", True),
+        ("g3", "gen", "Gate 3 (on by default):\nNLI grounding\nverifier", "gate3", False),
     ]
     for key, anchor, text, kind, dashed in side_specs:
         h = _height(text)
@@ -211,7 +212,7 @@ def gate_pipeline(out_dir: Path = FIG_DIR) -> list[Path]:
         ("emerg", "t_esc", "red flag", "#B83232", False),
         ("gate1", "ask", "SOFT-ASK", "#A86A12", False),
         ("gate2", "t_abs", "ABSTAIN/\nESCALATE", "#A86A12", False),
-        ("gen", "g3", "draft", "#A86A12", True),
+        ("gen", "g3", "draft", "#A86A12", False),
     ]
     for a, b, label, color, dashed in side_arrows:
         na, nb = nodes[a], nodes[b]
@@ -227,7 +228,7 @@ def gate_pipeline(out_dir: Path = FIG_DIR) -> list[Path]:
         )
     # Gate 3 returns the verified (or downgraded) draft to the output
     g3, out = nodes["g3"], nodes["out"]
-    arrow(g3.cx, g3.bottom, out.right, out.cy, color="#A86A12", dashed=True)
+    arrow(g3.cx, g3.bottom, out.right, out.cy, color="#A86A12")
     # speculative retrieval note
     ax.text(
         side_x,

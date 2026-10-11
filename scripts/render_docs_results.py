@@ -24,16 +24,21 @@ Marker blocks it fills (HTML comments, invisible on GitHub):
       rate:<COND>:<dotted.path>        proportion in summary.json per_condition[COND]
                                        e.g. rate:C5:llm.hallucination, rate:C5:emergency.recall_system
       interval:<COND>:<dotted.path>    estimate with CI, e.g. interval:C5:llm.unsupported_claim_ratio
+      value:<COND>:<dotted.path>[:digits]  plain number, e.g. value:V2:llm.claims_per_response:2
       routing:<COND>:<strict|lenient|macro_f1>
       latency:<COND>                   cache-imputed p50 / p95 per turn
       degraded:<COND>                  degraded (excluded) turns
       test:<T>:<C>:<outcome>:<judge>   paired exact McNemar row (outcome: hallucination|unsafe;
                                        judge: llm|nli), e.g. test:C5:C1:hallucination:llm
       cochran:<outcome>:<judge>        Cochran's Q across C0-C5
-      kappa:<3class|binary|response>   LLM-judge vs NLI-judge agreement
+      kappa:<3class|binary|response>   LLM-judge vs NLI-judge agreement (with the conditions
+                                       it was computed on)
+      nli_coverage                     which conditions the NLI judge scored completely,
+                                       partially or not at all on the reported split
       human:<status|human_human|A1_vs_llm|A2_vs_llm|A1_vs_nli|A2_vs_nli|consensus_vs_llm|...>
       split                            split / item / turn counts of the study
       models                           application and judge models of the study
+      commits                          git commits recorded in the study's test-split run manifests
       retrieval:<mode>:<metric>        mode: dense|sparse|hybrid|hybrid+rerank;
                                        metric: recall@5|recall@20|mrr|ndcg@5
       reranker                         reranker-ablation one-liner (MRR per reranker)
@@ -42,8 +47,21 @@ Marker blocks it fills (HTML comments, invisible on GitHub):
       corpus                           corpus size one-liner
       smoke                            live smoke-test result
       aq | rabbits | adversarial | load   live benchmark one-liners (pending unless mode == live)
-      perf                             before/after latency one-liner
+      rabbits_before | rabbits_after   live RABBITS run kept from before the brand-name fix /
+                                       the newer live run at the default path
+      rabbits_compare                  before → after RABBITS metrics and flip counts
+      adversarial_before               live adversarial run kept from before the brand-name fix
+      adversarial_compare              before → after adversarial checks and changed actions
+      perf                             warm p50 before → after per probe turn
+      perf_cold                        first-request (cold) latency before → after
+      perf_changes                     turns that got faster / slower / stayed within ±10 %
+      perf_gate3                       Gate 3 verification stage time (warm p50 range)
+      perf_after:<model-tag>           warm p50 per turn of one after-probe, e.g. perf_after:qwen3.5-4b
+      annotation                       status of the exported human-annotation sheet
       tests                            test-suite one-liner
+
+  A live RABBITS or adversarial run is called "after the brand-name fix" only when the
+  commit its report records contains the fix commit (``git merge-base --is-ancestor``).
 
 * ``EVIDENCE-CHECK:START`` / ``EVIDENCE-CHECK:END`` in docs/review4_5_checklist.md:
   every repo path written in backticks in the checklist is checked, and the
@@ -67,6 +85,7 @@ import glob
 import json
 import math
 import re
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from collections.abc import Iterable, Sequence
@@ -98,10 +117,16 @@ P_CORPUS = "reports/corpus_stats.json"
 P_SMOKE = "reports/smoke_test_latest.json"
 P_AQ = "reports/medbridge_aq_benchmark_report.json"
 P_RABBITS = "reports/rabbits_benchmark_report.json"
+P_RABBITS_BEFORE = "reports/rabbits_before_fix/rabbits_benchmark_report.json"
+P_RUN_MANIFESTS = "evaluation/results/runs/manifest_*.json"
 P_ADVERSARIAL = "reports/adversarial_live_report.json"
+P_ADVERSARIAL_BEFORE = "reports/adversarial_before_fix/adversarial_live_report.json"
 P_LOAD = "reports/performance/load_test.json"
 P_LATENCY_TABLE = "reports/performance/latency_table.csv"
+P_LATENCY_TABLE_MD = "reports/performance/latency_table.md"
 P_PERF_DIR = "reports/performance"
+P_ANNOTATION_SHEET = "evaluation/annotation/human_annotation_sheet.csv"
+P_ANNOTATION_XLSX = "evaluation/annotation/human_annotation_sheet.xlsx"
 P_JUNIT = ("reports/tests/*.xml", "reports/junit*.xml")
 P_COVERAGE = ("reports/tests/coverage.json", "reports/coverage.json")
 P_TEST_SUMMARY = ("reports/tests/test_summary.json", "reports/test_summary.json")
@@ -141,7 +166,10 @@ RESULT_FIGURES: tuple[tuple[str, str], ...] = (
     ("claim_support_stacked", "Claim support per condition"),
     ("judge_agreement", "LLM judge vs NLI judge"),
     ("latency_by_condition", "Latency per condition"),
-    ("latency_before_after", "Latency before vs after optimisation"),
+)
+LATENCY_FIGURE = (
+    "latency_before_after",
+    "Latency before vs after optimisation (warm p50, whiskers to p95)",
 )
 SCREENSHOTS: tuple[tuple[str, str], ...] = (
     ("welcome.png", "Welcome screen with suggested prompts"),
@@ -231,6 +259,26 @@ def dig(obj: Any, path: str | Sequence[str]) -> Any:
         else:
             return None
     return cur
+
+
+def organisation_count(corpus: Any) -> Any:
+    """Distinct issuing organisations, with joint labels ("AHA/ACC") split on "/".
+
+    ``totals.organisations`` in ``reports/corpus_stats.json`` counts distinct label strings,
+    so "AHA/ACC", "ACC/AHA" and "AHA" count three times; the deck counts the same way as here
+    (``report/presentation/deck_data.py::corpus_organisations``).
+    """
+    docs = dig(corpus, "documents")
+    orgs = {
+        part.strip()
+        for doc in (docs if isinstance(docs, list) else [])
+        if isinstance(doc, dict) and isinstance(doc.get("org"), str)
+        for part in doc["org"].split("/")
+        if part.strip()
+    }
+    if orgs:
+        return len(orgs)
+    return dig(corpus, "totals.organisations") or "—"
 
 
 def as_dict(value: Any) -> dict[str, Any]:
@@ -390,11 +438,170 @@ def study_models(ctx: Context, summary: dict[str, Any]) -> tuple[list[str], list
     judges: set[str] = set()
     for rel in ctx.glob(P_JUDGE_MANIFESTS):
         manifest = ctx.json(rel)
-        if isinstance(manifest, dict):
-            for key in ("judge_model", "nli_model"):
-                if manifest.get(key):
-                    judges.add(f"{key.replace('_model', '')}: {manifest[key]}")
+        if not isinstance(manifest, dict):
+            continue
+        # An NLI manifest also carries the (unused) default judge_model, so the model is
+        # taken from the field that belongs to the judge the manifest describes.
+        kind = manifest.get("judge")
+        if kind == "nli" and manifest.get("nli_model"):
+            judges.add(f"NLI judge {manifest['nli_model']}")
+        elif kind in (None, "llm") and manifest.get("judge_model"):
+            judges.add(f"LLM judge {manifest['judge_model']}")
     return sorted(app), sorted(judges)
+
+
+def nli_coverage(summary: dict[str, Any]) -> dict[str, list[tuple[str, int, int]]]:
+    """Conditions the NLI judge scored completely, partially or not at all.
+
+    Read from ``per_condition.<C>.judge_coverage.nli`` when the summary has it (a judge's
+    rates are reported only when it scored at least 95 % of the valid turns). Older
+    summaries: a condition counts as complete when the NLI judge scored as many turns as
+    the LLM judge; fewer turns is a partial subset that must not be read as a
+    full-condition result. Entries are (condition, NLI-judged turns, reference turns).
+    """
+    out: dict[str, list[tuple[str, int, int]]] = {"complete": [], "partial": [], "none": []}
+    for cond in summary_conditions(summary):
+        m = as_dict(dig(summary, f"per_condition.{cond}"))
+        cov = as_dict(dig(m, "judge_coverage.nli"))
+        if cov:
+            # evaluation/analyze.py (since e0e722d) records how many valid turns the NLI judge
+            # scored and whether that was enough (>= 95 %) to report its per-condition rates.
+            judged = int(_num(cov.get("judged")) or 0)
+            valid = int(_num(cov.get("valid")) or 0)
+            if not judged:
+                out["none"].append((cond, 0, valid))
+            elif cov.get("reported") is False:
+                out["partial"].append((cond, judged, valid))
+            else:
+                out["complete"].append((cond, judged, valid))
+            continue
+        llm_n = int(_num(dig(m, "llm.hallucination.n")) or 0)
+        nli_n = int(_num(dig(m, "nli.hallucination.n")) or 0)
+        if not nli_n:
+            out["none"].append((cond, 0, llm_n))
+        elif llm_n and nli_n < llm_n:
+            out["partial"].append((cond, nli_n, llm_n))
+        else:
+            out["complete"].append((cond, nli_n, llm_n))
+    return out
+
+
+def nli_coverage_text(summary: dict[str, Any]) -> str:
+    cov = nli_coverage(summary)
+    parts = []
+    if cov["complete"]:
+        parts.append("complete for " + ", ".join(f"{c} (n = {n})" for c, n, _ in cov["complete"]))
+    if cov["partial"]:
+        parts.append(
+            "a partial subset for "
+            + ", ".join(f"{c} (n = {n} of {m} turns)" for c, n, m in cov["partial"])
+            + ", which is not a full-condition result"
+        )
+    if cov["none"]:
+        parts.append("no judgments for " + ", ".join(c for c, _, _ in cov["none"]))
+    return "; ".join(parts) if parts else "no NLI judgments"
+
+
+def study_commits(summary: dict[str, Any]) -> list[str]:
+    """Short commits (``+dirty`` when the tree was dirty) of the reported split's runs."""
+    split = summary.get("split")
+    commits: list[str] = []
+    for run in summary.get("runs") or []:
+        if not isinstance(run, dict) or (split and run.get("split") != split):
+            continue
+        git = as_dict(run.get("git"))
+        commit = git.get("commit")
+        if isinstance(commit, str) and commit:
+            label = commit[:7] + ("+dirty" if git.get("dirty") else "")
+            if label not in commits:
+                commits.append(label)
+    return commits
+
+
+def study_workers(ctx: Context, summary: dict[str, Any]) -> list[int]:
+    """Worker counts recorded in the run manifests of the reported split."""
+    split = summary.get("split")
+    workers: set[int] = set()
+    for rel in ctx.glob(P_RUN_MANIFESTS):
+        manifest = ctx.json(rel)
+        if not isinstance(manifest, dict) or (split and manifest.get("split") != split):
+            continue
+        w = _num(manifest.get("workers"))
+        if w:
+            workers.add(int(w))
+    return sorted(workers)
+
+
+def holm_verdict(row: dict[str, Any] | None, alpha: float = 0.05) -> str:
+    p = _num(row.get("pvalue_holm")) if isinstance(row, dict) else None
+    if p is None:
+        return "not tested"
+    return "significant" if p < alpha else "not significant"
+
+
+def reading_notes(ctx: Context, summary: dict[str, Any]) -> list[str]:
+    """Plain-language reading of the headline numbers, computed from summary.json."""
+    notes: list[str] = []
+    per = as_dict(summary.get("per_condition"))
+    rows = {
+        (o, c): find_test(summary, "C5", c, o, "llm")
+        for o in ("hallucination", "unsafe")
+        for c in ("C1", "C2")
+    }
+    if all(rows.values()):
+        verdicts = {k: holm_verdict(v) for k, v in rows.items()}
+        all_sig = all(v == "significant" for v in verdicts.values())
+        worst = max(_num(v.get("pvalue_holm")) or 0.0 for v in rows.values() if v)
+        notes.append(
+            "Decision rule (master brief §6.7: C5 must reduce hallucination or unsafe answers "
+            "versus C1 and C2, Holm-adjusted p < 0.05): "
+            + ", ".join(f"C5 vs {c} {o} {verdicts[(o, c)]}" for o, c in rows)
+            + f" (largest Holm-adjusted p {pvalue(worst)}, LLM judge). "
+            + (
+                "The fallback of §6.7 is therefore not triggered."
+                if all_sig
+                else "At least one comparison is not significant, so §6.7 requires the "
+                "error analysis and the variants."
+            )
+        )
+    c1, c5 = as_dict(per.get("C1")), as_dict(per.get("C5"))
+    g1, g5 = dig(c1, "llm.hallucination_given_claims"), dig(c5, "llm.hallucination_given_claims")
+    cov1, cov5 = c1.get("coverage_answerable"), c5.get("coverage_answerable")
+    if is_proportion(g1) and is_proportion(g5) and is_proportion(cov1) and is_proportion(cov5):
+        g1, g5, cov1, cov5 = as_dict(g1), as_dict(g5), as_dict(cov1), as_dict(cov5)
+        notes.append(
+            "How the gates lower the rate: template replies (ABSTAIN, ESCALATE, small talk) have "
+            "no claims and count as not hallucinated. Among responses that contain claims, the "
+            f"hallucination rate is {pct(g5.get('rate'))} for C5 ({g5.get('k')}/{g5.get('n')}) "
+            f"against {pct(g1.get('rate'))} for C1 ({g1.get('k')}/{g1.get('n')}), while coverage "
+            f"on answerable turns falls from {pct(cov1.get('rate'))} to {pct(cov5.get('rate'))}. "
+            "Most of the reduction therefore comes from answering less often (selective "
+            "abstention), not from better-grounded answers."
+        )
+    v2h = find_test(summary, "V2", "C5", "hallucination", "llm")
+    v2u = find_test(summary, "V2", "C5", "unsafe", "llm")
+    if v2h:
+        notes.append(
+            f"Gate 3 (V2) vs C5: hallucination {pct(v2h.get('p_treatment'))} vs "
+            f"{pct(v2h.get('p_control'))}, {holm_verdict(v2h)} (Holm-adjusted "
+            f"{p_eq(v2h.get('pvalue_holm'))})"
+            + (
+                f"; unsafe answers {pct(v2u.get('p_treatment'))} vs {pct(v2u.get('p_control'))}, "
+                f"{holm_verdict(v2u)} (Holm-adjusted {p_eq(v2u.get('pvalue_holm'))})"
+                if v2u
+                else ""
+            )
+            + "."
+        )
+    cov = nli_coverage(summary)
+    if cov["none"]:
+        notes.append(
+            "Every paired test and Cochran's Q uses the LLM judge. The NLI judge's coverage on "
+            f"this split: {nli_coverage_text(summary)}. Results for "
+            + ", ".join(c for c, _, _ in cov["none"])
+            + " therefore rest on one judge; the NLI judge is used only for the agreement figures."
+        )
+    return notes
 
 
 def find_test(
@@ -467,8 +674,14 @@ TEST_HEADERS = (
 
 
 def section_hallucination(ctx: Context) -> list[str]:
-    out = ["### Hallucination study (MedBridge-HalluBench v1, conditions C0–C5, V1, V2)", ""]
     summary = ctx.json(P_SUMMARY)
+    conds = (
+        summary_conditions(summary)
+        if isinstance(summary, dict) and isinstance(summary.get("per_condition"), dict)
+        else []
+    )
+    title = ", ".join(conds) if conds else "C0–C5, V1, V2"
+    out = [f"### Hallucination study (MedBridge-HalluBench v1, conditions {title})", ""]
     if not isinstance(summary, dict) or not isinstance(summary.get("per_condition"), dict):
         out.append(
             pending_note(
@@ -485,13 +698,35 @@ def section_hallucination(ctx: Context) -> list[str]:
     app, judges = study_models(ctx, summary)
     nli = as_dict(summary.get("nli_thresholds"))
     degraded = as_dict(summary.get("degraded"))
+    c5 = as_dict(dig(summary, "per_condition.C5"))
+    commits = study_commits(summary)
+    hardware = sorted(
+        {
+            f"{h.get('cpu')}, {fixed(h.get('ram_gb'), 0)} GB RAM"
+            for run in summary.get("runs") or []
+            if isinstance(run, dict)
+            and isinstance((h := run.get("hardware")), dict)
+            and h.get("cpu")
+        }
+    )
     provenance = [
-        f"Split: **{summary.get('split', '?')}** (dev split used only for calibration); "
-        f"unit: {summary.get('unit', 'item-turn')}; degraded turns excluded from headline numbers.",
+        f"Split: **{summary.get('split', '?')}** (dev split used only for calibration)"
+        + (f", {c5.get('n_items')} items and {c5.get('n_turns')} turns per condition" if c5 else "")
+        + f"; unit: {summary.get('unit', 'item-turn')}; degraded turns excluded from headline "
+        "numbers.",
         f"Application model(s): {', '.join(app) if app else 'not recorded'}; "
         f"judges: {', '.join(judges) if judges else 'see judgment manifests'}; "
         f"NLI thresholds: {nli.get('source', 'unknown')}.",
+        f"NLI judge coverage on this split: {nli_coverage_text(summary)}.",
     ]
+    if commits or hardware:
+        provenance.append(
+            "Code evaluated: commit(s) "
+            + (", ".join(f"`{c}`" for c in commits) or "not recorded")
+            + " (run manifests in `evaluation/results/runs/`); hardware: "
+            + ("; ".join(hardware) or "not recorded")
+            + ". Later commits are not covered by these numbers."
+        )
     if degraded.get("exceeded"):
         provenance.append(
             "**Warning:** the degraded-turn limit was exceeded for "
@@ -504,6 +739,7 @@ def section_hallucination(ctx: Context) -> list[str]:
         "Condition",
         "Valid turns",
         "Hallucination (LLM judge)",
+        "Hallucination among responses with claims (LLM)",
         "Hallucination (NLI judge)",
         "Unsupported-claim ratio (LLM)",
         "Unsafe answers, unanswerable (LLM)",
@@ -511,6 +747,7 @@ def section_hallucination(ctx: Context) -> list[str]:
         "Routing accuracy, lenient",
         "Emergency recall",
     )
+    partial = {c: n for c, n, _ in nli_coverage(summary)["partial"]}
     rows = []
     for cond in summary_conditions(summary):
         m = summary["per_condition"][cond]
@@ -518,12 +755,18 @@ def section_hallucination(ctx: Context) -> list[str]:
             continue
         routing, mark = routing_of(m, cond)
         lenient = prop_cell(routing.get("accuracy_lenient")) if routing else "—"
+        nli_cell = (
+            f"— (partial subset, n = {partial[cond]}; not reported)"
+            if cond in partial
+            else prop_cell(dig(m, "nli.hallucination"))
+        )
         rows.append(
             [
                 condition_label(summary, cond),
                 f"{m.get('n_valid', '—')}/{m.get('n_turns', '—')}",
                 prop_cell(dig(m, "llm.hallucination")),
-                prop_cell(dig(m, "nli.hallucination")),
+                prop_cell(dig(m, "llm.hallucination_given_claims")),
+                nli_cell,
                 interval_cell(dig(m, "llm.unsupported_claim_ratio"), as_pct=True),
                 prop_cell(dig(m, "llm.unsafe_answer")),
                 prop_cell(m.get("coverage_answerable")),
@@ -534,15 +777,29 @@ def section_hallucination(ctx: Context) -> list[str]:
                 else prop_cell(dig(m, "emergency.recall_system")),
             ]
         )
+    partial_note = (
+        " The NLI judge was stopped early: "
+        + ", ".join(f"{c} has NLI judgments for only {n} turns" for c, n in partial.items())
+        + "; such a partial, non-random subset is used only for judge agreement and its rate is "
+        "not reported as a condition result."
+        if partial
+        else ""
+    )
     out += [
-        table(headers, rows, "lrrrrrrrr"),
+        table(headers, rows, "lrrrrrrrrr"),
         "",
         "Cells: rate [95% Wilson CI] (events/turns); unsupported-claim ratio with a 10k cluster-"
-        "bootstrap CI. † routing from the LLM judge's behaviour label (conditions without gates); "
+        "bootstrap CI. Template replies (ABSTAIN, ESCALATE, small talk) have no claims and count "
+        "as not hallucinated, so the fourth column shows the rate among responses that contain "
+        "claims. † routing from the LLM judge's behaviour label (conditions without gates); "
         "C0 emergency recall is also from the behaviour label, since C0 has no fast-path. "
-        "Definitions of every metric are stored in `summary.json` → `definitions`.",
+        "Definitions of every metric are stored in `summary.json` → `definitions`." + partial_note,
         "",
     ]
+    notes = reading_notes(ctx, summary)
+    if notes:
+        out += ["Reading the numbers (computed from the same file):", ""]
+        out += [f"- {n}" for n in notes] + [""]
 
     llm_tests = sorted_tests(summary, "llm")
     if llm_tests:
@@ -579,13 +836,24 @@ def section_hallucination(ctx: Context) -> list[str]:
         out.append("")
     agreement = summary.get("judge_agreement")
     if isinstance(agreement, dict):
+        cov = nli_coverage(summary)
+        scored = [c for c, _, _ in cov["complete"]] + [
+            f"{c} (partial subset)" for c, _, _ in cov["partial"]
+        ]
         out.append(
             "Judge agreement (Cohen's κ, LLM judge vs NLI judge): "
             f"{kappa_text(agreement.get('kappa_3class'))} three-class and "
             f"{kappa_text(agreement.get('kappa_binary'))} binary over "
             f"{agreement.get('n_claims', '?')} claims; "
             f"{kappa_text(agreement.get('kappa_response_hallucination'))} on the response-level "
-            f"hallucination label over {agreement.get('n_responses', '?')} responses."
+            f"hallucination label over {agreement.get('n_responses', '?')} responses"
+            + (
+                f", computed only on the responses both judges scored ({', '.join(scored)})"
+                if scored
+                else ""
+            )
+            + ". Whether this agreement carries over to the shorter, template-heavy outputs of the "
+            "gated conditions has not been measured."
         )
         out.append("")
     out.append(human_sentence(ctx))
@@ -601,7 +869,23 @@ def section_hallucination(ctx: Context) -> list[str]:
     ]
     if deg_parts:
         out += ["Degraded (excluded) turns: " + ", ".join(deg_parts) + ".", ""]
-    out += figure_gallery(ctx)
+    failures = []
+    for cond in summary_conditions(summary):
+        m = as_dict(dig(summary, f"per_condition.{cond}"))
+        if not isinstance(m.get("llm"), dict):
+            continue
+        n_valid = int(_num(m.get("n_valid")) or 0)
+        n_judged = int(_num(dig(m, "llm.n_judged")) or 0)
+        if n_valid > n_judged:
+            failures.append(f"{cond} {n_valid - n_judged} of {n_valid}")
+    if failures:
+        out += [
+            "Valid turns the LLM judge could not score (left out of that condition's rates): "
+            + ", ".join(failures)
+            + ".",
+            "",
+        ]
+    out += figure_gallery(ctx, summary)
     out.append(source(P_SUMMARY) + f" Full tables: `{P_TABLES}`; error analysis: `{P_ERRORS}`.")
     out.append("")
     return out
@@ -615,9 +899,50 @@ def kappa_text(k: Any) -> str:
     return f"κ = {float(k['kappa']):.2f}{ci}"
 
 
+def annotation_sheet_status(ctx: Context) -> dict[str, int] | None:
+    """Counts from the exported human-annotation sheet (CSV twin of the XLSX), or None."""
+    path = ctx.path(P_ANNOTATION_SHEET)
+    if not path.is_file():
+        return None
+    try:
+        with path.open(encoding="utf-8", newline="") as fh:
+            rows = list(csv.DictReader(fh))
+    except (OSError, csv.Error) as exc:
+        ctx.warnings.append(f"could not read {P_ANNOTATION_SHEET}: {exc}")
+        return None
+
+    def filled(row: dict[str, Any], key: str) -> bool:
+        return bool(str(row.get(key) or "").strip())
+
+    return {
+        "items": len({r.get("item_id") for r in rows if r.get("item_id")}),
+        "responses": len({r.get("response_code") for r in rows if r.get("response_code")}),
+        "claims": len(rows),
+        "both": sum(1 for r in rows if filled(r, "A1_label") and filled(r, "A2_label")),
+    }
+
+
+def annotation_sheet_text(ctx: Context) -> str | None:
+    st = annotation_sheet_status(ctx)
+    if not st:
+        return None
+    sheet = P_ANNOTATION_XLSX if ctx.exists(P_ANNOTATION_XLSX) else P_ANNOTATION_SHEET
+    return (
+        f"sheet exported (`{sheet}`): {st['items']} HalluBench items, {st['responses']} blinded "
+        f"responses, {st['claims']} claim rows; {st['both']} rows labelled by both annotators"
+    )
+
+
 def human_sentence(ctx: Context) -> str:
     human = ctx.json(P_HUMAN)
     if not isinstance(human, dict):
+        sheet = annotation_sheet_text(ctx)
+        if sheet:
+            return (
+                f"Human annotation: {sheet}. Human–judge agreement is *pending* until the team "
+                f"fills the A1/A2 columns and runs `python -m evaluation.human_annotation --score` "
+                f"(writes `{P_HUMAN}`)."
+            )
         return (
             "Human annotation (50-item sheet): *pending* — "
             f"`{P_HUMAN}` not generated yet (`python -m evaluation.human_annotation --score`)."
@@ -639,7 +964,38 @@ def human_sentence(ctx: Context) -> str:
     return f"Human annotation (status `{status}`): {joined}. {source(P_HUMAN)}"
 
 
-def figure_gallery(ctx: Context) -> list[str]:
+#: Figures that draw NLI-judge bars or panels next to the LLM judge.
+NLI_FIGURES: frozenset[str] = frozenset(
+    {"hallucination_rate_by_condition", "claim_support_stacked"}
+)
+
+
+def figure_note(ctx: Context, name: str, summary: dict[str, Any] | None) -> str:
+    """Reading note under a figure, derived from the data the figure was drawn from."""
+    if summary is None:
+        return ""
+    if name in NLI_FIGURES:
+        cov = nli_coverage(summary)
+        if cov["partial"] or cov["none"]:
+            shown = ", ".join(c for c, _, _ in cov["complete"]) or "no condition"
+            blank = ", ".join(c for c, _, _ in cov["partial"] + cov["none"])
+            return (
+                f"NLI judge: {nli_coverage_text(summary)}. No partial-subset NLI bar is drawn: "
+                f"its rates are shown only for the conditions it scored at >= 95% of turns "
+                f"({shown}); {blank} are shown as n/a or left empty."
+            )
+    if name == "latency_by_condition":
+        workers = study_workers(ctx, summary)
+        return (
+            "Cache-imputed study latencies, measured while the study ran with parallel workers"
+            + (f" (up to {max(workers)} per run process)" if workers else "")
+            + " on one shared local GPU. They compare conditions under the same load and are not "
+            "the latency a single user sees."
+        )
+    return ""
+
+
+def figure_gallery(ctx: Context, summary: dict[str, Any] | None = None) -> list[str]:
     present = [
         (name, caption)
         for name, caption in RESULT_FIGURES
@@ -650,6 +1006,9 @@ def figure_gallery(ctx: Context) -> list[str]:
     out = ["<details><summary>Result figures</summary>", ""]
     for name, caption in present:
         out += [f"**{caption}**", "", f"![{caption}]({FIGURES_DIR}/{name}.png)", ""]
+        note = figure_note(ctx, name, summary)
+        if note:
+            out += [note, ""]
     out += ["</details>", ""]
     return out
 
@@ -808,13 +1167,47 @@ def model_selection_table(ms: dict[str, Any], valid: list[tuple[str, dict[str, A
     )
 
 
+def _record_run_ids(ctx: Context, rel: str) -> set[str]:
+    """``run_id`` values of the records in a JSONL run file (empty when unreadable)."""
+    ids: set[str] = set()
+    try:
+        with ctx.path(rel).open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    run_id = json.loads(line).get("run_id")
+                except (ValueError, AttributeError):
+                    continue
+                if isinstance(run_id, str):
+                    ids.add(run_id)
+    except OSError:
+        return set()
+    return ids
+
+
 def run_commits(ctx: Context, results_dir: str) -> list[str]:
-    """Short git commits recorded in the run manifests of a model-selection directory."""
+    """Short git commits of the runs that produced a model-selection directory's records.
+
+    Only manifests whose run id occurs in the kept ``*.jsonl`` records count, so the
+    manifests of earlier, superseded attempts left in the same folder are ignored. When
+    no record names a run id, every manifest in the folder is used.
+    """
     commits: set[str] = set()
-    for rel in ctx.glob(f"{results_dir}/runs/*/manifest_*.json"):
-        commit = dig(ctx.json(rel), "git.commit")
-        if isinstance(commit, str) and commit:
-            commits.add(commit[:7])
+    for model_dir in ctx.glob(f"{results_dir}/runs/*"):
+        run_ids: set[str] = set()
+        for rel in ctx.glob(f"{model_dir}/*.jsonl"):
+            run_ids |= _record_run_ids(ctx, rel)
+        for rel in ctx.glob(f"{model_dir}/manifest_*.json"):
+            manifest = ctx.json(rel)
+            if run_ids and dig(manifest, "run_id") not in run_ids:
+                stem = Path(rel).stem.removeprefix("manifest_")
+                if stem not in run_ids:
+                    continue
+            commit = dig(manifest, "git.commit")
+            if isinstance(commit, str) and commit:
+                commits.add(commit[:7] + ("+dirty" if dig(manifest, "git.dirty") else ""))
     return sorted(commits)
 
 
@@ -873,9 +1266,14 @@ def section_model_selection(ctx: Context) -> list[str]:
     if missing:
         out.append(f"No valid turns yet for: {', '.join(missing)} (pending).")
         out.append("")
+    commits = run_commits(ctx, Path(P_MODEL_SELECTION).parent.as_posix())
+    decision = Path(P_MODEL_SELECTION).parent.as_posix() + "/DECISION.md"
     out.append(
-        f"Run of {date_of(ms.get('generated_at'))}, split `{ms.get('split', '?')}`. "
+        f"Run of {date_of(ms.get('generated_at'))}, split `{ms.get('split', '?')}`"
+        + (f", run manifests at commit(s) {', '.join(commits)}" if commits else "")
+        + ". "
         + source(P_MODEL_SELECTION)
+        + (f" Decision and paired tests: `{decision}`." if ctx.exists(decision) else "")
     )
     out.append("")
     return out
@@ -1000,7 +1398,8 @@ def section_corpus(ctx: Context) -> list[str]:
     out += [
         table(("Document type", "Documents", "Chunks", "Pages / sections"), rows, "lrrr"),
         "",
-        f"{totals.get('organisations', '—')} organisations; {totals.get('table_chunks', '—')} table "
+        f"{organisation_count(ctx.json(P_CORPUS))} organisations (joint labels split); "
+        f"{totals.get('table_chunks', '—')} table "
         f"chunks; chunk length median {tokens.get('median', '—')} tokens (max {tokens.get('max', '—')}, "
         f"{tokens.get('over_512', '—')} over 512). Per-document table: `reports/corpus_stats.md`. "
         + source(P_CORPUS, "data/corpus_manifest.json"),
@@ -1053,47 +1452,356 @@ def aq_text(ctx: Context) -> str:
         f"{fixed(m.get('emergency_detection_recall'), 1)}%, citation precision "
         f"{fixed(m.get('overall_citation_precision'), 1)}%, out-of-domain ANSWER count "
         f"{m.get('out_of_domain_answer_count', '?')}/{m.get('out_of_domain_count', '?')}, "
-        f"errors {m.get('errors', '?')} ({date_of(live.get('generated_at'))}, `{P_AQ}`)"
+        f"errors {m.get('errors', '?')} ({date_of(live.get('generated_at'))}"
+        f"{commit_of(live)}, `{P_AQ}`)"
+    )
+
+
+def commit_of(report: dict[str, Any]) -> str:
+    """``, commit abc1234+dirty`` from a benchmark report's metadata (empty when absent)."""
+    commit = dig(report, "metadata.git_commit")
+    return f", commit `{commit}`" if isinstance(commit, str) and commit else ""
+
+
+def gate3_of(report: dict[str, Any]) -> str:
+    """``, Gate 3 on`` / ``, Gate 3 off`` from a benchmark report's metadata (empty when absent)."""
+    flag = dig(report, "metadata.grounding_verifier")
+    if not isinstance(flag, bool):
+        return ""
+    return ", Gate 3 on" if flag else ", Gate 3 off"
+
+
+def gate3_flag(report: dict[str, Any]) -> str:
+    """``on`` / ``off`` / ``—`` for a table cell."""
+    flag = dig(report, "metadata.grounding_verifier")
+    return "—" if not isinstance(flag, bool) else ("on" if flag else "off")
+
+
+def run_label(report: dict[str, Any], rel: str) -> str:
+    """``2026-10-11, commit `abc1234+dirty`, Gate 3 off, `path` `` for one live report."""
+    return (
+        f"{date_of(report.get('timestamp') or report.get('generated_at'))}{commit_of(report)}"
+        f"{gate3_of(report)}, `{rel}`"
+    )
+
+
+#: Commit of the brand-name robustness fix (ADL-059). A live run counts as "after the fix"
+#: only when the commit its report records contains this commit (checked with git).
+BRAND_FIX_COMMIT = "02d9774"
+
+
+def commit_contains(ctx: Context, commit: Any, ancestor: str) -> bool | None:
+    """True/False when ``commit`` (``abc1234`` or ``abc1234+dirty``) contains ``ancestor``.
+
+    None when it cannot be decided (no commit recorded, git unavailable, unknown commit).
+    The answer depends only on the repository history, so the rendered text is stable.
+    """
+    if not isinstance(commit, str) or not commit:
+        return None
+    sha = commit.split("+", 1)[0].strip()
+    if not re.fullmatch(r"[0-9a-f]{7,40}", sha):
+        return None
+    key = f"git-contains:{sha}:{ancestor}"
+    if key in ctx._cache:
+        return ctx._cache[key]
+    result: bool | None = None
+    try:
+        proc = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", ancestor, sha],
+            cwd=ctx.root,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        result = True if proc.returncode == 0 else False if proc.returncode == 1 else None
+    except (OSError, subprocess.SubprocessError):
+        result = None
+    ctx._cache[key] = result
+    return result
+
+
+def fix_status(ctx: Context, report: dict[str, Any]) -> str:
+    """``after`` / ``before`` / ``unknown`` relative to the brand-name fix, from the report's commit."""
+    contains = commit_contains(ctx, dig(report, "metadata.git_commit"), BRAND_FIX_COMMIT)
+    return "unknown" if contains is None else ("after" if contains else "before")
+
+
+def _pct_value(value: Any) -> str:
+    """A value that is already a percentage (``48.33`` → ``48.3%``)."""
+    f = _num(value)
+    return "—" if f is None else f"{f:.1f}%"
+
+
+def rabbits_line(report: dict[str, Any], rel: str) -> str:
+    return (
+        f"{report.get('pairs', '?')} brand–generic pairs ({report.get('indian_pairs', '?')} Indian), "
+        f"action consistency {fixed(report.get('action_consistency_pct'), 1)}%, extraction "
+        f"consistency {fixed(report.get('extraction_consistency_pct'), 1)}%, brand normalised to "
+        f"its generic {fixed(report.get('brand_normalised_pct'), 1)}%, mean citation Jaccard "
+        f"{fixed(report.get('citation_jaccard_mean'), 3)}, errors {report.get('errors', '?')} "
+        f"({run_label(report, rel)})"
+    )
+
+
+def rabbits_runs(ctx: Context) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """(live run kept from before the brand-name fix, newer live run at the default path)."""
+    before = live_or_none(ctx.json(P_RABBITS_BEFORE))
+    after = live_or_none(ctx.json(P_RABBITS))
+    if after and before and after.get("timestamp") == before.get("timestamp"):
+        after = None  # the default path still holds a copy of the pre-fix run
+    return before, after
+
+
+def rabbits_before_text(ctx: Context) -> str | None:
+    before, _ = rabbits_runs(ctx)
+    return rabbits_line(before, P_RABBITS_BEFORE) if before else None
+
+
+def rabbits_flips(report: dict[str, Any]) -> dict[str, int] | None:
+    """Action flips counted from ``items_detail`` (brand and generic message routed differently)."""
+    items = [i for i in report.get("items_detail") or [] if isinstance(i, dict)]
+    if not items:
+        return None
+    answered = {"ANSWER", "GENERALIZE"}
+    flips = [i for i in items if i.get("action_match") is False]
+    brand = sum(
+        1
+        for i in flips
+        if i.get("brand_action") == "ABSTAIN" and i.get("generic_action") in answered
+    )
+    generic = sum(
+        1
+        for i in flips
+        if i.get("generic_action") == "ABSTAIN" and i.get("brand_action") in answered
+    )
+    return {
+        "flips": len(flips),
+        "brand_declined": brand,
+        "generic_declined": generic,
+        "other": len(flips) - brand - generic,
+    }
+
+
+RABBITS_PCT_ROWS: tuple[tuple[str, str], ...] = (
+    ("Action consistency, all items", "action_consistency_pct"),
+    ("Action consistency, general template", "by_template.general.action_consistency_pct"),
+    ("Action consistency, personal template", "by_template.personal.action_consistency_pct"),
+    ("Action consistency, Indian brands", "by_origin.indian.action_consistency_pct"),
+    ("Action consistency, international brands", "by_origin.international.action_consistency_pct"),
+    ("Stored-generic consistency (personal template)", "extraction_consistency_pct"),
+    ("Brand stored as its generic (personal template)", "brand_normalised_pct"),
+)
+RABBITS_NUM_ROWS: tuple[tuple[str, str], ...] = (
+    ("Citation-set Jaccard, chunks", "citation_jaccard_mean"),
+    ("Citation-set Jaccard, guidelines", "guideline_jaccard_mean"),
+)
+
+
+def rabbits_compare_rows(before: dict[str, Any], after: dict[str, Any]) -> list[list[str]]:
+    rows = [
+        [label, _pct_value(dig(before, path)), _pct_value(dig(after, path))]
+        for label, path in RABBITS_PCT_ROWS
+    ]
+    rows += [
+        [label, fixed(dig(before, path)), fixed(dig(after, path))]
+        for label, path in RABBITS_NUM_ROWS
+    ]
+    fb, fa = rabbits_flips(before) or {}, rabbits_flips(after) or {}
+    for label, key in (
+        ("Action flips (of the items above)", "flips"),
+        ("– brand declined (ABSTAIN) while the generic was answered", "brand_declined"),
+        ("– generic declined while the brand was answered", "generic_declined"),
+        ("– other differences (e.g. ANSWER vs GENERALIZE)", "other"),
+    ):
+        rows.append([label, str(fb.get(key, "—")), str(fa.get(key, "—"))])
+
+    def seconds(report: dict[str, Any]) -> str:
+        ms = _num(report.get("latency_p50_ms"))
+        return "—" if ms is None else f"{ms / 1000:.1f} s"
+
+    rows += [
+        ["Median turn latency (client)", seconds(before), seconds(after)],
+        [
+            "Pipeline turns / harness errors",
+            f"{before.get('turns_run', '—')} / {before.get('errors', '—')}",
+            f"{after.get('turns_run', '—')} / {after.get('errors', '—')}",
+        ],
+        [
+            "Code (commit recorded by the run)",
+            f"`{dig(before, 'metadata.git_commit') or '—'}`",
+            f"`{dig(after, 'metadata.git_commit') or '—'}`",
+        ],
+        ["Gate 3 during the run", gate3_flag(before), gate3_flag(after)],
+        [
+            "Run date",
+            date_of(before.get("timestamp")),
+            date_of(after.get("timestamp")),
+        ],
+    ]
+    return rows
+
+
+def rabbits_compare_text(ctx: Context) -> str | None:
+    before, after = rabbits_runs(ctx)
+    if not (before and after):
+        return None
+    fb, fa = rabbits_flips(before) or {}, rabbits_flips(after) or {}
+    status = fix_status(ctx, after)
+    after_word = {
+        "after": "after the brand-name fix",
+        "before": "latest run (still before the fix)",
+    }.get(status, "latest run")
+    return (
+        f"live RABBITS on the same {after.get('pairs', '?')} brand–generic pairs "
+        f"({after.get('indian_pairs', '?')} Indian): action consistency "
+        f"{_pct_value(before.get('action_consistency_pct'))} → "
+        f"{_pct_value(after.get('action_consistency_pct'))}, Indian brands "
+        f"{_pct_value(dig(before, 'by_origin.indian.action_consistency_pct'))} → "
+        f"{_pct_value(dig(after, 'by_origin.indian.action_consistency_pct'))}, stored-generic "
+        f"consistency {_pct_value(before.get('extraction_consistency_pct'))} → "
+        f"{_pct_value(after.get('extraction_consistency_pct'))}, brand stored as its generic "
+        f"{_pct_value(before.get('brand_normalised_pct'))} → "
+        f"{_pct_value(after.get('brand_normalised_pct'))}, action flips {fb.get('flips', '?')} → "
+        f"{fa.get('flips', '?')} (brand declined while the generic was answered: "
+        f"{fb.get('brand_declined', '?')} → {fa.get('brand_declined', '?')}); before the fix: "
+        f"{run_label(before, P_RABBITS_BEFORE)}; {after_word}: {run_label(after, P_RABBITS)}"
     )
 
 
 def rabbits_text(ctx: Context) -> str:
+    """Latest live RABBITS run, plus the run kept from before the brand-name fix (ADL-059).
+
+    The run in ``reports/rabbits_before_fix/`` is always labelled as the pre-fix run. The run
+    at the default path is labelled "after the fix" only when the commit it records contains
+    the fix commit (``git merge-base --is-ancestor``); otherwise only by its commit and date.
+    """
     data = ctx.json(P_RABBITS)
-    live = live_or_none(data)
-    if not live:
+    before, after = rabbits_runs(ctx)
+    before_part = rabbits_line(before, P_RABBITS_BEFORE) if before else ""
+    if not after:
         ctx.pending.append("live RABBITS run")
         mode = data.get("mode") if isinstance(data, dict) else None
         why = (
             f"the current `{P_RABBITS}` is {mode}-mode (deterministic components only)"
-            if mode
-            else f"`{P_RABBITS}` not generated"
+            if mode and mode != "live"
+            else f"no newer live run in `{P_RABBITS}`"
         )
-        return f"{PENDING} ({why}; run `python -m tests.adversarial.rabbits_runner --mode live`)"
-    return (
-        f"{live.get('pairs', '?')} brand–generic pairs ({live.get('indian_pairs', '?')} Indian), "
-        f"action consistency {fixed(live.get('action_consistency_pct'), 1)}%, extraction "
-        f"consistency {fixed(live.get('extraction_consistency_pct'), 1)}%, mean citation Jaccard "
-        f"{fixed(live.get('citation_jaccard_mean'), 3)}, errors {live.get('errors', '?')} "
-        f"({date_of(live.get('timestamp') or live.get('generated_at'))}, `{P_RABBITS}`)"
-    )
-
-
-def adversarial_text(ctx: Context) -> str:
-    live = live_or_none(ctx.json(P_ADVERSARIAL))
-    if not live or not isinstance(live.get("counts"), dict):
-        ctx.pending.append("live adversarial run")
+        pending = (
+            f"{PENDING} for the live re-run ({why}; run "
+            "`python -m tests.adversarial.rabbits_runner --mode live`)"
+        )
         return (
-            f"{PENDING} (`{P_ADVERSARIAL}` not generated; run "
-            "`python -m tests.adversarial.adversarial_runner`)"
+            f"Before the brand-name fix: {before_part}. Latest code: {pending}"
+            if before
+            else pending
         )
-    c = live["counts"]
+    label = {"after": "After the brand-name fix", "before": "Latest live run (before the fix)"}.get(
+        fix_status(ctx, after), "Latest live run"
+    )
+    latest = f"{label}: {rabbits_line(after, P_RABBITS)}"
+    return f"{latest}. Before the fix: {before_part}" if before else latest
+
+
+def adversarial_line(report: dict[str, Any], rel: str) -> str:
+    c = as_dict(report.get("counts"))
     return (
         f"{c.get('passed', '?')}/{c.get('payloads', '?')} payloads passed; system-prompt leaks "
         f"{c.get('leaked_system_prompt', '?')}, fabricated prescriptions "
         f"{c.get('fabricated_prescription', '?')}, unsafe outputs {c.get('unsafe_output', '?')}, "
         f"emergency payloads escalated {c.get('emergency_escalated', '?')}/"
-        f"{c.get('emergency_payloads', '?')} ({date_of(live.get('generated_at'))}, `{P_ADVERSARIAL}`)"
+        f"{c.get('emergency_payloads', '?')} ({run_label(report, rel)})"
     )
+
+
+def adversarial_runs(ctx: Context) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """(live run kept from before the brand-name fix, newer live run at the default path)."""
+    before = live_or_none(ctx.json(P_ADVERSARIAL_BEFORE))
+    after = live_or_none(ctx.json(P_ADVERSARIAL))
+    if before and after and before.get("generated_at") == after.get("generated_at"):
+        after = None
+    if after is not None and not isinstance(after.get("counts"), dict):
+        after = None
+    if before is not None and not isinstance(before.get("counts"), dict):
+        before = None
+    return before, after
+
+
+def adversarial_changes(
+    before: dict[str, Any], after: dict[str, Any]
+) -> list[tuple[str, str, str, str]]:
+    """Payloads whose final action differs: (payload, action before, action after, passed after)."""
+    old = {
+        str(r.get("payload_id")): str(r.get("action"))
+        for r in before.get("results") or []
+        if isinstance(r, dict)
+    }
+    out = []
+    for r in after.get("results") or []:
+        if not isinstance(r, dict):
+            continue
+        pid, action = str(r.get("payload_id")), str(r.get("action"))
+        if pid in old and old[pid] != action:
+            out.append((pid, old[pid], action, "yes" if r.get("passed") else "no"))
+    return out
+
+
+def adversarial_compare_text(ctx: Context) -> str | None:
+    before, after = adversarial_runs(ctx)
+    if not (before and after):
+        return None
+    cb, ca = as_dict(before.get("counts")), as_dict(after.get("counts"))
+    keys = ("leaked_system_prompt", "fabricated_prescription", "unsafe_output")
+    same_checks = all(cb.get(k) == ca.get(k) for k in keys) and (
+        cb.get("emergency_escalated"),
+        cb.get("emergency_payloads"),
+    ) == (ca.get("emergency_escalated"), ca.get("emergency_payloads"))
+    checks = (
+        f"system-prompt leaks {ca.get('leaked_system_prompt')}, fabricated prescriptions "
+        f"{ca.get('fabricated_prescription')}, unsafe outputs {ca.get('unsafe_output')} and "
+        f"emergency payloads escalated {ca.get('emergency_escalated')}/"
+        f"{ca.get('emergency_payloads')} in both runs"
+        if same_checks
+        else "check counts before and after differ, see the table"
+    )
+    changes = adversarial_changes(before, after)
+    changed = (
+        f"; final action changed on {len(changes)} payload{'s' if len(changes) != 1 else ''} ("
+        + ", ".join(f"{p} {a} → {b}" for p, a, b, _ in changes)
+        + ")"
+        if changes
+        else "; no payload changed its final action"
+    )
+    after_word = {"after": "after the fix", "before": "latest run"}.get(
+        fix_status(ctx, after), "latest run"
+    )
+    return (
+        f"{cb.get('passed', '?')}/{cb.get('payloads', '?')} payloads passed before the brand-name "
+        f"fix and {ca.get('passed', '?')}/{ca.get('payloads', '?')} {after_word}; {checks}{changed} "
+        f"(before: {run_label(before, P_ADVERSARIAL_BEFORE)}; {after_word}: "
+        f"{run_label(after, P_ADVERSARIAL)})"
+    )
+
+
+def adversarial_text(ctx: Context) -> str:
+    before, after = adversarial_runs(ctx)
+    latest = after or before
+    if not latest:
+        ctx.pending.append("live adversarial run")
+        return (
+            f"{PENDING} (`{P_ADVERSARIAL}` not generated; run "
+            "`python -m tests.adversarial.adversarial_runner`)"
+        )
+    if after and before:
+        label = {"after": "After the brand-name fix", "before": "Latest live run"}.get(
+            fix_status(ctx, after), "Latest live run"
+        )
+        return (
+            f"{label}: {adversarial_line(after, P_ADVERSARIAL)}. Before the fix: "
+            f"{adversarial_line(before, P_ADVERSARIAL_BEFORE)}"
+        )
+    rel = P_ADVERSARIAL if after else P_ADVERSARIAL_BEFORE
+    return adversarial_line(latest, rel)
 
 
 def load_rows(ctx: Context) -> list[list[str]] | None:
@@ -1120,6 +1828,35 @@ def load_rows(ctx: Context) -> list[list[str]] | None:
     return rows
 
 
+LOAD_KINDS: tuple[str, ...] = (
+    "emergency",
+    "small_talk",
+    "general",
+    "out_of_domain",
+    "personal",
+    "clarification",
+)
+
+
+def load_kind_rows(ctx: Context) -> list[list[str]] | None:
+    """p50 latency (s) per query kind and concurrency level, from ``by_kind``."""
+    data = ctx.json(P_LOAD)
+    levels = data.get("levels") if isinstance(data, dict) else None
+    if not isinstance(levels, list) or not levels:
+        return None
+    rows = []
+    for lv in levels:
+        if not isinstance(lv, dict):
+            continue
+        by_kind = as_dict(lv.get("by_kind"))
+        cells = []
+        for kind in LOAD_KINDS:
+            ms = _num(as_dict(by_kind.get(kind)).get("p50_ms"))
+            cells.append("—" if ms is None else f"{ms / 1000:.2f}")
+        rows.append([str(lv.get("users", "—")), *cells])
+    return rows
+
+
 def load_text(ctx: Context) -> str:
     rows = load_rows(ctx)
     if not rows:
@@ -1140,46 +1877,288 @@ def section_operations(ctx: Context) -> list[str]:
     rows = [
         ["Smoke test (every action path, PII, SSE, auth, erasure)", smoke_text(ctx)],
         ["MedBridge-AQ routing benchmark (275 vignettes)", aq_text(ctx)],
-        ["RABBITS brand↔generic robustness (189 brands)", rabbits_text(ctx)],
+        ["RABBITS brand↔generic robustness (live)", rabbits_text(ctx)],
         ["Adversarial prompt-injection suite (live)", adversarial_text(ctx)],
         ["Load test (1/5/10 concurrent users)", load_text(ctx)],
     ]
     out += [table(("Check", "Result"), rows), ""]
+    aq = live_or_none(ctx.json(P_AQ))
+    if aq:
+        status = fix_status(ctx, aq)
+        if status == "before":
+            out += [
+                "The live MedBridge-AQ run above was recorded on code from before the brand-name "
+                f"fix (commit `{dig(aq, 'metadata.git_commit')}`, which does not contain `{BRAND_FIX_COMMIT}`); "
+                "it has not been re-run since.",
+                "",
+            ]
+
+    before, after = rabbits_runs(ctx)
+    if before and after:
+        out += [
+            f"**RABBITS before vs {'after the brand-name fix' if fix_status(ctx, after) == 'after' else 'latest run'}** "
+            f"(same {after.get('pairs', '?')} brand → generic pairs and the same two message templates; "
+            "a brand and its generic should get the same action and the same stored medicine):",
+            "",
+            table(("Metric", "Before", "After"), rabbits_compare_rows(before, after), "lrr"),
+            "",
+            "Flip counts are computed from `items_detail` in each report. "
+            + source(P_RABBITS_BEFORE, P_RABBITS),
+            "",
+        ]
+
+    abefore, aafter = adversarial_runs(ctx)
+    if abefore and aafter:
+        cb, ca = as_dict(abefore.get("counts")), as_dict(aafter.get("counts"))
+        arows = [
+            [
+                "Payloads passed",
+                f"{cb.get('passed')}/{cb.get('payloads')}",
+                f"{ca.get('passed')}/{ca.get('payloads')}",
+            ],
+            [
+                "System-prompt leaks",
+                str(cb.get("leaked_system_prompt")),
+                str(ca.get("leaked_system_prompt")),
+            ],
+            [
+                "Fabricated prescriptions",
+                str(cb.get("fabricated_prescription")),
+                str(ca.get("fabricated_prescription")),
+            ],
+            ["Unsafe outputs", str(cb.get("unsafe_output")), str(ca.get("unsafe_output"))],
+            [
+                "Emergency payloads escalated",
+                f"{cb.get('emergency_escalated')}/{cb.get('emergency_payloads')}",
+                f"{ca.get('emergency_escalated')}/{ca.get('emergency_payloads')}",
+            ],
+            ["Harness errors", str(cb.get("errors")), str(ca.get("errors"))],
+            [
+                "Code (commit recorded by the run)",
+                f"`{dig(abefore, 'metadata.git_commit') or '—'}`",
+                f"`{dig(aafter, 'metadata.git_commit') or '—'}`",
+            ],
+            ["Gate 3 during the run", gate3_flag(abefore), gate3_flag(aafter)],
+            ["Run date", date_of(abefore.get("generated_at")), date_of(aafter.get("generated_at"))],
+        ]
+        changes = adversarial_changes(abefore, aafter)
+        change_text = (
+            "Payloads whose final action changed: "
+            + "; ".join(f"{p} {a} → {b} (passed: {ok})" for p, a, b, ok in changes)
+            + "."
+            if changes
+            else "No payload changed its final action."
+        )
+        out += [
+            "**Adversarial suite before vs after the brand-name fix:**",
+            "",
+            table(("Check", "Before", "After"), arows, "lrr"),
+            "",
+            change_text + " " + source(P_ADVERSARIAL_BEFORE, P_ADVERSARIAL),
+            "",
+        ]
+
     load = load_rows(ctx)
     if load:
         out += [
+            "**Load test** (burst: every simulated user sends its requests at once):",
+            "",
             table(
                 ("Users", "Requests", "Errors", "429s", "Error rate", "p50 ms", "p95 ms", "req/s"),
                 load,
                 "rrrrrrrr",
             ),
             "",
-            source(P_LOAD),
-            "",
         ]
+        kinds = load_kind_rows(ctx)
+        if kinds:
+            out += [
+                "p50 latency per query kind, seconds (— = that kind was not sent at this level):",
+                "",
+                table(("Users", *LOAD_KINDS), kinds, "r" * (1 + len(LOAD_KINDS))),
+                "",
+            ]
+        notes = [n for n in as_dict(ctx.json(P_LOAD)).get("notes") or [] if isinstance(n, str)]
+        if notes:
+            out += [f"Note recorded with the run: {notes[0]}", ""]
+        out += [source(P_LOAD), ""]
     return out
 
 
-def perf_probe_files(ctx: Context) -> dict[str, str]:
-    """Newest probe file per label ('before' / 'after') in reports/performance."""
+# ----------------------------------------------------------------------
+# Latency before vs after (scripts/latency_probe.py files, evaluation.perf table)
+# ----------------------------------------------------------------------
+
+
+def probe_files(ctx: Context) -> dict[str, str]:
+    """``label`` → repo-relative path of every latency-probe file (newest file per label)."""
     found: dict[str, tuple[float, str]] = {}
     for rel in ctx.glob(f"{P_PERF_DIR}/*.json"):
         data = ctx.json(rel)
-        if (
-            isinstance(data, dict)
-            and data.get("label") in ("before", "after")
-            and "warm_summary" in data
-        ):
+        if isinstance(data, dict) and isinstance(data.get("label"), str) and "warm_summary" in data:
             mtime = ctx.path(rel).stat().st_mtime
-            label = str(data["label"])
+            label = data["label"]
             if label not in found or mtime > found[label][0]:
                 found[label] = (mtime, rel)
-    return {label: rel for label, (_, rel) in found.items()}
+    return {label: rel for label, (_, rel) in sorted(found.items())}
+
+
+def latency_pair(ctx: Context) -> tuple[str | None, str | None]:
+    """The before/after probe files the latency table compares (named in its Markdown header)."""
+    md = ctx.path(P_LATENCY_TABLE_MD)
+    if md.is_file():
+        try:
+            head = md.read_text(encoding="utf-8").splitlines()[0]
+        except (OSError, IndexError):
+            head = ""
+        m = re.search(r"\(([\w.\-]+\.json)\s*→\s*([\w.\-]+\.json)", head)
+        if m:
+            b, a = f"{P_PERF_DIR}/{m.group(1)}", f"{P_PERF_DIR}/{m.group(2)}"
+            if ctx.exists(b) and ctx.exists(a):
+                return b, a
+    probes = probe_files(ctx)
+    return probes.get("before"), probes.get("after")
+
+
+def model_of(rel: str) -> str:
+    """``reports/performance/after_qwen3.5-4b.json`` → ``qwen3.5:4b`` (tag written by run_post_study.sh)."""
+    stem = Path(rel).stem
+    for prefix in ("after_warmup_", "after_", "before_"):
+        if stem.startswith(prefix):
+            stem = stem[len(prefix) :]
+            break
+    head, sep, tail = stem.rpartition("-")
+    return f"{head}:{tail}" if sep and head else stem
+
+
+def scenario_names(ctx: Context) -> dict[str, str]:
+    """``S5-t1`` → ``Lifestyle`` from the latency table written by evaluation.perf."""
+    path = ctx.path(P_LATENCY_TABLE)
+    if not path.is_file():
+        return {}
+    try:
+        with path.open(encoding="utf-8", newline="") as fh:
+            return {
+                r["Scenario turn"]: r.get("Scenario", "")
+                for r in csv.DictReader(fh)
+                if r.get("Scenario turn")
+            }
+    except (OSError, KeyError):
+        return {}
+
+
+def warm_by_turn(probe: dict[str, Any]) -> dict[str, tuple[str, dict[str, Any]]]:
+    """``S4-t2`` → (action, warm stats). A turn with several actions keeps the first one."""
+    out: dict[str, tuple[str, dict[str, Any]]] = {}
+    for key, stats in sorted(as_dict(probe.get("warm_summary")).items()):
+        turn, _, action = key.partition(":")
+        if isinstance(stats, dict) and turn not in out:
+            out[turn] = (action, stats)
+    return out
+
+
+def cold_by_turn(probe: dict[str, Any]) -> dict[str, tuple[str, float]]:
+    """``S4-t2`` → (action, seconds) of the first (cold) pass."""
+    out: dict[str, tuple[str, float]] = {}
+    for c in probe.get("cold") or []:
+        if not isinstance(c, dict):
+            continue
+        sec = _num(c.get("latency_s"))
+        if sec is not None:
+            out.setdefault(f"{c.get('scenario')}-t{c.get('turn')}", (str(c.get("action")), sec))
+    return out
+
+
+def latency_changes(
+    ctx: Context, before: dict[str, Any], after: dict[str, Any]
+) -> dict[str, list[str]]:
+    """Turns that got faster, slower or stayed the same (warm p50; ±10 % counts as the same)."""
+    names = scenario_names(ctx)
+    b, a = warm_by_turn(before), warm_by_turn(after)
+    out: dict[str, list[str]] = {"faster": [], "slower": [], "same": [], "no_llm": []}
+    for turn in sorted(set(b) & set(a)):
+        (ab, sb), (aa, sa) = b[turn], a[turn]
+        pb, pa = _num(sb.get("p50")), _num(sa.get("p50"))
+        if pb is None or pa is None:
+            continue
+        action = aa if aa == ab else f"{ab} → {aa}"
+        name = names.get(turn)
+        desc = f"{turn} ({name + ', ' if name else ''}{action}) {pb:.2f} s → {pa:.2f} s"
+        if max(pb, pa) < 0.1:
+            out["no_llm"].append(desc)
+        elif pa > 0 and pb / pa >= 1.1:
+            out["faster"].append(desc)
+        elif pa > 0 and pb / pa <= 1 / 1.1:
+            out["slower"].append(desc)
+        else:
+            out["same"].append(desc)
+    return out
+
+
+def cold_changes(ctx: Context, before: dict[str, Any], after: dict[str, Any]) -> list[str]:
+    names = scenario_names(ctx)
+    b, a = cold_by_turn(before), cold_by_turn(after)
+    out = []
+    for turn in sorted(set(b) & set(a)):
+        (ab, sb), (aa, sa) = b[turn], a[turn]
+        action = aa if aa == ab else f"{ab} → {aa}"
+        name = names.get(turn)
+        out.append(f"{turn} ({name + ', ' if name else ''}{action}) {sb:.2f} s → {sa:.2f} s")
+    return out
+
+
+def after_probe_files(ctx: Context) -> list[str]:
+    """Probe files of the final code with warm repeats (labels ``after_<model>``)."""
+    return [
+        rel
+        for label, rel in probe_files(ctx).items()
+        if label.startswith("after_") and not label.startswith("after_warmup_")
+    ]
+
+
+def stage_seconds(stages: dict[str, Any], *names: str) -> str:
+    vals = [_num(stages.get(n)) for n in names]
+    present = [v for v in vals if v is not None]
+    return f"{sum(present) / 1000:.2f}" if present else "—"
+
+
+def gate3_stage_range(ctx: Context) -> tuple[float, float, list[str]] | None:
+    """Min and max warm p50 of the Gate 3 (verification) stage, seconds, over all after files."""
+    values: list[float] = []
+    files: list[str] = []
+    for rel in after_probe_files(ctx):
+        probe = as_dict(ctx.json(rel))
+        found = False
+        for stats in as_dict(probe.get("warm_summary")).values():
+            ms = _num(as_dict(as_dict(stats).get("server_stage_ms_p50")).get("verification"))
+            if ms is not None:
+                values.append(ms / 1000)
+                found = True
+        if found:
+            files.append(rel)
+    return (min(values), max(values), files) if values else None
+
+
+def gate3_stage_text(ctx: Context) -> str | None:
+    rng = gate3_stage_range(ctx)
+    if not rng:
+        return None
+    low, high, files = rng
+    span = f"{low:.2f} s" if f"{low:.2f}" == f"{high:.2f}" else f"{low:.2f}–{high:.2f} s"
+    return (
+        f"the Gate 3 verification stage takes {span} per ANSWER turn (server-side warm p50; "
+        + ", ".join(f"`{f}`" for f in files)
+        + ")"
+    )
 
 
 def section_latency(ctx: Context) -> list[str]:
     out = ["### Latency before vs after optimisation", ""]
+    before_rel, after_rel = latency_pair(ctx)
+    before = as_dict(ctx.json(before_rel)) if before_rel else {}
+    after = as_dict(ctx.json(after_rel)) if after_rel else {}
     table_path = ctx.path(P_LATENCY_TABLE)
+    rendered_table = False
     if table_path.is_file():
         try:
             with table_path.open(encoding="utf-8", newline="") as fh:
@@ -1188,51 +2167,178 @@ def section_latency(ctx: Context) -> list[str]:
             ctx.warnings.append(f"could not read {P_LATENCY_TABLE}: {exc}")
             reader = []
         if len(reader) > 1:
-            out += [table(reader[0], reader[1:]), "", source(P_LATENCY_TABLE), ""]
-            return out
-    probes = perf_probe_files(ctx)
-    before = ctx.json(probes["before"]) if "before" in probes else None
-    if isinstance(before, dict):
-        rows = []
-        cold = {
-            f"{c.get('scenario')}-t{c.get('turn')}": c
-            for c in before.get("cold") or []
-            if isinstance(c, dict)
-        }
-        for key, stats in sorted((before.get("warm_summary") or {}).items()):
-            turn, _, action = key.partition(":")
-            c = cold.get(turn) or {}
-            rows.append(
-                [
-                    turn,
-                    action,
-                    fixed(c.get("latency_s"), 2),
-                    fixed(stats.get("p50"), 2),
-                    fixed(stats.get("p95"), 2),
-                    str(stats.get("n", "—")),
+            if before_rel and after_rel:
+                same_model = model_of(before_rel) == model_of(after_rel)
+                n_warm = {str(s.get("n")) for _, s in warm_by_turn(after).values()}
+                gate3_on = any(
+                    "verification" in as_dict(stats.get("server_stage_ms_p50"))
+                    for _, stats in warm_by_turn(after).values()
+                )
+                out += [
+                    f"Before: `{before_rel}` (the received code). After: `{after_rel}` (the code "
+                    "after the optimisations, measured before commit `16e594b`"
+                    + (", with Gate 3 running on its ANSWER turns" if gate3_on else "")
+                    + "). "
+                    + (
+                        f"Both used `{model_of(after_rel)}`, so the comparison is like for like. "
+                        if same_model
+                        else f"Models differ (`{model_of(before_rel)}` vs `{model_of(after_rel)}`). "
+                    )
+                    + "Cold = the first request after a server start with the model not yet "
+                    "loaded; warm = repeated requests"
+                    + (f" (n = {n_warm.pop()} per turn)" if len(n_warm) == 1 else "")
+                    + ".",
+                    "",
                 ]
-            )
-        out += [
-            "Baseline measured on the received version (before any change):",
-            "",
-            table(
-                ("Scenario turn", "Action", "Cold s", "Warm p50 s", "Warm p95 s", "n"),
-                rows,
-                "llrrrr",
-            ),
-            "",
-            source(probes["before"]),
-            "",
-        ]
-    if "after" not in probes:
+            out += [
+                table(reader[0], reader[1:]),
+                "",
+                source(P_LATENCY_TABLE, *(p for p in (before_rel, after_rel) if p)),
+                "",
+            ]
+            rendered_table = True
+    if not rendered_table:
         out.append(
             pending_note(
                 ctx,
-                "the 'after' latency probe has not been recorded",
-                "Run `python scripts/latency_probe.py --label after ...` then `python -m evaluation.perf`.",
+                "the before/after latency table has not been written",
+                "Run `python scripts/latency_probe.py --label after_<model> ...` then "
+                "`python -m evaluation.perf --before ... --after ...`.",
             )
         )
         out.append("")
+        return out
+
+    if before and after:
+        ch = latency_changes(ctx, before, after)
+        notes = []
+        if ch["faster"]:
+            notes.append("Faster (warm p50): " + "; ".join(ch["faster"]) + ".")
+        if ch["slower"]:
+            notes.append("Slower (warm p50): " + "; ".join(ch["slower"]) + ".")
+        if ch["same"]:
+            notes.append("Within ±10 %: " + "; ".join(ch["same"]) + ".")
+        if ch["no_llm"]:
+            notes.append(
+                "No LLM call, below 0.1 s in both versions: " + "; ".join(ch["no_llm"]) + "."
+            )
+        cold = cold_changes(ctx, before, after)
+        if cold:
+            notes.append("First request (cold): " + "; ".join(cold) + ".")
+        g3 = gate3_stage_text(ctx)
+        if g3:
+            notes.append(f"Gate 3 is new in the after version: {g3[0].lower()}{g3[1:]}.")
+        abstain = [
+            (turn, stats)
+            for turn, (action, stats) in warm_by_turn(after).items()
+            if action == "ABSTAIN"
+        ]
+        for turn, stats in abstain:
+            g2 = _num(as_dict(stats.get("server_stage_ms_p50")).get("evidence_gate"))
+            if g2 is not None:
+                notes.append(
+                    f"On the ABSTAIN turn {turn}, Gate 2 alone takes {g2 / 1000:.2f} s (warm p50, "
+                    f"`{after_rel}`). The before file records no per-stage timings, so which stage "
+                    "grew cannot be measured from these files."
+                )
+        if notes:
+            out += ["Reading the table (computed from the two probe files):", ""]
+            out += [f"- {n}" for n in notes]
+            out.append("")
+
+    name, caption = LATENCY_FIGURE
+    if ctx.exists(f"{FIGURES_DIR}/{name}.png"):
+        out += [f"![{caption}]({FIGURES_DIR}/{name}.png)", ""]
+
+    after_files = after_probe_files(ctx)
+    if after_files:
+        out += [
+            "Where the time goes in the post-study code with Gate 3 on (the probes ran before "
+            "commit `16e594b`, ADL-061; server-side warm p50 per stage, seconds; "
+            "retrieval is served from the in-process cache on repeated questions, reranking is not):",
+            "",
+        ]
+        rows = []
+        for rel in after_files:
+            probe = as_dict(ctx.json(rel))
+            for turn, (action, stats) in warm_by_turn(probe).items():
+                st = as_dict(stats.get("server_stage_ms_p50"))
+                total = _num(stats.get("server_total_ms_p50"))
+                rows.append(
+                    [
+                        model_of(rel),
+                        turn,
+                        action,
+                        stage_seconds(st, "extraction"),
+                        stage_seconds(st, "context_gate"),
+                        stage_seconds(st, "retrieval", "rerank"),
+                        stage_seconds(st, "evidence_gate"),
+                        stage_seconds(st, "generation"),
+                        stage_seconds(st, "verification"),
+                        "—" if total is None else f"{total / 1000:.2f}",
+                    ]
+                )
+        out += [
+            table(
+                (
+                    "Model",
+                    "Turn",
+                    "Action",
+                    "Extractor",
+                    "Gate 1",
+                    "Retrieval + rerank",
+                    "Gate 2",
+                    "Generator",
+                    "Gate 3",
+                    "Server total",
+                ),
+                rows,
+                "lllrrrrrrr",
+            ),
+            "",
+            "Stage p50s are taken separately over the repeats, so they need not add up to the "
+            "total p50. " + source(*after_files),
+            "",
+        ]
+
+    probes = probe_files(ctx)
+    wrows = []
+    wfiles: list[str] = []
+    for rel in after_files:
+        label = as_dict(ctx.json(rel)).get("label")
+        tag = str(label)[len("after_") :] if isinstance(label, str) else ""
+        wrel = probes.get(f"after_warmup_{tag}")
+        if not wrel:
+            continue
+        off, on = as_dict(ctx.json(rel)), as_dict(ctx.json(wrel))
+        c_off, c_on, warm = cold_by_turn(off), cold_by_turn(on), warm_by_turn(off)
+        for turn in sorted(set(c_off) | set(c_on)):
+            action = (c_off.get(turn) or c_on.get(turn) or ("—", 0.0))[0]
+            wrows.append(
+                [
+                    model_of(rel),
+                    turn,
+                    action,
+                    f"{c_off[turn][1]:.2f}" if turn in c_off else "—",
+                    f"{c_on[turn][1]:.2f}" if turn in c_on else "—",
+                    fixed(warm[turn][1].get("p50"), 2) if turn in warm else "—",
+                ]
+            )
+        wfiles += [rel, wrel]
+    if wrows:
+        out += [
+            "First request after a server start, without and with the start-up warm-up "
+            "(`WARMUP_ON_STARTUP`), seconds:",
+            "",
+            table(
+                ("Model", "Turn", "Action", "Warm-up off (cold)", "Warm-up on", "Warm p50"),
+                wrows,
+                "lllrrr",
+            ),
+            "",
+            source(*wfiles),
+            "",
+        ]
     return out
 
 
@@ -1308,11 +2414,26 @@ def tests_text(ctx: Context) -> str:
     junit = junit_totals(ctx)
     cov = coverage_info(ctx)
     parts = []
-    if isinstance(custom, dict) and custom.get("passed") is not None:
+    # scripts/test_summary.py writes {"totals": {"passed", "collected", "skipped", ...}};
+    # a flat {"passed", "failed", "skipped"} file is accepted too.
+    totals = as_dict(custom.get("totals")) if isinstance(custom, dict) else {}
+    flat = custom if isinstance(custom, dict) and custom.get("passed") is not None else {}
+    counts = totals if totals.get("passed") is not None else flat
+    if counts:
+        failed = counts.get("failed", 0) or 0
+        errors = counts.get("errors", 0) or 0
+        exit_code = custom.get("exit_code") if isinstance(custom, dict) else None
         parts.append(
-            f"{custom.get('passed')} passed, {custom.get('failed', 0)} failed, "
-            f"{custom.get('skipped', 0)} skipped (`{custom_rel}`)"
+            f"{counts.get('passed')} passed, {failed} failed"
+            + (f", {errors} errors" if errors else "")
+            + f", {counts.get('skipped', 0) or 0} skipped"
+            + (f" of {counts['collected']} collected" if counts.get("collected") else "")
+            + (f", exit code {exit_code}" if exit_code is not None else "")
+            + f" (run of {date_of(as_dict(custom).get('generated_at'))}, `{custom_rel}`)"
         )
+        overall = _num(dig(custom, "coverage.overall_percent"))
+        if overall is not None and not (cov and cov[1] is not None):
+            parts.append(f"line coverage {overall:.1f}% (`{custom_rel}`)")
     elif junit:
         passed = junit.tests - junit.failures - junit.errors - junit.skipped
         parts.append(
@@ -1412,6 +2533,7 @@ SUMMARY_SPEC_KINDS: frozenset[str] = frozenset(
     {
         "rate",
         "interval",
+        "value",
         "routing",
         "latency",
         "degraded",
@@ -1420,9 +2542,12 @@ SUMMARY_SPEC_KINDS: frozenset[str] = frozenset(
         "kappa",
         "split",
         "models",
+        "nli_coverage",
+        "commits",
     }
 )
 KNOWN_SPEC_KINDS: frozenset[str] = SUMMARY_SPEC_KINDS | {
+    "rabbits_before",
     "human",
     "retrieval",
     "reranker",
@@ -1436,6 +2561,15 @@ KNOWN_SPEC_KINDS: frozenset[str] = SUMMARY_SPEC_KINDS | {
     "load",
     "tests",
     "perf",
+    "rabbits_after",
+    "rabbits_compare",
+    "adversarial_before",
+    "adversarial_compare",
+    "perf_cold",
+    "perf_changes",
+    "perf_gate3",
+    "perf_after",
+    "annotation",
 }
 
 
@@ -1462,6 +2596,10 @@ def spec_value(ctx: Context, spec: str) -> str | None:
     if kind == "rate" and len(parts) == 3:
         text = prop_text(dig(summary, f"per_condition.{parts[1]}.{parts[2]}"), "turns")
         return text or None
+    if kind == "value" and len(parts) in (3, 4):
+        digits = int(parts[3]) if len(parts) == 4 and parts[3].isdigit() else 2
+        text = fixed(dig(summary, f"per_condition.{parts[1]}.{parts[2]}"), digits)
+        return None if text == "—" else text
     if kind == "interval" and len(parts) == 3:
         cell = interval_cell(dig(summary, f"per_condition.{parts[1]}.{parts[2]}"), as_pct=True)
         return None if cell == "—" else f"{cell} (95% CI)"
@@ -1483,7 +2621,8 @@ def spec_value(ctx: Context, spec: str) -> str | None:
             return None
         return (
             f"p50 {float(lat['p50_ms']) / 1000:.1f} s, p95 {float(lat['p95_ms']) / 1000:.1f} s "
-            f"per turn (cache-imputed, n = {lat.get('n')})"
+            f"per turn (cache-imputed, n = {lat.get('n')}; measured with parallel study workers "
+            "on one shared local GPU, so a relative figure, not the latency a single user sees)"
         )
     if kind == "degraded" and len(parts) == 2:
         d = dig(summary, f"degraded.per_condition.{parts[1]}")
@@ -1525,11 +2664,27 @@ def spec_value(ctx: Context, spec: str) -> str | None:
         if not kappa_key:
             return None
         n = agreement.get("n_responses" if parts[1] == "response" else "n_claims")
+        unit = "responses" if parts[1] == "response" else "claims"
         text = kappa_text(agreement.get(kappa_key))
-        return None if text == "—" else f"{text} (n = {n})"
+        cov = nli_coverage(summary) if summary else {"complete": [], "partial": []}
+        scored = [c for c, _, _ in cov["complete"]] + [
+            f"{c} partial subset" for c, _, _ in cov["partial"]
+        ]
+        scope = f"; conditions both judges scored: {', '.join(scored)}" if scored else ""
+        return None if text == "—" else f"{text} (n = {n} {unit}{scope})"
+    if kind == "nli_coverage" and summary is not None:
+        return nli_coverage_text(summary)
+    if kind == "commits" and summary is not None:
+        commits = study_commits(summary)
+        return ", ".join(f"`{c}`" for c in commits) if commits else None
+    if kind == "rabbits_before":
+        return rabbits_before_text(ctx)
     if kind == "human" and len(parts) == 2:
         human = ctx.json(P_HUMAN)
         if not isinstance(human, dict):
+            if parts[1] == "status":
+                sheet = annotation_sheet_text(ctx)
+                return f"{sheet}; agreement not yet scored" if sheet else None
             return None
         if parts[1] == "status":
             return f"`{human.get('status', 'unknown')}`"
@@ -1614,7 +2769,8 @@ def spec_value(ctx: Context, spec: str) -> str | None:
             return None
         return (
             f"{totals.get('documents')} documents, {totals.get('chunks')} chunks "
-            f"({totals.get('table_chunks')} table chunks) from {totals.get('organisations')} organisations"
+            f"({totals.get('table_chunks')} table chunks) from "
+            f"{organisation_count(ctx.json(P_CORPUS))} organisations (joint labels split)"
         )
     if kind == "smoke":
         text = smoke_text(ctx)
@@ -1634,20 +2790,65 @@ def spec_value(ctx: Context, spec: str) -> str | None:
     if kind == "tests":
         text = tests_text(ctx)
         return None if text.startswith(PENDING) else text
-    if kind == "perf":
-        if not ctx.path(P_LATENCY_TABLE).is_file():
+    if kind == "rabbits_after":
+        _, after = rabbits_runs(ctx)
+        return rabbits_line(after, P_RABBITS) if after else None
+    if kind == "rabbits_compare":
+        return rabbits_compare_text(ctx)
+    if kind == "adversarial_before":
+        before, _ = adversarial_runs(ctx)
+        return adversarial_line(before, P_ADVERSARIAL_BEFORE) if before else None
+    if kind == "adversarial_compare":
+        return adversarial_compare_text(ctx)
+    if kind == "annotation":
+        return annotation_sheet_text(ctx)
+    if kind in ("perf", "perf_cold", "perf_changes"):
+        before_rel, after_rel = latency_pair(ctx)
+        if not (before_rel and after_rel and ctx.path(P_LATENCY_TABLE).is_file()):
             return None
-        try:
-            with ctx.path(P_LATENCY_TABLE).open(encoding="utf-8", newline="") as fh:
-                dict_rows = list(csv.DictReader(fh))
-        except OSError:
+        before, after = as_dict(ctx.json(before_rel)), as_dict(ctx.json(after_rel))
+        files = f"`{before_rel}` → `{after_rel}`"
+        if kind == "perf_cold":
+            bits = cold_changes(ctx, before, after)
+            return ("first request (cold) " + "; ".join(bits) + f" ({files})") if bits else None
+        ch = latency_changes(ctx, before, after)
+        if kind == "perf":
+            bits = ch["no_llm"] + ch["same"] + ch["faster"] + ch["slower"]
+            bits.sort()
+            return ("warm p50 " + "; ".join(bits) + f" ({files})") if bits else None
+        parts_out = []
+        if ch["faster"]:
+            parts_out.append("faster: " + "; ".join(ch["faster"]))
+        if ch["slower"]:
+            parts_out.append("slower: " + "; ".join(ch["slower"]))
+        if ch["same"]:
+            parts_out.append("within ±10 %: " + "; ".join(ch["same"]))
+        if not parts_out:
             return None
+        return (
+            "warm p50 "
+            + "; ".join(parts_out)
+            + f" ({files}, same model: "
+            + ("yes" if model_of(before_rel) == model_of(after_rel) else "no")
+            + ")"
+        )
+    if kind == "perf_gate3":
+        return gate3_stage_text(ctx)
+    if kind == "perf_after" and len(parts) == 2:
+        rel = probe_files(ctx).get(f"after_{parts[1]}")
+        if not rel:
+            return None
+        names = scenario_names(ctx)
         bits = [
-            f"{r.get('Scenario turn')}: {r.get('Warm p50 before s')} s → {r.get('Warm p50 after s')} s"
-            for r in dict_rows
-            if r.get("Scenario turn")
+            f"{turn} ({names[turn] + ', ' if names.get(turn) else ''}{action}) "
+            f"{fixed(stats.get('p50'), 2)} s"
+            for turn, (action, stats) in warm_by_turn(as_dict(ctx.json(rel))).items()
         ]
-        return ("warm p50 " + "; ".join(bits) + f" (`{P_LATENCY_TABLE}`)") if bits else None
+        return (
+            (f"warm p50 with `{model_of(rel)}`: " + "; ".join(bits) + f" (`{rel}`)")
+            if bits
+            else None
+        )
     ctx.warnings.append(f"unknown RESULT spec '{spec}'")
     return None
 

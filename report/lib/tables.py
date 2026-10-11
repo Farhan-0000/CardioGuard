@@ -14,12 +14,14 @@ The study generators (``hallucination_by_condition``, ``unsafe_answer``,
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from .content import ParseContext, Table, parse_file
-from .results_context import ResultsContext
+from .results_context import ResultsContext, format_p
+from .study_figures import nli_coverage
 
 TableGenerator = Callable[[ResultsContext], Table | None]
 
@@ -82,6 +84,11 @@ DEFAULT_CAPTIONS: dict[str, str] = {
     "aq_benchmark": "MedBridge-AQ routing benchmark (live pipeline)",
     "aq_subsets": "MedBridge-AQ routing accuracy per subset (live pipeline)",
     "rabbits": "RABBITS brand-versus-generic robustness (live pipeline)",
+    "rabbits_before_after": "Live RABBITS before and after the brand-name robustness fix",
+    "adversarial_before_after": (
+        "Live adversarial suite before and after the brand-name fix "
+        "(after: Gate 3 on, before 16e594b)"
+    ),
     "adversarial": "Adversarial prompt-injection suite (live pipeline)",
     "load_test": "Load test: concurrent users against the local stack",
     "smoke_test": "End-to-end smoke test checks",
@@ -98,6 +105,18 @@ DEFAULT_CAPTIONS: dict[str, str] = {
     "degraded_turns": "Degraded turns per condition (excluded from headline metrics)",
     "latency_by_condition": "Latency per condition",
     "category_breakdown": "Hallucination rate (LLM judge) by item category and condition",
+    "claim_profile": "Claims per response and hallucination among responses that contain claims "
+    "(LLM judge)",
+    "category_safety": "Unsafe answers, appropriate abstention and coverage by item category "
+    "(LLM judge)",
+    "category_tests": "Paired McNemar tests within item categories (LLM judge, turn level)",
+    "mcnemar_sensitivity": "Holm-adjusted McNemar p-values under every analysis view",
+    "sensitivity_rates": "Hallucination rate (LLM judge) under the sensitivity analyses",
+    "routing_per_class": "Per-class routing quality of the gated pipeline (system actions)",
+    "judge_coverage": "Provenance, judge coverage and failed judgments per condition (test split)",
+    "judge_confusion": "Claim labels of the LLM judge (rows) against the NLI judge (columns)",
+    "study_runs": "Study and judge runs (manifests)",
+    "study_models": "Models, versions, hardware and seeds of the hallucination study",
 }
 
 
@@ -160,12 +179,22 @@ def interval(d: Any, digits: int = 3) -> str:
     return f"{est:.{digits}f} [{b(low)}, {b(high)}]"
 
 
-def pvalue(p: Any) -> str:
+def pvalue(p: Any, compact: bool = False) -> str:
+    """Exact p-value: 3 decimals, 4 below 0.01, scientific notation below 0.001."""
     if not _finite(p):
         return "—"
-    if p < 0.001:
-        return "< 0.001"
-    return f"{p:.3f}"
+    text = format_p(p)
+    return text.replace(" × ", "×") if compact else text
+
+
+def points(d: Any, digits: int = 1) -> str:
+    """Risk difference ``{estimate, low, high}`` (fractions) in percentage points."""
+    if not isinstance(d, dict) or not _finite(d.get("estimate")):
+        return "—"
+    text = f"{100 * float(d['estimate']):.{digits}f}"
+    if _finite(d.get("low")) and _finite(d.get("high")):
+        text += f" [{100 * float(d['low']):.{digits}f}, {100 * float(d['high']):.{digits}f}]"
+    return text
 
 
 def seconds(ms: Any, digits: int = 1) -> str:
@@ -204,8 +233,23 @@ def _src(ctx: ResultsContext, key: str) -> str:
     return f"Source: {ctx.source(key) or key}."
 
 
+#: Short display names for the study tables (full names in Table 3.6 and CONDITION_NAMES).
+CONDITION_SHORT: dict[str, str] = {
+    "C0": "Direct LLM",
+    "C1": "Vanilla RAG",
+    "C1G": "RAG, prod. prompt",
+    "C2": "RAG, safety prompt",
+    "C3": "Context Gate",
+    "C4": "Evidence Gate",
+    "C5": "MedBridge",
+    "V1": "Calibrated Gate 2",
+    "V2": "Gate 3 verifier",
+    "V12": "V1 + V2",
+}
+
+
 def _cond_label(cond: str, m: dict[str, Any] | None = None) -> str:
-    name = (m or {}).get("name") or CONDITION_NAMES.get(cond, cond)
+    name = CONDITION_SHORT.get(cond) or (m or {}).get("name") or CONDITION_NAMES.get(cond, cond)
     return f"{cond} {name}"
 
 
@@ -220,6 +264,40 @@ def _study_conditions(ctx: ResultsContext) -> list[tuple[str, dict[str, Any]]]:
 def _uncalibrated(ctx: ResultsContext, cond: str) -> bool:
     check = (ctx.get("study.calibration_check") or {}).get(cond)
     return isinstance(check, dict) and not check.get("calibrated", True)
+
+
+def nli_status(m: dict[str, Any] | None) -> tuple[str, int]:
+    """Coverage of the NLI judge for one condition (see :func:`study_figures.nli_coverage`)."""
+    return nli_coverage(m)
+
+
+def _nli_cell(m: dict[str, Any], key: str) -> str:
+    status, n = nli_status(m)
+    if status == "partial":
+        return f"partial (n = {n})†"
+    if status == "none":
+        return "—"
+    return pct((m.get("nli") or {}).get(key))
+
+
+def _nli_note(conds: list[tuple[str, dict[str, Any]]]) -> str:
+    complete = [c for c, m in conds if nli_status(m)[0] == "complete"]
+    partial = [(c, nli_status(m)[1]) for c, m in conds if nli_status(m)[0] == "partial"]
+    none = [c for c, m in conds if nli_status(m)[0] == "none"]
+    if not partial and not none:
+        return ""
+    parts = []
+    if complete:
+        parts.append(f"NLI judge complete for {', '.join(complete)}")
+    if partial:
+        parts.append(
+            "† partial subset ("
+            + ", ".join(f"{c}: n = {n}" for c, n in partial)
+            + "), used only for judge agreement and not a condition result"
+        )
+    if none:
+        parts.append(f"— = not scored by the NLI judge ({', '.join(none)})")
+    return "; ".join(parts) + "."
 
 
 # ----------------------------------------------------------------------
@@ -250,7 +328,7 @@ def corpus(ctx: ResultsContext) -> Table | None:
         [
             "",
             "Total",
-            f"{integer(totals.get('organisations'))} orgs",
+            f"{integer(ctx.get('corpus_orgs.split', totals.get('organisations')))} orgs",
             "",
             "",
             "",
@@ -635,7 +713,7 @@ SCENARIO_NAMES: dict[str, str] = {
     "S1": "Emergency fast path",
     "S2": "Out of domain",
     "S3": "Clarification gate",
-    "S4": "Clinical guidance (2 turns)",
+    "S4": "Clinical guidance",
     "S5": "Lifestyle",
 }
 
@@ -660,11 +738,28 @@ def _by_turn(probe: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return out
 
 
+def _probe_model(label: str) -> str:
+    """``after_qwen3.5-4b`` -> ``qwen3.5:4b`` (probe files are named after the model tag)."""
+    tag = re.sub(r"^(before|after)(_warmup)?_?", "", label)
+    return re.sub(r"-(\d+(?:\.\d+)?b)$", r":\1", tag) if tag else label
+
+
 def perf_before_after(ctx: ResultsContext) -> Table | None:
     before, after = ctx.get("perf_latest.before"), ctx.get("perf_latest.after")
     if not isinstance(before, dict) or not isinstance(after, dict):
         return None
+    src = ctx.get("perf_latest_sources") or {}
     b, a = _by_turn(before), _by_turn(after)
+    # other after-optimisation probes (another model, same scenarios), warm-up runs excluded
+    extra = {
+        label: _by_turn(probe)
+        for label, probe in sorted((ctx.get("perf_latest") or {}).items())
+        if label.startswith("after_")
+        and "warmup" not in label
+        and src.get(label) != src.get("after")
+        and isinstance(probe, dict)
+        and probe.get("warm_summary")
+    }
     rows = []
     for turn in sorted(set(b) | set(a)):
         rb, ra = b.get(turn), a.get(turn)
@@ -673,35 +768,49 @@ def perf_before_after(ctx: ResultsContext) -> Table | None:
         )
         act_b = "/".join(rb["actions"]) if rb else "—"
         act_a = "/".join(ra["actions"]) if ra else "—"
-        rows.append(
-            [
-                f"{turn} {SCENARIO_NAMES.get(turn.split('-')[0], '')}".strip(),
-                act_b if act_b == act_a else f"{act_b} → {act_a}",
-                f"{num(rb['cold']) if rb else '—'} / {num(ra['cold']) if ra else '—'}",
-                f"{num(rb['p50']) if rb else '—'} / {num(ra['p50']) if ra else '—'}",
-                f"{num(rb['p95']) if rb else '—'} / {num(ra['p95']) if ra else '—'}",
-                f"{speed:.1f}×" if speed else "—",
-            ]
-        )
-    src = ctx.get("perf_latest_sources") or {}
+        row = [
+            f"{turn} {SCENARIO_NAMES.get(turn.split('-')[0], '')}".strip(),
+            act_b if act_b == act_a else f"{act_b} → {act_a}",
+            f"{num(rb['cold']) if rb else '—'} / {num(ra['cold']) if ra else '—'}",
+            f"{num(rb['p50']) if rb else '—'} / {num(ra['p50']) if ra else '—'}",
+            f"{num(rb['p95']) if rb else '—'} / {num(ra['p95']) if ra else '—'}",
+            f"{speed:.1f}×" if speed else "—",
+        ]
+        for probe in extra.values():
+            re_ = probe.get(turn)
+            row.append(num(re_["p50"]) if re_ else "—")
+        rows.append(row)
+    model = _probe_model(Path(str(src.get("before", "before"))).stem)
     note = (
-        f"Sources: {src.get('before', 'before probe')} and {src.get('after', 'after probe')}. "
-        "Seconds per turn, before / after; speed-up = before p50 / after p50."
+        f"Sources: {src.get('before', 'before probe')} (received prototype) and "
+        f"{src.get('after', 'after probe')} (post-study code, Gate 3 on, before 16e594b), both with "
+        f"{model}. Seconds per turn, "
+        "before / after; one cold pass, then three warm repeats; speed-up = before p50 / "
+        "after p50."
     )
+    header = [
+        "Scenario turn",
+        "Action",
+        "Cold s",
+        "Warm p50 s",
+        "Warm p95 s",
+        "Speed-up (p50)",
+    ]
+    widths = [2.0, 0.95, 0.9, 0.9, 0.9, 0.6]
+    for label in extra:
+        header.append(f"Warm p50 s, {_probe_model(label)}")
+        widths.append(0.7)
+        note += (
+            f" Last column: {src.get(label, label)} (deployed model, post-study code before "
+            "16e594b)."
+        )
     return _table(
         "perf_before_after",
-        [
-            "Scenario turn",
-            "Action (before → after)",
-            "Cold s",
-            "Warm p50 s",
-            "Warm p95 s",
-            "Speed-up (p50)",
-        ],
+        header,
         rows,
-        font_size=9,
+        font_size=8,
         note=note,
-        widths=[1.6, 1.25, 0.75, 0.8, 0.8, 0.6],
+        widths=widths,
     )
 
 
@@ -809,7 +918,11 @@ def aq_benchmark(ctx: ResultsContext) -> Table | None:
         ],
         ["Citation presence on expected answers (%)", perc(m.get("citation_presence_rate"))],
         ["Citation precision (%)", perc(m.get("overall_citation_precision"))],
-        ["Loop-breaker forced GENERALIZE (%)", perc(m.get("loop_breaker_rate"))],
+        [
+            "Vignettes at the loop-breaker ending in GENERALIZE",
+            f"{integer(m.get('loop_breaker_generalize_count'))} of "
+            f"{integer(m.get('loop_breaker_count'))}",
+        ],
         [
             "Latency p50 / p95 (s)",
             f"{seconds(m.get('latency_p50_ms'))} / {seconds(m.get('latency_p95_ms'))}",
@@ -818,6 +931,8 @@ def aq_benchmark(ctx: ResultsContext) -> Table | None:
     ]
     model = meta.get("generator_model") or meta.get("gates_model")
     note = _src(ctx, "aq") + (f" Model: {model}." if model else "")
+    if meta.get("git_commit"):
+        note += f" Run at {_commit_note(meta)}."
     if meta.get("limit") not in (None, "none", "None"):
         note += f" Partial run (limit {meta.get('limit')})."
     return _table(
@@ -888,6 +1003,129 @@ def rabbits(ctx: ResultsContext) -> Table | None:
         note=_src(ctx, "rabbits"),
         align=["l", "c"],
         widths=[3.6, 2.1],
+    )
+
+
+def _commit_note(meta: dict[str, Any]) -> str:
+    commit = str(meta.get("git_commit") or "?").replace("+dirty", " (uncommitted changes)")
+    gate3 = "on" if meta.get("grounding_verifier") else "off"
+    return f"commit {commit}, Gate 3 {gate3}"
+
+
+def rabbits_before_after(ctx: ResultsContext) -> Table | None:
+    before, after = ctx.get("rabbits_before"), ctx.get("rabbits")
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return None
+    ib = ctx.get("rabbits_counts.before") or {}
+    ia = ctx.get("rabbits_counts.after") or {}
+
+    def tpl(r: dict[str, Any], group: str, name: str) -> Any:
+        return ((r.get(group) or {}).get(name) or {}).get("action_consistency_pct")
+
+    def pc(label: str, get: Callable[[dict[str, Any]], Any]) -> list[str]:
+        return [label, perc(get(before)), perc(get(after))]
+
+    rows = [
+        pc("Same routing action, brand vs generic (%)", lambda r: r.get("action_consistency_pct")),
+        pc("  general template (%)", lambda r: tpl(r, "by_template", "general")),
+        pc("  personal template (%)", lambda r: tpl(r, "by_template", "personal")),
+        pc("  Indian brands (%)", lambda r: tpl(r, "by_origin", "indian")),
+        pc("  international brands (%)", lambda r: tpl(r, "by_origin", "international")),
+        pc(
+            "Same generic stored in the snapshot (%)", lambda r: r.get("extraction_consistency_pct")
+        ),
+        pc("Brand stored as exactly its generic (%)", lambda r: r.get("brand_normalised_pct")),
+        ["Citation Jaccard, chunks / guidelines"]
+        + [
+            f"{num(r.get('citation_jaccard_mean'), 2)} / {num(r.get('guideline_jaccard_mean'), 2)}"
+            for r in (before, after)
+        ],
+        ["Brand / generic messages abstained"]
+        + [
+            f"{integer(i.get('brand_abstain'))} / {integer(i.get('generic_abstain'))} of {integer(i.get('items'))}"
+            for i in (ib, ia)
+        ],
+        ["Action flips (brand variant more cautious)"]
+        + [
+            f"{integer(i.get('flips'))} ({integer(i.get('brand_more_cautious'))})" for i in (ib, ia)
+        ],
+        ["Pairs (Indian); errors"]
+        + [
+            f"{integer(r.get('pairs'))} ({integer(r.get('indian_pairs'))}); {integer(r.get('errors'))}"
+            for r in (before, after)
+        ],
+    ]
+    note = (
+        f"Sources: {ctx.source('rabbits_before')} (before: "
+        f"{_commit_note(before.get('metadata') or {})}) and {ctx.source('rabbits')} (after: "
+        f"{_commit_note(after.get('metadata') or {})}); live, qwen3.5:4b, same 60 brands."
+    )
+    return _table(
+        "rabbits_before_after",
+        ["Metric", "Before fix", "After fix"],
+        rows,
+        note=note,
+        align=["l", "c", "c"],
+        widths=[3.0, 1.35, 1.35],
+    )
+
+
+def adversarial_before_after(ctx: ResultsContext) -> Table | None:
+    before, after = ctx.get("adversarial_before"), ctx.get("adversarial")
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return None
+    cb, ca = before.get("counts") or {}, after.get("counts") or {}
+
+    def actions(r: dict[str, Any]) -> dict[str, str]:
+        return {
+            str(x.get("payload_id")): str(x.get("action"))
+            for x in r.get("results") or []
+            if isinstance(x, dict)
+        }
+
+    ab, aa = actions(before), actions(after)
+    changed = sorted(k for k in ab if k in aa and ab[k] != aa[k])
+
+    def dist(acts: dict[str, str]) -> str:
+        order = ["ANSWER", "SOFT-ASK", "GENERALIZE", "ABSTAIN", "ESCALATE"]
+        counts = {a: sum(1 for v in acts.values() if v == a) for a in order}
+        return ", ".join(f"{a} {n}" for a, n in counts.items() if n)
+
+    rows = [
+        [
+            "Payloads passing every check",
+            *[f"{integer(c.get('passed'))} of {integer(c.get('payloads'))}" for c in (cb, ca)],
+        ],
+        ["System-prompt leakage", *[integer(c.get("leaked_system_prompt")) for c in (cb, ca)]],
+        ["Fabricated prescription", *[integer(c.get("fabricated_prescription")) for c in (cb, ca)]],
+        ["Unsafe output", *[integer(c.get("unsafe_output")) for c in (cb, ca)]],
+        [
+            "Emergency payloads escalated",
+            *[
+                f"{integer(c.get('emergency_escalated'))} of {integer(c.get('emergency_payloads'))}"
+                for c in (cb, ca)
+            ],
+        ],
+        ["Final actions", dist(ab), dist(aa)],
+        [
+            "Payloads whose action changed",
+            "",
+            "; ".join(f"{k}: {ab[k]} → {aa[k]}" for k in changed) or "none",
+        ],
+    ]
+    note = (
+        f"Sources: {ctx.source('adversarial_before')} (before: "
+        f"{_commit_note(before.get('metadata') or {})}; identical to "
+        "reports/adversarial_live_report.json at commit 2053216) and "
+        f"{ctx.source('adversarial')} (after: {_commit_note(after.get('metadata') or {})})."
+    )
+    return _table(
+        "adversarial_before_after",
+        ["Check", "Before", "After"],
+        rows,
+        note=note,
+        align=["l", "c", "c"],
+        widths=[1.9, 1.9, 1.9],
     )
 
 
@@ -984,32 +1222,55 @@ def load_test(ctx: ResultsContext) -> Table | None:
         rows,
         align=["c"] * 10,
         font_size=9,
+        widths=[0.5, 0.7, 0.4, 0.55, 0.8, 0.55, 0.9, 0.5, 0.55, 0.55],
         note=_src(ctx, "load") + " A single local Ollama server serialises LLM calls.",
     )
+
+
+#: Requests of the smoke checks that send no message text (see ``scripts/smoke_test.py``).
+SMOKE_REQUESTS: dict[str, str] = {
+    "health": "GET /health",
+    "create_session": "POST /api/sessions",
+    "feedback": "POST …/feedback (rating +1)",
+    "context": "GET …/context",
+    "summary": "GET …/summary?format=json",
+    "auth_missing_token": "GET …/history without token",
+    "delete_session": "DELETE /api/sessions/{id}",
+    "after_delete_gone": "GET …/history after erasure",
+}
 
 
 def smoke_test(ctx: ResultsContext) -> Table | None:
     checks = ctx.get("smoke.checks")
     if not isinstance(checks, list) or not checks:
         return None
-    rows = [
-        [
-            str(c.get("name", "")).replace("_", " "),
-            str(c.get("status", "")),
-            str(c.get("expected", "")),
-            str(c.get("observed", ""))[:60],
-            num(c.get("latency_ms"), 0),
-        ]
-        for c in checks
-        if isinstance(c, dict)
-    ]
+    inputs = ctx.get("smoke_inputs") or {}
+    rows = []
+    for n, c in enumerate((c for c in checks if isinstance(c, dict)), start=1):
+        name = str(c.get("name", ""))
+        request = SMOKE_REQUESTS.get(name) or inputs.get(name) or ""
+        if name == "sse_stream" and request:
+            request = f"stream: {request}"
+        rows.append(
+            [
+                f"ST-{n:02d}",
+                name.replace("_", " "),
+                request,
+                str(c.get("expected", "")),
+                re.sub(r"[{}']", "", str(c.get("observed", ""))).replace(": ", " ")[:64],
+                str(c.get("status", "")),
+            ]
+        )
+    note = _src(ctx, "smoke")
+    if inputs:
+        note += f" Message texts from {ctx.source('smoke_inputs')}."
     return _table(
         "smoke_test",
-        ["Check", "Status", "Expected", "Observed", "ms"],
+        ["ID", "Check", "Input (request)", "Expected", "Actual", "Status"],
         rows,
-        font_size=9,
-        note=_src(ctx, "smoke"),
-        widths=[1.3, 0.55, 1.6, 1.8, 0.5],
+        font_size=8,
+        note=note,
+        widths=[0.45, 0.95, 2.0, 0.9, 1.15, 0.45],
     )
 
 
@@ -1027,40 +1288,86 @@ def _study_note(ctx: ResultsContext, extra: str = "") -> str:
     return note + (f" {extra}" if extra else "")
 
 
+def _nb(text: str) -> str:
+    """Bind a rate with its CI (``72.8 [66.8, 78.1]``) so it never wraps inside a table cell;
+    other text (``partial (n = 76)†``) is left free to wrap."""
+    if re.match(r"^-?[\d.]+ \[-?[\d.]+, -?[\d.]+\]$", text):
+        return text.replace(" ", "\u00a0")
+    return text
+
+
+def _turns_note(conds: list[tuple[str, dict[str, Any]]], key: str = "n_valid") -> str:
+    """``Turns: 239 per condition (238 for C0, V1, V12).`` from the data."""
+    ns = [m.get(key) for _c, m in conds if _finite(m.get(key))]
+    if not ns:
+        return ""
+    modal = max(set(ns), key=ns.count)
+    other = [f"{integer(m.get(key))} for {c}" for c, m in conds if m.get(key) != modal]
+    return f"Turns: {integer(modal)} per condition" + (f" ({', '.join(other)})." if other else ".")
+
+
 def hallucination_by_condition(ctx: ResultsContext) -> Table | None:
     conds = _study_conditions(ctx)
     if not conds:
         return None
     rows = []
     for c, m in conds:
-        llm, nli = m.get("llm") or {}, m.get("nli") or {}
+        llm = m.get("llm") or {}
+        ratio = llm.get("unsupported_claim_ratio") or {}
         rows.append(
             [
                 _cond_label(c, m) + (" (UNCALIBRATED)" if _uncalibrated(ctx, c) else ""),
-                integer(m.get("n_valid")),
-                pct(llm.get("hallucination")),
-                pct(nli.get("hallucination")),
-                interval(llm.get("unsupported_claim_ratio")),
-                pct(m.get("coverage_answerable"), ci=False),
-                pct(m.get("over_abstention"), ci=False),
+                _nb(pct(llm.get("hallucination"))),
+                _nb(_nli_cell(m, "hallucination")),
+                pct(llm.get("hallucination_given_claims"), ci=False),
+                num(ratio.get("estimate") if isinstance(ratio, dict) else ratio, 3),
+                f"{pct(m.get('coverage_answerable'), ci=False)} / "
+                f"{pct(m.get('over_abstention'), ci=False)}",
+                pct(cit, ci=False) if (cit := _citation_precision(m)) else "—",
             ]
         )
+    failed = [
+        f"{c} {integer(m.get('n_valid'))} valid, {integer((m.get('llm') or {}).get('n_judged'))} "
+        "judged"
+        for c, m in conds
+        if _finite((m.get("llm") or {}).get("n_judged"))
+        and _finite(m.get("n_valid"))
+        and (m.get("llm") or {}).get("n_judged") < m.get("n_valid")
+    ]
+    extra = " ".join(
+        x
+        for x in (
+            _turns_note(conds),
+            f"LLM-judge failures: {'; '.join(failed)}." if failed else "",
+            _nli_note(conds),
+            "With claims = hallucination among responses with at least one claim. Claim ratio = "
+            "(UNSUPPORTED + CONTRADICTED) / all claims. Coverage / over-abstention on answerable "
+            "turns. Citations = supported citation precision (markers whose cited passage backs a "
+            "SUPPORTED claim of the sentence).",
+        )
+        if x
+    )
     return _table(
         "hallucination_by_condition",
         [
             "Condition",
-            "Turns",
             "Hallucination, LLM judge %",
             "Hallucination, NLI judge %",
-            "Unsupported-claim ratio (LLM)",
-            "Coverage %",
-            "Over-abstention %",
+            "With claims %",
+            "Claim ratio",
+            "Coverage / over-abstention %",
+            "Citations %",
         ],
         rows,
-        font_size=8.5,
-        note=_study_note(ctx),
-        widths=[1.55, 0.45, 1.0, 1.0, 0.95, 0.55, 0.65],
+        font_size=7.5,
+        note=_study_note(ctx, extra),
+        widths=[1.3, 1.15, 1.15, 0.5, 0.5, 0.85, 0.55],
     )
+
+
+def _citation_precision(m: dict[str, Any]) -> dict[str, Any] | None:
+    cit = (m.get("citations") or {}).get("supported_precision")
+    return cit if isinstance(cit, dict) and cit.get("n") else None
 
 
 def unsafe_answer(ctx: ResultsContext) -> Table | None:
@@ -1069,30 +1376,40 @@ def unsafe_answer(ctx: ResultsContext) -> Table | None:
         return None
     rows = []
     for c, m in conds:
-        llm, nli = m.get("llm") or {}, m.get("nli") or {}
+        llm = m.get("llm") or {}
         u = llm.get("unsafe_answer") or {}
+        nli_unsafe = (m.get("nli") or {}).get("unsafe_answer") or {}
+        status, _n_nli = nli_status(m)
+        if status == "partial" and not nli_unsafe.get("n"):
+            nli_cell = "partial, none in subset†"
+        else:
+            nli_cell = _nli_cell(m, "unsafe_answer")
         rows.append(
             [
                 _cond_label(c, m),
                 integer(u.get("n")),
-                pct(u),
-                pct(nli.get("unsafe_answer")),
-                pct(m.get("appropriate_abstention")),
+                _nb(pct(u)),
+                _nb(nli_cell),
+                _nb(pct(m.get("appropriate_abstention"))),
             ]
         )
     return _table(
         "unsafe_answer",
         [
             "Condition",
-            "Unanswerable turns",
-            "Unsafe answer, LLM judge %",
-            "Unsafe answer, NLI judge %",
+            "n",
+            "Unsafe, LLM judge %",
+            "Unsafe, NLI judge %",
             "Appropriate abstention %",
         ],
         rows,
-        font_size=9,
-        note=_study_note(ctx),
-        widths=[1.65, 0.75, 1.15, 1.15, 1.05],
+        font_size=8,
+        note=_study_note(
+            ctx,
+            "n = unanswerable turns (unanswerable in domain and out of domain). "
+            + _nli_note(conds),
+        ),
+        widths=[1.4, 0.3, 1.2, 1.2, 1.2],
     )
 
 
@@ -1108,7 +1425,7 @@ def routing_by_condition(ctx: ResultsContext) -> Table | None:
         rows.append(
             [
                 _cond_label(c, m),
-                "system" if m.get("gated") else "behaviour",
+                "system" if m.get("gated") else "judge",
                 pct(routing.get("accuracy_strict"), ci=False),
                 pct(routing.get("accuracy_lenient"), ci=False),
                 num(routing.get("macro_f1")),
@@ -1128,7 +1445,7 @@ def routing_by_condition(ctx: ResultsContext) -> Table | None:
         "routing_by_condition",
         [
             "Condition",
-            "Routing source",
+            "Source",
             "Strict %",
             "Lenient %",
             "Macro-F1",
@@ -1136,62 +1453,115 @@ def routing_by_condition(ctx: ResultsContext) -> Table | None:
             "False escalation %",
         ],
         rows,
-        font_size=9,
-        note=_study_note(ctx, "Ungated conditions are scored on the judge's behaviour label."),
-        widths=[1.6, 0.75, 0.6, 0.6, 0.6, 0.75, 0.8],
+        font_size=8,
+        note=_study_note(
+            ctx,
+            "Source: system = pipeline action (gated conditions); judge = LLM judge's behaviour "
+            "label mapped to an action (ungated conditions), so the two groups are not directly "
+            "comparable. C0 has no emergency fast path; its recall here is behavioural.",
+        ),
+        widths=[1.5, 0.6, 0.6, 0.6, 0.6, 0.8, 0.8],
     )
 
 
 _OUTCOME_NAMES = {
     "hallucination": "Hallucination",
-    "unsafe": "Unsafe answer",
+    "unsafe": "Unsafe",
     "hallucination_unfiltered": "Hallucination (no filter)",
 }
+
+
+_FAMILY_NOTES = {
+    "c5_vs_baselines": "C5 vs C0–C4",
+    "variants_vs_c5": "V1, V2, V12 vs C5",
+    "c5_vs_reference": "C5 vs C1G",
+}
+
+
+def _family_note(tests: list[dict[str, Any]]) -> str:
+    sizes: dict[str, set[str]] = {}
+    for t in tests:
+        fam = str(t.get("family", ""))
+        sizes.setdefault(fam, set()).add(f"{t.get('treatment')}/{t.get('control')}")
+    parts = [
+        f"{_FAMILY_NOTES.get(f, f)} ({len(s)} test{'s' if len(s) != 1 else ''})"
+        for f, s in sizes.items()
+        if f
+    ]
+    return (
+        "Holm correction within each family and outcome: " + ", ".join(parts) + "." if parts else ""
+    )
 
 
 def mcnemar(ctx: ResultsContext) -> Table | None:
     tests = ctx.get("study.tests.mcnemar")
     if not isinstance(tests, list) or not tests:
         return None
+    tests = [t for t in tests if isinstance(t, dict)]
+    judges = {str(t.get("judge", "")).upper() for t in tests}
+    show_judge = len(judges) > 1
+    short = {"hallucination": "Halluc.", "unsafe": "Unsafe"}
     rows = []
     for t in tests:
-        if not isinstance(t, dict):
-            continue
-        rows.append(
-            [
-                f"{t.get('treatment')} vs {t.get('control')}",
-                _OUTCOME_NAMES.get(str(t.get("outcome")), str(t.get("outcome"))),
-                str(t.get("judge", "")).upper(),
-                integer(t.get("n_pairs")),
-                f"{integer(t.get('b_treatment_only'))} / {integer(t.get('c_control_only'))}",
-                pvalue(t.get("pvalue")),
-                pvalue(t.get("pvalue_holm")),
-                interval(t.get("risk_difference")),
-                interval(t.get("odds_ratio"), 2),
-            ]
-        )
+        rrr = t.get("rrr")
+        row = [
+            f"{t.get('treatment')} vs {t.get('control')}",
+            short.get(str(t.get("outcome")), str(t.get("outcome"))),
+        ]
+        if show_judge:
+            row.append(str(t.get("judge", "")).upper())
+        row += [
+            integer(t.get("n_pairs")),
+            f"{integer(t.get('b_treatment_only'))} / {integer(t.get('c_control_only'))}",
+            _nb(points(t.get("risk_difference"))),
+            _nb(interval(t.get("odds_ratio"), 3)),
+            f"{100 * float(rrr):.1f}" if _finite(rrr) else "—",
+            pvalue(t.get("pvalue_holm"), compact=True),
+        ]
+        rows.append(row)
+    header = ["Comparison", "Outcome"] + (["Judge"] if show_judge else [])
+    header += ["n", "b / c", "Risk difference, pp [95% CI]", "Odds ratio [95% CI]", "RRR %"]
+    header += ["p (Holm)"]
+    widths = [0.75, 0.7] + ([0.42] if show_judge else [])
+    widths += [0.3, 0.45, 1.25, 1.25, 0.4, 0.75]
+    if show_judge:
+        judge_text = ""
+    elif judges == {"LLM"}:
+        model = _llm_judge_model(ctx)
+        unscored = [c for c, m in _study_conditions(ctx) if nli_status(m)[0] == "none"]
+        judge_text = f"All tests use the LLM judge{f' ({model})' if model else ''}."
+        if unscored:
+            judge_text += (
+                f" The NLI judge did not score {', '.join(unscored)} on this split, so no NLI "
+                "test exists."
+            )
+    else:
+        judge_text = f"Judge: {', '.join(sorted(judges))}."
     return _table(
         "mcnemar",
-        [
-            "Comparison",
-            "Outcome",
-            "Judge",
-            "Pairs",
-            "b / c",
-            "p",
-            "p (Holm)",
-            "Risk difference [95% CI]",
-            "Odds ratio [95% CI]",
-        ],
+        header,
         rows,
         font_size=8,
-        widths=[0.75, 0.85, 0.42, 0.42, 0.5, 0.48, 0.5, 1.0, 0.85],
+        widths=widths,
         note=_study_note(
             ctx,
-            "b = events only under the first condition, c = events "
-            "only under the second; odds ratio < 1 favours the first.",
+            "Exact two-sided McNemar test on the same item-turns (Halluc. = hallucination); "
+            "n = pairs; b = events only under the first condition, c = only under the second; "
+            "risk difference = first minus second in percentage points (Newcombe paired CI); "
+            "conditional odds ratio < 1 favours the first (Haldane +0.5 when b or c = 0); RRR = "
+            "relative risk reduction; unadjusted p-values in Appendix A. "
+            f"{_family_note(tests)} {judge_text}".strip(),
         ),
     )
+
+
+def _llm_judge_model(ctx: ResultsContext) -> str | None:
+    """Model of the most recent LLM-judge manifest (``judgments/manifest_judge_*.json``)."""
+    manifests = ctx.get("judge_manifests") or {}
+    for _stem, m in sorted(manifests.items(), reverse=True):
+        if isinstance(m, dict) and m.get("judge") == "llm" and m.get("judge_model"):
+            return str(m["judge_model"])
+    return None
 
 
 def cochran_q(ctx: ResultsContext) -> Table | None:
@@ -1223,17 +1593,28 @@ def judge_agreement(ctx: ResultsContext) -> Table | None:
     a = ctx.get("study.judge_agreement")
     if not isinstance(a, dict):
         return None
+
+    def obs(k: Any) -> str:
+        return pct((k or {}).get("observed_agreement"), ci=False) if isinstance(k, dict) else "—"
+
     rows = [
-        ["Claim level, 3 classes", integer(a.get("n_claims")), interval(a.get("kappa_3class"))],
+        [
+            "Claim level, 3 classes",
+            integer(a.get("n_claims")),
+            interval(a.get("kappa_3class")),
+            obs(a.get("kappa_3class")),
+        ],
         [
             "Claim level, supported vs not",
             integer(a.get("n_claims")),
             interval(a.get("kappa_binary")),
+            obs(a.get("kappa_binary")),
         ],
         [
             "Response level, hallucinated",
             integer(a.get("n_responses")),
             interval(a.get("kappa_response_hallucination")),
+            obs(a.get("kappa_response_hallucination")),
         ],
     ]
     human = ctx.get("human_agreement")
@@ -1241,14 +1622,29 @@ def judge_agreement(ctx: ResultsContext) -> Table | None:
         for k, v in human.items():
             if isinstance(v, dict) and ("kappa" in v or "estimate" in v):
                 rows.append(
-                    [f"Human vs judge: {k.replace('_', ' ')}", integer(v.get("n")), interval(v)]
+                    [
+                        f"Human vs judge: {k.replace('_', ' ')}",
+                        integer(v.get("n")),
+                        interval(v),
+                        obs(v),
+                    ]
                 )
+    conds = _study_conditions(ctx)
+    paired = [
+        f"{c} {integer(n)}" + (" (partial)" if status == "partial" else "")
+        for c, m in conds
+        for status, n in [nli_status(m)]
+        if status != "none"
+    ]
+    extra = f"Paired responses (both judges): {', '.join(paired)}." if paired else ""
+    if not isinstance(human, dict):
+        extra += " No human annotation has been scored yet."
     return _table(
         "judge_agreement",
-        ["Level", "n", "Cohen's κ [95% CI]"],
+        ["Level", "n", "Cohen's κ [95% CI]", "Observed agreement %"],
         rows,
-        note=_study_note(ctx),
-        widths=[2.6, 0.8, 2.0],
+        note=_study_note(ctx, extra.strip()),
+        widths=[2.2, 0.7, 1.7, 1.1],
     )
 
 
@@ -1281,21 +1677,36 @@ def calibration(ctx: ResultsContext) -> Table | None:
         if not isinstance(b, dict):
             continue
         res = b.get("dev_result") or {}
+        base = b.get("c5_dev_baseline") or {}
+
+        def vs(key: str, label_text: str, res: dict[str, Any] = res, base: dict = base) -> str:
+            text = f"{label_text} {pct(res.get(key), ci=False)}%"
+            if _finite(base.get(key)):
+                text += f" (C5 {pct(base.get(key), ci=False)}%)"
+            return text
+
         detail = []
-        if _finite(res.get("coverage")):
-            detail.append(f"dev coverage {pct(res.get('coverage'), ci=False)}%")
         if _finite(res.get("false_answer_rate")):
-            detail.append(f"false-answer {pct(res.get('false_answer_rate'), ci=False)}%")
+            detail.append(vs("false_answer_rate", "false ANSWER"))
         if _finite(res.get("hallucination_rate")):
-            detail.append(f"dev hallucination {pct(res.get('hallucination_rate'), ci=False)}%")
+            detail.append(vs("hallucination_rate", "hallucination"))
+        if _finite(res.get("coverage")):
+            detail.append(vs("coverage", "coverage"))
         if _finite(b.get("kappa_sentence")):
             detail.append(f"sentence κ = {num(b.get('kappa_sentence'), 3)}")
+        if _finite(res.get("n_turns")):
+            detail.append(f"{integer(res.get('n_turns'))} C5 dev turns")
+        disabled = b.get("disabled_value")
         for name, value in (b.get("thresholds") or {}).items():
+            off = (_finite(disabled) and value == disabled) or (
+                name == "EVIDENCE_MIN_ENTITY_COVERAGE" and _finite(value) and value <= 0
+            )
             rows.append(
                 [
                     label,
-                    str(name),
-                    num(value, 3) if _finite(value) else str(value),
+                    _PARAM_NAMES.get(str(name), str(name)),
+                    (f"{float(value):g}" if _finite(value) else str(value))
+                    + (" (off)" if off else ""),
                     "; ".join(detail),
                 ]
             )
@@ -1304,11 +1715,21 @@ def calibration(ctx: ResultsContext) -> Table | None:
         "calibration",
         ["Component", "Parameter", "Value", "Dev-split result"],
         rows,
-        note=_src(ctx, "calibration"),
-        widths=[1.5, 2.0, 0.6, 1.65],
-        font_size=9,
+        note=_src(ctx, "calibration") + " All thresholds were fitted on the development split "
+        "only; (off) = the signal can never fire at this value.",
+        widths=[1.35, 1.75, 0.75, 1.9],
+        font_size=8.5,
         align=["l", "l", "c", "l"],
     )
+
+
+_PARAM_NAMES = {
+    "EVIDENCE_MIN_RERANK_ANSWER": "r_answer: min. rerank score for ANSWER",
+    "EVIDENCE_MIN_RERANK_ANY": "r_any: min. rerank score for any content",
+    "EVIDENCE_MIN_ENTITY_COVERAGE": "c_min: min. entity coverage for ANSWER",
+    "GROUNDING_ENTAILMENT_THRESHOLD": "θ: entailment threshold per claim",
+    "GROUNDING_MAX_UNSUPPORTED_FRACTION": "τ: max. unsupported fraction kept",
+}
 
 
 def degraded_turns(ctx: ResultsContext) -> Table | None:
@@ -1362,8 +1783,9 @@ def latency_by_condition(ctx: ResultsContext) -> Table | None:
         rows,
         note=_study_note(
             ctx,
-            "Imputed = measured latency plus the median uncached "
-            "latency of each memoised LLM call.",
+            "Imputed = measured latency plus the median uncached latency of each memoised LLM "
+            "call. Measured with parallel study workers on a GPU shared with other evaluation "
+            "jobs: relative indications only, not user-facing latency.",
         ),
     )
 
@@ -1373,23 +1795,655 @@ def category_breakdown(ctx: ResultsContext) -> Table | None:
     if not conds:
         return None
     cats = [c for c in CATEGORY_ORDER]
+    by_cond = {c: (m.get("llm") or {}).get("hallucination_by_category") or {} for c, m in conds}
+    modal: dict[str, Any] = {}
+    for cat in cats:
+        ns = [by[cat].get("n") for by in by_cond.values() if isinstance(by.get(cat), dict)]
+        modal[cat] = max(set(ns), key=ns.count) if ns else None
+    rows = []
+    for c, _m in conds:
+        by = by_cond[c]
+        cells = []
+        for cat in cats:
+            p = by.get(cat)
+            text = pct(p, ci=False)
+            if isinstance(p, dict) and p.get("n") != modal[cat]:
+                text += f" (n = {integer(p.get('n'))})"
+            cells.append(text)
+        rows.append([c, *cells])
+    header = ["Condition"] + [
+        CATEGORY_NAMES[c] + (f" (n = {integer(modal[c])})" if modal[c] is not None else "")
+        for c in cats
+    ]
+    return _table(
+        "category_breakdown",
+        header,
+        rows,
+        font_size=8,
+        note=_study_note(ctx, "Turns per category in the header; a cell shows n when it differs."),
+    )
+
+
+def claim_profile(ctx: ResultsContext) -> Table | None:
+    conds = _study_conditions(ctx)
+    if not conds:
+        return None
     rows = []
     for c, m in conds:
-        by = (m.get("llm") or {}).get("hallucination_by_category") or {}
+        llm = m.get("llm") or {}
+        given = llm.get("hallucination_given_claims") or {}
+        labels = llm.get("claim_labels") or {}
+        cit = (m.get("citations") or {}).get("supported_precision") or {}
         rows.append(
-            [c]
-            + [
-                pct(by.get(cat), ci=False)
-                + (f" (n={integer(by[cat].get('n'))})" if isinstance(by.get(cat), dict) else "")
-                for cat in cats
+            [
+                _cond_label(c, m),
+                f"{integer(given.get('n'))} / {integer(llm.get('n_judged'))}",
+                pct(given),
+                num(llm.get("claims_per_response"), 2),
+                " / ".join(
+                    integer(labels.get(k, 0)) for k in ("SUPPORTED", "UNSUPPORTED", "CONTRADICTED")
+                ),
+                _nb(interval(llm.get("unsupported_claim_ratio"))),
+                pct(cit, ci=False) if cit.get("n") else "—",
             ]
         )
     return _table(
-        "category_breakdown",
-        ["Condition", *[CATEGORY_NAMES[c] for c in cats]],
+        "claim_profile",
+        [
+            "Condition",
+            "Responses with claims / judged",
+            "Hallucination among responses with claims %",
+            "Claims per response",
+            "Claims S / U / C",
+            "Claim ratio [95% CI]",
+            "Supported citation precision %",
+        ],
         rows,
         font_size=8,
-        note=_study_note(ctx),
+        widths=[1.3, 0.75, 1.15, 0.55, 1.0, 1.2, 0.7],
+        note=_study_note(
+            ctx,
+            "Template responses (ABSTAIN, ESCALATE) and replies without clinical claims have zero "
+            "claims and count as not hallucinated. S / U / C = SUPPORTED / UNSUPPORTED / "
+            "CONTRADICTED claims (at most 25 per response); claim ratio = (U + C) / all claims "
+            "with a 95% bootstrap CI over responses.",
+        ),
+    )
+
+
+def _cat_metric(ctx: ResultsContext, cat: str, cond: str, key: str) -> Any:
+    return ctx.get(f"study.by_category.{cat}.per_condition.{cond}.{key}")
+
+
+def category_safety(ctx: ResultsContext) -> Table | None:
+    by = ctx.get("study.by_category")
+    conds = _study_conditions(ctx)
+    if not isinstance(by, dict) or not conds:
+        return None
+    rows = []
+    for c, _m in conds:
+        rows.append(
+            [
+                c,
+                pct(_cat_metric(ctx, "unanswerable_in_domain", c, "unsafe_llm"), ci=False),
+                pct(
+                    _cat_metric(ctx, "unanswerable_in_domain", c, "appropriate_abstention"),
+                    ci=False,
+                ),
+                pct(_cat_metric(ctx, "out_of_domain", c, "unsafe_llm"), ci=False),
+                pct(_cat_metric(ctx, "out_of_domain", c, "appropriate_abstention"), ci=False),
+                pct(_cat_metric(ctx, "answerable_complete", c, "coverage_answerable"), ci=False),
+                pct(
+                    _cat_metric(ctx, "answerable_missing_context", c, "coverage_answerable"),
+                    ci=False,
+                ),
+                pct(_cat_metric(ctx, "general_topic", c, "coverage_answerable"), ci=False),
+            ]
+        )
+
+    def n_of(cat: str, key: str) -> str:
+        p = _cat_metric(ctx, cat, "C5", key) or {}
+        return f" (n = {integer(p.get('n'))})" if isinstance(p, dict) and p.get("n") else ""
+
+    return _table(
+        "category_safety",
+        [
+            "Condition",
+            "Unanswerable in domain: unsafe %" + n_of("unanswerable_in_domain", "unsafe_llm"),
+            "Unanswerable in domain: appropriate abstention %",
+            "Out of domain: unsafe %" + n_of("out_of_domain", "unsafe_llm"),
+            "Out of domain: appropriate abstention %",
+            "Coverage, answerable complete %" + n_of("answerable_complete", "coverage_answerable"),
+            "Coverage, missing context %"
+            + n_of("answerable_missing_context", "coverage_answerable"),
+            "Coverage, general topic %" + n_of("general_topic", "coverage_answerable"),
+        ],
+        rows,
+        font_size=8,
+        widths=[0.6, 0.85, 0.85, 0.75, 0.75, 0.8, 0.8, 0.75],
+        note=_study_note(ctx, "n = turns of C5 (a few conditions have fewer valid turns)."),
+    )
+
+
+_CATEGORY_COMPARISONS = (("C5", "C1"), ("C5", "C1G"), ("V2", "C5"))
+
+
+def category_tests(ctx: ResultsContext) -> Table | None:
+    by = ctx.get("study.by_category")
+    if not isinstance(by, dict) or not by:
+        return None
+    rows = []
+    for cat in [c for c in CATEGORY_ORDER if c in by]:
+        tests = [t for t in (by[cat].get("tests") or []) if isinstance(t, dict)]
+        for outcome in ("hallucination", "unsafe"):
+            for treat, control in _CATEGORY_COMPARISONS:
+                t = next(
+                    (
+                        x
+                        for x in tests
+                        if x.get("treatment") == treat
+                        and x.get("control") == control
+                        and x.get("outcome") == outcome
+                    ),
+                    None,
+                )
+                if t is None:
+                    continue
+                rows.append(
+                    [
+                        CATEGORY_NAMES.get(cat, cat),
+                        f"{treat} vs {control}",
+                        _OUTCOME_NAMES.get(outcome, outcome),
+                        integer(t.get("n_pairs")),
+                        f"{integer(t.get('b_treatment_only'))} / "
+                        f"{integer(t.get('c_control_only'))}",
+                        points(t.get("risk_difference")),
+                        pvalue(t.get("pvalue_holm"), compact=True),
+                    ]
+                )
+    return _table(
+        "category_tests",
+        [
+            "Category",
+            "Comparison",
+            "Outcome",
+            "Pairs",
+            "b / c",
+            "Risk difference, pp [95% CI]",
+            "p (Holm)",
+        ],
+        rows,
+        font_size=8,
+        widths=[1.45, 0.8, 0.85, 0.45, 0.5, 1.2, 0.7],
+        note=_study_note(
+            ctx,
+            "Holm correction within each category, family and outcome (the full families also "
+            "contain the comparisons not shown).",
+        ),
+    )
+
+
+def _match_test(tests: Any, ref: dict[str, Any]) -> dict[str, Any] | None:
+    if not isinstance(tests, list):
+        return None
+    outcome = str(ref.get("outcome"))
+    for t in tests:
+        if not isinstance(t, dict):
+            continue
+        t_outcome = str(t.get("outcome")).replace("_unfiltered", "")
+        if (
+            t.get("treatment") == ref.get("treatment")
+            and t.get("control") == ref.get("control")
+            and t_outcome == outcome
+            and t.get("judge") == ref.get("judge")
+        ):
+            return t
+    return None
+
+
+def mcnemar_sensitivity(ctx: ResultsContext) -> Table | None:
+    base = ctx.get("study.tests.mcnemar")
+    if not isinstance(base, list) or not base:
+        return None
+    views = (
+        ("Item level", ctx.get("study.tests.sensitivity_item_level")),
+        ("Without prompt_overlap", ctx.get("study.sensitivity.without_prompt_overlap.tests")),
+        ("Filter disabled", ctx.get("study.sensitivity.filter_disabled.tests")),
+        ("Degraded included", ctx.get("study.sensitivity.including_degraded.tests")),
+    )
+    views = tuple(v for v in views if isinstance(v[1], list) and v[1])
+    rows = []
+    for t in base:
+        if not isinstance(t, dict):
+            continue
+        row = [
+            f"{t.get('treatment')} vs {t.get('control')}",
+            _OUTCOME_NAMES.get(str(t.get("outcome")), str(t.get("outcome"))),
+            pvalue(t.get("pvalue"), compact=True),
+            pvalue(t.get("pvalue_holm"), compact=True),
+        ]
+        for _label, tests in views:
+            m = _match_test(tests, t)
+            row.append(pvalue(m.get("pvalue_holm"), compact=True) if m else "—")
+        rows.append(row)
+    removed = ctx.get("study.sensitivity.without_prompt_overlap.n_items_removed")
+    return _table(
+        "mcnemar_sensitivity",
+        ["Comparison", "Outcome", "Headline p", "Headline p (Holm)"]
+        + [f"{label} p (Holm)" for label, _ in views],
+        rows,
+        font_size=7.5,
+        widths=[0.72, 0.8] + [0.68] * (2 + len(views)),
+        note=_study_note(
+            ctx,
+            "Headline p = unadjusted exact McNemar p. Item level: one outcome per item (items "
+            "complete in both conditions; computed for "
+            "the C5 vs C0–C4 family only). Without prompt_overlap: "
+            + (f"{integer(removed)} " if _finite(removed) else "")
+            + "items close to the original prompt examples removed. Filter disabled: generic "
+            "referral and self-reference claims counted (hallucination only). Degraded "
+            "included: degraded turns kept. — = not computed for this view.",
+        ),
+    )
+
+
+def sensitivity_rates(ctx: ResultsContext) -> Table | None:
+    conds = _study_conditions(ctx)
+    sens = ctx.get("study.sensitivity")
+    if not conds or not isinstance(sens, dict):
+        return None
+
+    def view(name: str, c: str, key: str) -> Any:
+        return ctx.get(f"study.sensitivity.{name}.per_condition.{c}.{key}")
+
+    rows = []
+    for c, m in conds:
+        rows.append(
+            [
+                _cond_label(c, m),
+                pct((m.get("llm") or {}).get("hallucination")),
+                pct(view("including_degraded", c, "hallucination_llm")),
+                pct(view("without_prompt_overlap", c, "hallucination_llm")),
+                pct(view("filter_disabled", c, "hallucination_unfiltered")),
+            ]
+        )
+    return _table(
+        "sensitivity_rates",
+        [
+            "Condition",
+            "Headline %",
+            "Degraded included %",
+            "Without prompt_overlap %",
+            "Filter disabled %",
+        ],
+        rows,
+        font_size=8.5,
+        widths=[1.6, 1.0, 1.0, 1.0, 1.0],
+        note=_study_note(ctx, "Rates with 95% Wilson CIs."),
+    )
+
+
+def routing_per_class(ctx: ResultsContext) -> Table | None:
+    conds = [
+        (c, m) for c, m in _study_conditions(ctx) if m.get("gated") and m.get("routing_system")
+    ]
+    main = next((m for c, m in conds if c == "C5"), None)
+    if not conds or main is None:
+        return None
+    per_main = main["routing_system"].get("per_class") or {}
+    others = [(c, m) for c, m in conds if c != "C5"]
+    rows = []
+    for cls in [a for a in ACTIONS if a in per_main]:
+        r = per_main[cls]
+        rows.append(
+            [
+                cls,
+                integer(r.get("support")),
+                integer(r.get("predicted")),
+                num(r.get("precision")),
+                num(r.get("recall")),
+                num(r.get("f1")),
+            ]
+            + [
+                num(((m["routing_system"].get("per_class") or {}).get(cls) or {}).get("f1"))
+                for _c, m in others
+            ]
+        )
+    rows.append(
+        ["Macro-F1", "", "", "", "", num(main["routing_system"].get("macro_f1"))]
+        + [num(m["routing_system"].get("macro_f1")) for _c, m in others]
+    )
+    never = []
+    for c, m in conds:
+        pc = m["routing_system"].get("per_class") or {}
+        missing = [
+            cls
+            for cls in ACTIONS
+            if (pc.get(cls) or {}).get("support") and not (pc.get(cls) or {}).get("predicted")
+        ]
+        if missing:
+            never.append(f"{c} never predicted {', '.join(missing)}")
+    return _table(
+        "routing_per_class",
+        ["Gold action", "Gold turns", "C5 predicted", "C5 precision", "C5 recall", "C5 F1"]
+        + [f"{c} F1" for c, _m in others],
+        rows,
+        font_size=8,
+        note=_study_note(
+            ctx,
+            "Pipeline actions of the gated conditions against the gold action."
+            + (f" F1 = 0 where a class was never predicted ({'; '.join(never)})." if never else ""),
+        ),
+    )
+
+
+def judge_coverage(ctx: ResultsContext) -> Table | None:
+    conds = _study_conditions(ctx)
+    jstats = ctx.get("study_judgments") or {}
+    if not conds:
+        return None
+    llm_stats = jstats.get("llm") or {}
+    nli_stats = jstats.get("nli") or {}
+    manifests = ctx.get("study_manifests") or {}
+    records = (ctx.get("study_records") or {}).get("by_condition") or {}
+
+    def provenance(cond: str) -> str:
+        by_commit: dict[str, int] = {}
+        for rid, n in ((records.get(cond) or {}).get("final_by_run") or {}).items():
+            commit = str(((manifests.get(rid) or {}).get("git") or {}).get("commit") or "?")[:7]
+            by_commit[commit] = by_commit.get(commit, 0) + int(n)
+        return ", ".join(f"{k} {integer(v)}" for k, v in by_commit.items()) or "—"
+
+    rows = []
+    failures: list[str] = []
+    for c, m in conds:
+        llm = m.get("llm") or {}
+        js = llm_stats.get(c) or {}
+        kinds = js.get("templates_by_kind") or {}
+        status, n_nli = nli_status(m)
+        ns = nli_stats.get(c) or {}
+        if status == "partial":
+            cats = ", ".join(
+                f"{CATEGORY_NAMES.get(k, k).lower()} {v}"
+                for k, v in sorted((ns.get("by_category") or {}).items())
+            )
+            nli_text = f"partial: {integer(n_nli)}" + (f" ({cats})" if cats else "")
+        elif status == "complete":
+            nli_text = f"complete: {integer(n_nli)}"
+        else:
+            dev = (ns.get("records_by_split") or {}).get("dev")
+            nli_text = "not scored" + (f" (dev only: {integer(dev)})" if dev else "")
+        for e in js.get("error_items") or []:
+            failures.append(
+                f"{c} {e.get('item_id')} turn {e.get('turn')} ({e.get('category')}/"
+                f"{e.get('subcategory')}: {e.get('error')})"
+            )
+        rows.append(
+            [
+                c,
+                provenance(c),
+                integer(m.get("n_valid")),
+                integer(llm.get("n_judged")),
+                integer(js.get("errors")) if js else "—",
+                f"{integer(kinds.get('abstain_template', 0))} / "
+                f"{integer(kinds.get('escalate_template', 0))}"
+                if js
+                else "—",
+                nli_text,
+            ]
+        )
+    note = _study_note(
+        ctx,
+        "Code = commit of the run that wrote each analysed test turn (all working trees "
+        "dirty; see the run manifests). Templates are counted over the latest judgment of every "
+        "test turn. " + (f"Failed LLM judgments: {'; '.join(failures)}." if failures else ""),
+    )
+    if ctx.source("study_judgments"):
+        note += f" Counts: {ctx.source('study_judgments')} and {ctx.source('study_records')}."
+    return _table(
+        "judge_coverage",
+        [
+            "Condition",
+            "Code (analysed turns)",
+            "Valid turns",
+            "LLM judged",
+            "LLM failures",
+            "Templates ABSTAIN / ESCALATE",
+            "NLI judge (test responses)",
+        ],
+        rows,
+        font_size=8,
+        widths=[0.55, 1.05, 0.5, 0.5, 0.5, 0.75, 1.9],
+        align=["l", "l", "c", "c", "c", "c", "l"],
+        note=note,
+    )
+
+
+def judge_confusion(ctx: ResultsContext) -> Table | None:
+    a = ctx.get("study.judge_agreement")
+    if not isinstance(a, dict) or not isinstance(a.get("confusion_llm_rows_nli_cols"), list):
+        return None
+    labels = [str(x) for x in a.get("labels") or ["SUPPORTED", "UNSUPPORTED", "CONTRADICTED"]]
+    matrix = a["confusion_llm_rows_nli_cols"]
+    rows = []
+    for lab, row in zip(labels, matrix, strict=False):
+        rows.append([f"LLM {lab.lower()}", *[integer(v) for v in row], integer(sum(row))])
+    totals = [sum(r[j] for r in matrix) for j in range(len(labels))]
+    rows.append(["Total", *[integer(v) for v in totals], integer(sum(totals))])
+    return _table(
+        "judge_confusion",
+        ["", *[f"NLI {lab.lower()}" for lab in labels], "Total"],
+        rows,
+        font_size=9,
+        note=_study_note(ctx, f"{integer(a.get('n_claims'))} claims of the paired responses."),
+    )
+
+
+def _short_ts(ts: Any) -> str:
+    """``2026-10-10T06:28:57+00:00`` -> ``10-10 06:28`` (the year is given in the note)."""
+    return str(ts)[5:16].replace("T", " ") if ts else "—"
+
+
+def _cond_list(conds: Any) -> str:
+    """Condition list with the run C0..C5 collapsed to ``C0–C5``."""
+    if not isinstance(conds, list):
+        return "—"
+    items = [str(c) for c in conds]
+    base = ["C0", "C1", "C2", "C3", "C4", "C5"]
+    if all(c in items for c in base):
+        rest = [c for c in items if c not in base]
+        return ", ".join(["C0–C5", *rest])
+    return ", ".join(items)
+
+
+def study_runs(ctx: ResultsContext) -> Table | None:
+    runs = ctx.get("study_manifests") or {}
+    judges = ctx.get("judge_manifests") or {}
+    if not runs and not judges:
+        return None
+    rec = ctx.get("study_records") or {}
+    by_run = rec.get("by_run") or {}
+    final: dict[str, int] = {}
+    for stats in (rec.get("by_condition") or {}).values():
+        for rid, n in (stats.get("final_by_run") or {}).items():
+            final[rid] = final.get(rid, 0) + int(n)
+    rows = []
+    for rid, m in sorted(runs.items()):
+        git = m.get("git") or {}
+        span = by_run.get(rid) or {}
+        end = m.get("finished_at")
+        end_text = _short_ts(end) if end else f"{_short_ts(span.get('last'))} (last record)"
+        rows.append(
+            [
+                rid.rsplit("-", 1)[-1],
+                f"study ({m.get('split')})",
+                _cond_list(m.get("conditions")),
+                f"{str(git.get('commit', ''))[:7]}{' (dirty)' if git.get('dirty') else ''}",
+                integer(m.get("workers")),
+                _short_ts(m.get("started_at")),
+                end_text,
+                str(m.get("status", "—")),
+                integer(final.get(rid, 0)) if m.get("split") == rec.get("split") else "—",
+            ]
+        )
+    for stem, m in sorted(judges.items()):
+        git = m.get("git") or {}
+        rows.append(
+            [
+                stem.removeprefix("manifest_judge_").split("T")[-1],
+                f"{str(m.get('judge')).upper()} judge ({m.get('split')})",
+                _cond_list(m.get("conditions")),
+                f"{str(git.get('commit', ''))[:7]}{' (dirty)' if git.get('dirty') else ''}",
+                integer(m.get("workers")),
+                _short_ts(m.get("started_at")),
+                _short_ts(m.get("finished_at")) if m.get("finished_at") else "not recorded",
+                "finished" if m.get("finished_at") else "interrupted",
+                "—",
+            ]
+        )
+    note = (
+        f"Sources: {ctx.source('study_manifests') or 'run manifests'}, "
+        f"{ctx.source('judge_manifests') or 'judge manifests'} and "
+        f"{ctx.source('study_records') or 'run records'}. Run = suffix of the run id (study) "
+        "or time stamp of the judge manifest; models in the table above. Times in UTC "
+        "(month-day, 2026). Final test records = "
+        "item-turns of the analysed (latest complete) attempts written by the run. A run that "
+        "was interrupted and resumed keeps status 'running' in its manifest; its span ends at "
+        "its last record. The NLI judge's early-concluded test-split run left no manifest."
+    )
+    return _table(
+        "study_runs",
+        [
+            "Run",
+            "Kind (split)",
+            "Conditions",
+            "Commit",
+            "Workers",
+            "Started",
+            "Finished",
+            "Status",
+            "Final test records",
+        ],
+        rows,
+        font_size=7.5,
+        widths=[0.6, 0.85, 1.15, 0.75, 0.45, 0.65, 0.8, 0.6, 0.55],
+        note=note,
+    )
+
+
+def study_models(ctx: ResultsContext) -> Table | None:
+    runs = ctx.get("study_manifests") or {}
+    judges = ctx.get("judge_manifests") or {}
+    if not runs and not judges:
+        return None
+    test_runs = [m for _r, m in sorted(runs.items()) if m.get("split") == "test"] or list(
+        runs.values()
+    )
+
+    def model_row(info: dict[str, Any]) -> str:
+        size = info.get("size_bytes")
+        parts = [
+            str(info.get("parameter_size") or ""),
+            str(info.get("quantization_level") or ""),
+            f"{float(size) / 1e9:.1f} GB" if _finite(size) else "",
+            f"digest {str(info.get('digest'))[:12]}…" if info.get("digest") else "",
+        ]
+        return ", ".join(p for p in parts if p)
+
+    rows: list[list[str]] = []
+    app: dict[str, dict[str, Any]] = {}
+    for m in test_runs:
+        for name, info in (m.get("ollama") or {}).items():
+            app.setdefault(name, info)
+    roles = {}
+    for m in test_runs:
+        for role, name in (m.get("models") or {}).items():
+            roles.setdefault(str(name), set()).add(role)
+    for name, info in app.items():
+        rr = " and ".join(sorted(roles.get(name, {"application"})))
+        rows.append([f"Application model ({rr})", f"{name}: {model_row(info)}"])
+    llm_judge = next(
+        (m for _s, m in sorted(judges.items(), reverse=True) if m.get("judge") == "llm"), None
+    )
+    if llm_judge:
+        for name, info in (llm_judge.get("ollama") or {}).items():
+            cfg = llm_judge.get("llm_config") or {}
+            extra = (
+                f"; seed {cfg.get('seed')}, {cfg.get('claims_per_call')} claims per call, "
+                f"at most {cfg.get('max_claims')} claims per response"
+                if cfg
+                else ""
+            )
+            rows.append(["LLM judge", f"{name}: {model_row(info)}{extra}"])
+    nli = next(
+        (m for _s, m in sorted(judges.items(), reverse=True) if m.get("judge") == "nli"), None
+    )
+    th = ctx.get("study.nli_thresholds") or {}
+    if nli and nli.get("nli_model"):
+        rows.append(
+            [
+                "NLI judge",
+                f"{nli['nli_model']}; θ = {num(th.get('theta'))}, θc = {num(th.get('theta_c'))} "
+                f"({th.get('source', 'calibration')})",
+            ]
+        )
+    verifier = ctx.get("calibration.v2.verifier_model")
+    if verifier:
+        rows.append(["Grounding verifier (V2)", str(verifier)])
+    seeds = next((m.get("seeds") for m in test_runs if m.get("seeds")), None)
+    boot = ctx.get("study.bootstrap") or {}
+    if seeds or boot:
+        parts = []
+        if seeds:
+            parts.append(
+                f"LLM seed {seeds.get('llm_seed')}, gate temperature "
+                f"{seeds.get('temperature_gates')}, generator temperature "
+                f"{seeds.get('temperature_generator')}"
+            )
+        if boot:
+            parts.append(
+                f"bootstrap {integer(boot.get('n_boot'))} resamples, seed {boot.get('seed')}"
+            )
+        rows.append(["Seeds", "; ".join(parts)])
+    ds = next((m.get("dataset") for m in test_runs if m.get("dataset")), None)
+    if ds:
+        rows.append(
+            [
+                "Dataset",
+                f"{Path(str(ds.get('path', ''))).name}, SHA-256 {str(ds.get('sha256'))[:12]}…, "
+                f"{integer(ds.get('n_items_selected'))} test items",
+            ]
+        )
+    hw = next((m.get("hardware") for m in test_runs if m.get("hardware")), None)
+    if hw:
+        pk = next((m.get("packages") for m in test_runs if m.get("packages")), None) or {}
+        rows.append(
+            [
+                "Hardware and software",
+                f"{hw.get('cpu')}, {hw.get('cpu_count')} CPU cores, {num(hw.get('ram_gb'), 0)} GB "
+                f"RAM, {hw.get('platform')}; Python {hw.get('python')}"
+                + (f", torch {pk.get('torch')}" if pk.get("torch") else ""),
+            ]
+        )
+    commits = sorted(
+        {
+            f"{str((m.get('git') or {}).get('commit', ''))[:7]}"
+            + (" (dirty)" if (m.get("git") or {}).get("dirty") else "")
+            for m in test_runs
+        }
+    )
+    if commits:
+        rows.append(["Study code (test-split runs)", ", ".join(commits)])
+    return _table(
+        "study_models",
+        ["Item", "Value"],
+        rows,
+        font_size=8.5,
+        widths=[1.6, 4.1],
+        align=["l", "l"],
+        note=f"Sources: {ctx.source('study_manifests') or 'run manifests'}, "
+        f"{ctx.source('judge_manifests') or 'judge manifests'}, "
+        f"{ctx.source('calibration') or 'calibration'} and {ctx.source('study') or 'summary'}.",
     )
 
 
@@ -1407,7 +2461,8 @@ def action_taken(ctx: ResultsContext) -> Table | None:
     path = root / "action_taken.md"
     if not path.is_file():
         return None
-    blocks = parse_file(path, ParseContext(content_dir=path.parent))
+    # included_names=set(): read the table even if a content file also includes the page
+    blocks = parse_file(path, ParseContext(content_dir=path.parent, included_names=set()))
     for block in blocks:
         if isinstance(block, Table):
             block.key = "action_taken"
@@ -1438,7 +2493,9 @@ GENERATORS: dict[str, TableGenerator] = {
     "aq_benchmark": aq_benchmark,
     "aq_subsets": aq_subsets,
     "rabbits": rabbits,
+    "rabbits_before_after": rabbits_before_after,
     "adversarial": adversarial,
+    "adversarial_before_after": adversarial_before_after,
     "load_test": load_test,
     "smoke_test": smoke_test,
     "hallucination_by_condition": hallucination_by_condition,
@@ -1451,6 +2508,16 @@ GENERATORS: dict[str, TableGenerator] = {
     "degraded_turns": degraded_turns,
     "latency_by_condition": latency_by_condition,
     "category_breakdown": category_breakdown,
+    "claim_profile": claim_profile,
+    "category_safety": category_safety,
+    "category_tests": category_tests,
+    "mcnemar_sensitivity": mcnemar_sensitivity,
+    "sensitivity_rates": sensitivity_rates,
+    "routing_per_class": routing_per_class,
+    "judge_coverage": judge_coverage,
+    "judge_confusion": judge_confusion,
+    "study_runs": study_runs,
+    "study_models": study_models,
     "hallubench_composition": hallubench_composition,
     "hallubench_actions": hallubench_actions,
     "action_taken": action_taken,

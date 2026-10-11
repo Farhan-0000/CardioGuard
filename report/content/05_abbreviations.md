@@ -16,7 +16,7 @@ Table: List of abbreviations {widths=1.35,4.4}
 | BGE | BAAI General Embedding |
 | BM25 | Okapi Best Matching 25 (lexical ranking function) |
 | BP | Blood Pressure |
-| C0–C5, V1, V2, V12 | Conditions and variants of the hallucination study (Table 3.6) |
+| C0–C5, V1, V2, V12 | Study conditions and variants, and the reference C1G (Table 3.6) |
 | CI | Confidence Interval |
 | CKD | Chronic Kidney Disease |
 | CORS | Cross-Origin Resource Sharing |

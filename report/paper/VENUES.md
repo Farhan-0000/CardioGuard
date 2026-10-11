@@ -258,7 +258,9 @@ Before you submit anywhere not in the top 5, run through this list. Two or more 
   kept in IEEE conference format because it converts easily to the other formats; the
   builders and the page budget are described in `report/paper/README.md`.
 - Draft outputs: `report/paper/MedBridge_IEEE_Paper.docx` and `report/paper/latex/`
-  (IEEEtran, compile on Overleaf). Section V (results) is pending until the study finishes.
+  (IEEEtran, compile on Overleaf). Section V (results) was written on 11 Oct 2026 from the
+  hallucination study; the DOCX renders at 7 pages in the LibreOffice preview (ICITIIT: 6 pages,
+  up to 8 at ₹1,000 per extra page), see `report/paper/README.md`, "Page budget".
 - The working title in the draft is *MedBridge: A Dual Answerability Gate for
   Hallucination-Resistant Local Retrieval-Augmented Clinical Guidance* (shorter than the
   title in the heading of this file).

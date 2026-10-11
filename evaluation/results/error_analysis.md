@@ -1,6 +1,6 @@
 # Error analysis (test split)
 
-Generated 2026-10-11T12:10:29+00:00 by `python -m evaluation.analyze`.
+Generated 2026-10-11T13:41:01+00:00 by `python -m evaluation.analyze`.
 
 ## Degraded turns, all conditions (3; excluded from headline)
 

@@ -2210,8 +2210,9 @@ MedBridge/
 | 4 | `context_gate` | `ai/context_gate` (LLM 2, Gate 1); speculative retrieval task started in parallel | Yes | SOFT-ASK (count + 1) / PROCEED (count reset) / loop-breaker GENERALIZE at count 2 | PROCEED |
 | 5 | `retrieval`, `rerank` | `retrieval/hybrid_retriever` (dense ‖ sparse → RRF k = 60, top-20) → `retrieval/reranker` (top-5, worker thread) | No | Evidence chunks; `retrieval_status` ok / empty / failed / skipped / discarded | Empty evidence, status `failed`; reranker failure → top-5 fused candidates |
 | 6 | `evidence_gate` | `ai/evidence_gate` (LLM 3, Gate 2); V1 `ai/evidence_calibration` when enabled | Yes | ANSWER / GENERALIZE / ABSTAIN / ESCALATE | GENERALIZE (also when every V1 vote fails) |
-| 7 | `generation` | ABSTAIN/ESCALATE → `core/templates`; otherwise `ai/response_generator` (LLM 4) → `core/citations.validate_citations` | ANSWER / GENERALIZE / SOFT-ASK only | Response text with validated `[n]` citations; ANSWER with 0 valid citations → GENERALIZE | Pre-vetted GENERALIZE template |
-| 7b | `verification` | V2 `ai/grounding_verifier` (Gate 3) when enabled | No (NLI model) | Unsupported sentences removed, or ANSWER → GENERALIZE / → ABSTAIN | Draft kept, failure recorded |
+| 7 | `generation` | ABSTAIN/ESCALATE → `core/templates`; otherwise `ai/response_generator` (LLM 4) | ANSWER / GENERALIZE / SOFT-ASK only | Draft with `[n]` markers | Pre-vetted GENERALIZE template |
+| 7b | `verification` | V2 `ai/grounding_verifier` (Gate 3; on by default since ADL-052) | No (NLI model) | Unsupported sentences removed; above τ, or when every checked claim is unsupported (ADL-061): ANSWER → regenerated GENERALIZE → ABSTAIN, GENERALIZE → ABSTAIN | Draft kept, failure recorded |
+| 7c | (finalise) | `core/citations.validate_citations` on the verified draft | No | Response text with validated `[n]` citations; ANSWER with 0 valid citations → GENERALIZE | — |
 | 8 | `persistence` | `state/turn_store.persist_turn` (one flush, row lock) | No | Stored events, snapshot, counter, messages, audit row with trace | Answer still returned; transaction rolled back |
 
 ```mermaid
@@ -2232,9 +2233,10 @@ flowchart TD
     RT --> G2{"6 Gate 2: Evidence Gate (LLM 3)<br/>(V1 calibrated variant optional)"}
     G2 -->|"ABSTAIN"| T_A["ABSTAIN template"]
     G2 -->|"ESCALATE"| T_E2["ESCALATE template"]
-    G2 -->|"ANSWER / GENERALIZE"| GEN["7 Generator (LLM 4)<br/>+ citation validation"]
-    GEN --> V2{"7b Gate 3 verifier<br/>(V2, optional)"}
-    V2 --> PS["8 Persist turn (single flush)"]
+    G2 -->|"ANSWER / GENERALIZE"| GEN["7 Generator (LLM 4)"]
+    GEN --> V2{"7b Gate 3 verifier<br/>(V2, on by default)"}
+    V2 --> CV["7c Citation validation<br/>(ANSWER with 0 valid citations → GENERALIZE)"]
+    CV --> PS["8 Persist turn (single flush)"]
     SA --> PS
     T_E --> PS
     T_S --> PS
@@ -2364,9 +2366,9 @@ Defaults as in `medbridge/config.py`. Secrets are generated with `scripts/setup_
 | `EXTRACTOR_HISTORY_TURNS` | `4` | Turns given to the extractor for coreference |
 | `CITATION_VALIDATION_ENABLED`, `SMALL_TALK_ENABLED` | `true`, `true` | ADL-028, ADL-029 |
 | `EVIDENCE_GATE_CALIBRATION_ENABLED`, `EVIDENCE_GATE_VOTES` | `false`, `3` | V1 (ADL-051) |
-| `EVIDENCE_MIN_RERANK_ANSWER`, `EVIDENCE_MIN_RERANK_ANY`, `EVIDENCE_MIN_ENTITY_COVERAGE` | `0.0`, `-6.0`, `0.0` | V1 thresholds (placeholders until calibrated on dev) |
-| `GROUNDING_VERIFIER_ENABLED`, `GROUNDING_NLI_MODEL` | `false`, `cross-encoder/nli-MiniLM2-L6-H768` | V2 (ADL-052) |
-| `GROUNDING_ENTAILMENT_THRESHOLD`, `GROUNDING_MAX_UNSUPPORTED_FRACTION` | `0.5`, `0.34` | V2 thresholds (to be calibrated on dev) |
+| `EVIDENCE_MIN_RERANK_ANSWER`, `EVIDENCE_MIN_RERANK_ANY`, `EVIDENCE_MIN_ENTITY_COVERAGE` | `0.0`, `-6.0`, `0.0` | V1 thresholds; still the uncalibrated placeholders because V1 stays off; the dev-calibrated values (2.072, −100, 0) are in `evaluation/results/calibration.json` (ADL-051) |
+| `GROUNDING_VERIFIER_ENABLED`, `GROUNDING_NLI_MODEL` | `true`, `cross-encoder/nli-MiniLM2-L6-H768` | V2 Gate 3, on by default since the study (ADL-052, commit `7a3bc67`) |
+| `GROUNDING_ENTAILMENT_THRESHOLD`, `GROUNDING_MAX_UNSUPPORTED_FRACTION` | `0.2`, `1.0` | V2 thresholds, dev-calibrated (`evaluation/results/calibration.json`); with τ = 1.0 a partly supported draft is only stripped, and a draft whose every claim is unsupported is withdrawn (ADL-061, commit `16e594b`) |
 | `WARMUP_ON_STARTUP` | `true` | Background model warm-up (ADL-049) |
 | `PII_REDACTION_ENABLED`, `ENCRYPTION_ENABLED` | `true`, `true` | Privacy layer |
 | `ENCRYPTION_MASTER_KEY`, `SESSION_TOKEN_SECRET` | empty (must be set) | Key-encryption key; token signing secret (an empty secret falls back to an ephemeral per-process one with a warning) |
@@ -2404,7 +2406,7 @@ Target machines: Apple M-series Mac (development and experiments) and a Windows 
 | C5 | ✓ | ✓ | ✓ | `grounded` | Full MedBridge (Dual Answerability Gate) |
 | V1 / V2 / V12 | ✓ | ✓ | ✓ (V1: calibrated) | `grounded` (V2: + Gate 3) | Fallback variants of brief §6.7 |
 
-Flow (`scripts/run_study.sh`): C5 on the dev split → LLM and NLI judges on dev → calibration of NLI, V1 and V2 thresholds on dev (`evaluation/calibrate.py`) → all conditions on the test split → judges on test → `evaluation/analyze.py` (tables and figures). Dataset: MedBridge-HalluBench v1, 247 synthetic items (49 dev / 198 test). Requests identical across conditions are memoised by model digest; degraded turns are flagged and excluded from headline metrics, and analysis refuses headline results when a condition exceeds 5% degraded turns (ADL-056). Results available now: retrieval evaluation and reranker ablation (`evaluation/results/retrieval/`), model selection round 1 (`evaluation/results/model_selection_round1_prefix/`). **Hallucination-study results, judge agreement and significance tests: pending.**
+Flow (`scripts/run_study.sh`): C5 on the dev split → LLM and NLI judges on dev → calibration of NLI, V1 and V2 thresholds on dev (`evaluation/calibrate.py`) → all conditions on the test split → judges on test → `evaluation/analyze.py` (tables and figures). Dataset: MedBridge-HalluBench v1, 247 synthetic items (49 dev / 198 test). Requests identical across conditions are memoised by model digest; degraded turns are flagged and excluded from headline metrics, and analysis refuses headline results when a condition exceeds 5% degraded turns (ADL-056). Results available now: retrieval evaluation and reranker ablation (`evaluation/results/retrieval/`), model selection round 1 (`evaluation/results/model_selection_round1_prefix/`). **Hallucination-study results, judge agreement and significance tests: complete** (`evaluation/results/summary.json`, tables, figures; summary and decisions in ADL-056, ADL-051, ADL-052). All primary metrics and tests use the LLM judge; the NLI judge was concluded early and covers only C0, C1, C1G and part of C2, for agreement.
 
 ## 13. Testing
 
@@ -2419,7 +2421,7 @@ Flow (`scripts/run_study.sh`): C5 on the dev split → LLM and NLI judges on dev
 | JavaScript | `medbridge/web/tests/` | Node test runner (optional; wrapped by `test_web_js.py`) |
 | Live | `pytest -m live` | Full stack with a real LLM; excluded by default |
 
-Per-module test files and collected counts: `docs/module_map.md`. Live benchmark runs (MedBridge-AQ, RABBITS, adversarial, load test) are pending; the current `reports/medbridge_aq_benchmark_report.md` and `reports/rabbits_benchmark_report.md` are bannered mock-mode harness checks.
+Per-module test files and collected counts: `docs/module_map.md`. Live benchmark runs are recorded: MedBridge-AQ over 275 vignettes on the study code (`reports/medbridge_aq_benchmark_report.md`), RABBITS (60 brands) and the adversarial suite before and after the brand-name fix (`reports/rabbits_before_fix/`, `reports/rabbits_benchmark_report.md`, `reports/adversarial_before_fix/`, `reports/adversarial_live_report.md`; ADL-059), the burst load test (`reports/performance/load_test.md`) and the before/after latency probe (`reports/performance/latency_table.md`; ADL-049). Numbers are rendered into the README by `scripts/render_docs_results.py`; the hermetic all-brands RABBITS run is kept in `reports/rabbits_mock_189_brands/`.
 
 ## 14. Errata Register
 

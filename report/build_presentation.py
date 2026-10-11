@@ -6,8 +6,8 @@ Slide text and speaker notes live in ``report/presentation/slides.toml``; every 
 read at build time from the real results / measurement files through the report's results
 context (``report/lib/results_context.py``) or computed from the code base
 (``report/presentation/deck_data.py``). A result that does not exist yet is shown as a
-highlighted ``[PENDING: ...]`` marker, and the two hallucination-result slides become
-"pending" slides until ``evaluation/results/summary.json`` exists. Re-running the builder
+highlighted ``[PENDING: ...]`` marker, and the three hallucination-study result slides
+become "pending" slides until ``evaluation/results/summary.json`` exists. Re-running the builder
 after new results land regenerates the whole deck.
 
 Usage (from the repository root)::
@@ -71,7 +71,13 @@ NUMBER_UNIT_RE = re.compile(r"(\d) (%|pp\b|ms\b|s\b|GB\b|mmHg\b)")
 #: Slide-friendly names for results that do not exist yet (full paths go to the notes and log).
 PENDING_LABELS: tuple[tuple[str, str], ...] = (
     ("study", "hallucination study"),
+    ("deck.stats", "hallucination study"),
+    ("deck.gate3_withdrawal", "V2 run records"),
     ("perf_latest.after", "after-optimisation latency probe"),
+    ("deck.perf", "after-optimisation latency probe"),
+    ("deck.robust.rabbits_before", "pre-fix RABBITS run"),
+    ("deck.robust.adversarial_before", "pre-fix adversarial run"),
+    ("deck.robust", "live run"),
     ("tests", "full test-run summary"),
     ("aq", "live MedBridge-AQ run"),
     ("rabbits", "live RABBITS run"),
@@ -80,6 +86,8 @@ PENDING_LABELS: tuple[tuple[str, str], ...] = (
     ("calibration", "dev-split calibration"),
     ("human_agreement", "human annotation"),
 )
+#: Load-test request kinds that never call the LLM (fast-path and small-talk templates).
+FAST_KINDS = ("emergency", "small_talk")
 ORG_ABBREVIATIONS = {"World Health Organization": "WHO", "Parliament of India": "Govt. of India"}
 
 REFERENCES_NOTE = "report/references/references.json (full entries in the notes)"
@@ -129,6 +137,12 @@ class SlideRecord:
             "images": self.images,
             "notes_chars": self.notes_chars,
         }
+
+
+def _median(values: Sequence[float]) -> float:
+    vals = sorted(values)
+    mid = len(vals) // 2
+    return vals[mid] if len(vals) % 2 else (vals[mid - 1] + vals[mid]) / 2
 
 
 def short_label(entry: dict[str, Any]) -> str:
@@ -394,6 +408,7 @@ class DeckBuilder:
             "models": self.s_models,
             "results_hallucination": self.s_results_hallucination,
             "results_unsafe": self.s_results_unsafe,
+            "results_tradeoff": self.s_results_tradeoff,
             "robustness": self.s_robustness,
             "performance": self.s_performance,
             "testing": self.s_testing,
@@ -1206,10 +1221,11 @@ class DeckBuilder:
         kit = self.kit
         shots = self.get("deck.screenshots") or {}
         scenes = spec.get("scenes") or []
-        cols, rows_n = 3, max(1, math.ceil(len(scenes) / 3))
-        gx, gy = 0.25, 0.18
+        cols = int(spec.get("columns") or (4 if len(scenes) > 6 else 3))
+        rows_n = max(1, math.ceil(len(scenes) / cols))
+        gx, gy = (0.2, 0.16) if cols > 3 else (0.25, 0.18)
         cw = (CW - gx * (cols - 1)) / cols
-        cap_h = 0.52
+        cap_h = 0.5 if cols > 3 else 0.52
         ch = (BODY_BOTTOM + 0.02 - BODY_TOP - gy * (rows_n - 1)) / rows_n
         missing = 0
         for i, sc in enumerate(scenes):
@@ -1241,17 +1257,23 @@ class DeckBuilder:
                 cw,
                 cap_h,
                 P(self.r(sc.get("caption")), align="c"),
-                size=13,
-                min_size=10.5,
+                size=13 if cols <= 3 else 12,
+                min_size=10 if cols > 3 else 10.5,
                 color=K.INK,
                 anchor="m",
                 name=f"caption-{name}",
             )
+        used_dirs = sorted(
+            {
+                str(Path(shots[str(s.get("name"))]).parent)
+                for s in scenes
+                if shots.get(str(s.get("name")))
+            }
+        )
+        self.cur.source(*used_dirs)
         if missing:
             self.cur.state = "pending" if missing == len(scenes) else "partial"
             self.cur.source(f"screenshots: capture with {spec.get('capture', SCREENSHOT_CAPTURE)}")
-        else:
-            self.cur.source(deck_data.SCREENSHOT_DIR)
         self.sources_line(slide)
         self.set_notes(slide, spec.get("notes", ""))
 
@@ -1336,8 +1358,8 @@ class DeckBuilder:
         )
         conds = spec.get("conditions") or []
         colw = (rw - 0.15) / 2
-        rh = 0.46
         per_col = math.ceil(len(conds) / 2)
+        rh = 0.46 if per_col <= 4 else 0.4
         for i, cd in enumerate(conds):
             tone = TONES.get(str(cd.get("tone", "det")), TONES["det"])
             cx = rx + (i // per_col) * (colw + 0.15)
@@ -1540,11 +1562,13 @@ class DeckBuilder:
         per = self.get("study.per_condition")
         return per if isinstance(per, dict) and per else None
 
-    def _mcnemar(self, control: str, outcome: str, judge: str = "llm") -> dict[str, Any] | None:
+    def _mcnemar(
+        self, control: str, outcome: str, judge: str = "llm", treatment: str = "C5"
+    ) -> dict[str, Any] | None:
         for t in self.get("study.tests.mcnemar") or []:
             if (
                 isinstance(t, dict)
-                and t.get("treatment") == "C5"
+                and t.get("treatment") == treatment
                 and t.get("control") == control
                 and t.get("outcome") == outcome
                 and t.get("judge") == judge
@@ -1565,15 +1589,7 @@ class DeckBuilder:
     @staticmethod
     def _verdict_label(t: dict[str, Any] | None) -> str:
         """Three-state verdict of one paired test (Holm p < 0.05 and the sign of the RD)."""
-        if not t:
-            return "not significant"
-        p = t.get("pvalue_holm", t.get("pvalue"))
-        rd = (t.get("risk_difference") or {}).get("estimate")
-        if not isinstance(p, (int, float)) or not isinstance(rd, (int, float)):
-            return "not significant"
-        if not (math.isfinite(p) and math.isfinite(rd)) or p >= 0.05 or rd == 0:
-            return "not significant"
-        return "significant reduction" if rd < 0 else "significant increase"
+        return deck_data.verdict_label(t)
 
     def _rd_text(self, t: dict[str, Any]) -> str:
         rd = t.get("risk_difference") or {}
@@ -1583,66 +1599,86 @@ class DeckBuilder:
         est, lo, hi = (100 * float(v) for v in vals)  # type: ignore[arg-type]
         return f"{est:+.1f} pp [{lo:+.1f}, {hi:+.1f}]"
 
+    def _figure(self, spec: dict[str, Any]) -> str:
+        """First existing file of ``figures`` (preference order); else the last one listed."""
+        figs = [str(f) for f in spec.get("figures") or []]
+        if not figs and spec.get("figure"):
+            figs = [str(spec["figure"])]
+        for fig in figs:
+            if (self.root / fig).is_file():
+                return fig
+        return figs[-1] if figs else ""
+
+    def _pending_results(self, spec: dict[str, Any], slide: Any, what: str, detail: str) -> None:
+        """Pending variant of a results slide: placeholder, what will appear, no number."""
+        kit = self.kit
+        self.cur.state = "pending"
+        self.chrome(slide, spec, title=spec.get("title_pending", spec.get("title")))
+        kit.image(
+            slide,
+            None,
+            MX,
+            BODY_TOP,
+            6.6,
+            BODY_BOTTOM - BODY_TOP,
+            placeholder_title=what,
+            placeholder_detail=detail,
+            name="figure",
+        )
+        rx = MX + 6.95
+        rw = MX + CW - rx
+        y = self.heading(slide, rx, BODY_TOP, rw, "What this slide will show", size=17)
+        kit.text(
+            slide,
+            rx,
+            y,
+            rw,
+            BODY_BOTTOM - y - 1.0,
+            self.bullets(spec.get("pending_points") or [], gap=7),
+            size=15,
+            min_size=11,
+            name="pending-points",
+            claim=True,
+        )
+        kit.chip(
+            slide,
+            rx,
+            BODY_BOTTOM - 0.75,
+            rw,
+            0.62,
+            "Status: no result file yet, so no number is quoted",
+            TONES["pending"],
+            size=14,
+            name="status",
+        )
+        self.cur.pending.append("study (evaluation/results/summary.json)")
+        self.sources_line(slide, ["evaluation/results/summary.json (pending)"])
+        self.set_notes(slide, spec.get("notes_pending", ""))
+
     def s_results_hallucination(self, spec: dict[str, Any]) -> None:
         per = self._study()
         slide = self.new_slide(spec)
         kit = self.kit
-        fig = str(spec.get("figure", ""))
+        fig = self._figure(spec)
         if per is None:
-            self.cur.state = "pending"
-            self.chrome(slide, spec, title=spec.get("title_pending", spec.get("title")))
-            kit.image(
+            self._pending_results(
+                spec,
                 slide,
-                None,
-                MX,
-                BODY_TOP,
-                6.6,
-                BODY_BOTTOM - BODY_TOP,
-                placeholder_title="hallucination study results",
-                placeholder_detail=f"{fig} and evaluation/results/summary.json are written by "
+                "hallucination study results",
+                f"{fig} and evaluation/results/summary.json are written by "
                 "python -m evaluation.analyze",
-                name="figure",
             )
             self.cur.images[fig] = False
-            rx = MX + 6.95
-            rw = MX + CW - rx
-            y = self.heading(slide, rx, BODY_TOP, rw, "What this slide will show", size=17)
-            kit.text(
-                slide,
-                rx,
-                y,
-                rw,
-                BODY_BOTTOM - y - 1.0,
-                self.bullets(spec.get("pending_points") or [], gap=7),
-                size=15,
-                min_size=11,
-                name="pending-points",
-                claim=True,
-            )
-            kit.chip(
-                slide,
-                rx,
-                BODY_BOTTOM - 0.75,
-                rw,
-                0.62,
-                "Status: no result file yet, so no number is quoted",
-                TONES["pending"],
-                size=14,
-                name="status",
-            )
-            self.cur.pending.append("study (evaluation/results/summary.json)")
-            self.sources_line(slide, ["evaluation/results/summary.json (pending)"])
-            self.set_notes(slide, spec.get("notes_pending", ""))
             return
         self.chrome(slide, spec)
-        fw = 6.75
+        fw, fh = 6.3, 2.85
         ok = kit.image(
             slide,
             self.root / fig,
             MX,
             BODY_TOP,
             fw,
-            4.3,
+            fh,
             placeholder_title=fig,
             placeholder_detail="python -m evaluation.analyze",
             name="figure",
@@ -1653,87 +1689,106 @@ class DeckBuilder:
             self.cur.source(fig)
         else:
             self.cur.state = "partial"
+        y = BODY_TOP + fh + 0.1
+        kit.text(
+            slide,
+            MX,
+            y,
+            fw,
+            BODY_BOTTOM + 0.02 - y,
+            self.bullets(spec.get("points") or [], color=TONES["gate"].line, gap=5),
+            size=13.5,
+            min_size=10,
+            name="points",
+            claim=True,
+        )
+        default = str(spec.get("default_condition", "V2"))
         rows = []
         for cond, m in tables._study_conditions(self.ctx):
-            llm, nli = m.get("llm") or {}, m.get("nli") or {}
+            llm = m.get("llm") or {}
             label = cond + (" (uncal.)" if tables._uncalibrated(self.ctx, cond) else "")
             rows.append(
                 [
                     label,
                     tables.pct(llm.get("hallucination")),
-                    tables.pct(nli.get("hallucination")),
+                    tables.pct(llm.get("unsafe_answer")),
                     tables.pct(m.get("coverage_answerable"), ci=False),
                 ]
             )
 
         def style(r: int, c: int, value: str) -> K.CellStyle | None:
-            if rows[r][0].startswith("C5"):
+            cond = rows[r][0].split()[0]
+            if cond == "C5":
                 return K.CellStyle(fill=TONES["gate"].fill, bold=True, color=TONES["gate"].text)
+            if cond == default:
+                return K.CellStyle(fill=TONES["safe"].fill, bold=True, color=TONES["safe"].text)
             return None
 
-        rx = MX + fw + 0.25
+        rx = MX + fw + 0.3
         rw = MX + CW - rx
-        kit.table(
+        fit = kit.table(
             slide,
             rx,
             BODY_TOP,
             rw,
-            ["Cond.", "LLM judge % [95% CI]", "NLI judge % [95% CI]", "Coverage %"],
+            ["Cond.", "Hallucinated, % [95% CI]", "Unsafe answers, % [95% CI]", "Coverage %"],
             rows,
-            widths=[0.75, 1.65, 1.65, 0.95],
-            size=13,
+            widths=[0.72, 1.8, 1.8, 0.95],
+            size=12.5,
             min_size=9.5,
-            max_h=4.3,
+            max_h=4.25,
             style=style,
             name="halluc-table",
         )
-        self.cur.source(self.ctx.source("study"))
-        verdict = []
-        for control in ("C1", "C2"):
-            t = self._mcnemar(control, "hallucination")
-            if t:
-                verdict.append(
-                    f"C5 vs {control}: {self._rd_text(t)}, Holm p = {tables.pvalue(t.get('pvalue_holm'))}"
-                    f" ({self._verdict_label(t)})"
-                )
-        paras = [
-            P(
-                "**Hallucination, LLM judge, paired McNemar:** "
-                + ("; ".join(verdict) if verdict else "[PENDING: hallucination study]")
-            )
-        ]
+        y2 = BODY_TOP + fit.height_in + 0.06
         kit.text(
             slide,
-            MX,
-            BODY_TOP + 4.45,
-            CW,
-            BODY_BOTTOM + 0.02 - BODY_TOP - 4.45,
-            paras,
-            size=15,
-            min_size=10,
-            color=K.NAVY,
-            name="verdict",
+            rx,
+            y2,
+            rw,
+            BODY_BOTTOM + 0.02 - y2,
+            self.r(spec.get("table_note", "")),
+            size=11,
+            min_size=8.5,
+            color=K.MUTED,
+            name="table-note",
             claim=True,
         )
+        self.cur.source(self.ctx.source("study"))
         self.sources_line(slide)
-        data_notes = self._study_notes()
-        self.set_notes(slide, spec.get("notes", "") + "\n\n" + data_notes)
+        self.set_notes(slide, spec.get("notes", "") + "\n\n" + self._study_notes())
 
     def _study_notes(self) -> str:
         lines = [
-            "Values from evaluation/results/summary.json (test split, degraded turns excluded):"
+            "Values from evaluation/results/summary.json (test split, LLM judge, degraded turns "
+            "excluded):"
         ]
+        nli_ok = set(self.get("deck.stats.nli_reported") or [])
         for cond, m in tables._study_conditions(self.ctx):
             llm, nli = m.get("llm") or {}, m.get("nli") or {}
+            line = (
+                f"- {cond} {tables.CONDITION_NAMES.get(cond, cond)}: hallucination "
+                f"{tables.pct(llm.get('hallucination'))} %, unsafe answers "
+                f"{tables.pct(llm.get('unsafe_answer'))} %, coverage "
+                f"{tables.pct(m.get('coverage_answerable'), ci=False)} %, claims per response "
+                f"{tables.num(llm.get('claims_per_response'), 2)}, turns {m.get('n_valid')}"
+            )
+            if cond in nli_ok and isinstance(nli.get("hallucination"), dict):
+                line += f"; NLI judge {tables.pct(nli.get('hallucination'))} %"
+            lines.append(line)
+        if nli_ok:
             lines.append(
-                f"- {cond} {tables.CONDITION_NAMES.get(cond, cond)}: hallucination LLM judge "
-                f"{tables.pct(llm.get('hallucination'))} %, NLI judge {tables.pct(nli.get('hallucination'))} %, "
-                f"coverage {tables.pct(m.get('coverage_answerable'), ci=False)} %, turns {m.get('n_valid')}"
+                "NLI-judge rates are quoted only for the conditions it scored completely ("
+                + ", ".join(sorted(nli_ok))
+                + "); it was concluded early, and a partial subset of any other condition is "
+                "not a result and is not quoted."
             )
         kappa = self.get("study.judge_agreement.kappa_response_hallucination")
         if isinstance(kappa, dict):
             lines.append(
-                f"Judge agreement (Cohen's kappa, response level): {tables.interval(kappa)}"
+                f"Judge agreement (Cohen's kappa, response level, "
+                f"{self.get('study.judge_agreement.n_responses', '?')} paired responses): "
+                f"{tables.interval(kappa)}"
             )
         return "\n".join(lines)
 
@@ -1741,30 +1796,22 @@ class DeckBuilder:
         per = self._study()
         slide = self.new_slide(spec)
         kit = self.kit
-        left, right = str(spec.get("figure_left", "")), str(spec.get("figure_right", ""))
-        fh = 2.95
-        fw = (CW - 0.25) / 2
         if per is None:
             self.cur.state = "pending"
             self.chrome(slide, spec, title=spec.get("title_pending", spec.get("title")))
-            for i, (fig, what) in enumerate(
-                (
-                    (left, "unsafe-answer rate on unanswerable items"),
-                    (right, "ablation waterfall C1 → C3 / C4 → C5"),
-                )
-            ):
-                kit.image(
-                    slide,
-                    None,
-                    MX + i * (fw + 0.25),
-                    BODY_TOP,
-                    fw,
-                    fh,
-                    placeholder_title=what,
-                    placeholder_detail=fig,
-                    name=f"figure-{i}",
-                )
-                self.cur.images[fig] = False
+            fh = 2.95
+            kit.image(
+                slide,
+                None,
+                MX,
+                BODY_TOP,
+                CW,
+                fh,
+                placeholder_title="paired McNemar tests: C5 vs C1 and C2, ablation, variants",
+                placeholder_detail="evaluation/results/summary.json is written by "
+                "python -m evaluation.analyze",
+                name="tests",
+            )
             y = BODY_TOP + fh + 0.3
             kit.card(
                 slide,
@@ -1785,54 +1832,31 @@ class DeckBuilder:
             self.set_notes(slide, spec.get("notes_pending", ""))
             return
         self.chrome(slide, spec)
-        for i, fig in enumerate((left, right)):
-            ok = kit.image(
-                slide,
-                self.root / fig,
-                MX + i * (fw + 0.25),
-                BODY_TOP,
-                fw,
-                fh,
-                placeholder_title=fig,
-                placeholder_detail="python -m evaluation.analyze",
-                name=f"figure-{i}",
-            )
-            self.cur.images[fig] = ok
-            if ok:
-                self.cur.source(fig)
-            else:
-                self.cur.state = "partial"
+        outcome_names = {"hallucination": "Hallucination", "unsafe": "Unsafe answer"}
         rows = []
-        sig_count, total = 0, 0
-        reduced: dict[tuple[str, str], bool] = {}
-        outcomes = (
-            ("hallucination", "Hallucination", "the hallucination rate"),
-            ("unsafe", "Unsafe answer", "the unsafe-answer rate"),
-        )
-        for outcome, label, _ in outcomes:
-            for control in ("C1", "C2"):
-                t = self._mcnemar(control, outcome)
-                if not t:
-                    continue
-                sig = bool(self._significant(t))
-                reduced[(outcome, control)] = sig
-                total += 1
-                sig_count += 1 if sig else 0
-                rows.append(
-                    [
-                        f"C5 vs {control}",
-                        label,
-                        f"{t.get('b_treatment_only')} / {t.get('c_control_only')}",
-                        self._rd_text(t),
-                        tables.pvalue(t.get("pvalue_holm")),
-                        self._verdict_label(t),
-                    ]
-                )
-        y = BODY_TOP + fh + 0.18
+        for comp in spec.get("comparisons") or []:
+            treat = str(comp.get("treatment", "C5"))
+            control = str(comp.get("control", ""))
+            outcome = str(comp.get("outcome", "hallucination"))
+            t = self._mcnemar(control, outcome, treatment=treat)
+            if not t:
+                continue
+            rows.append(
+                [
+                    f"{treat} vs {control}",
+                    self.r(comp.get("role", "")),
+                    outcome_names.get(outcome, outcome),
+                    f"{t.get('b_treatment_only')} / {t.get('c_control_only')}",
+                    self._rd_text(t),
+                    tables.pvalue(t.get("pvalue_holm")),
+                    self._verdict_label(t),
+                ]
+            )
+        y = BODY_TOP
         if rows:
 
             def style(r: int, c: int, value: str) -> K.CellStyle | None:
-                if c == 5:
+                if c == 6:
                     tone = {
                         "significant reduction": TONES["safe"],
                         "significant increase": TONES["emergency"],
@@ -1847,58 +1871,400 @@ class DeckBuilder:
                 CW,
                 [
                     "Comparison",
-                    "Outcome (LLM judge)",
+                    "What it tests",
+                    "Outcome",
                     "b / c",
                     "Risk difference [95% CI]",
                     "p (Holm)",
                     "Verdict",
                 ],
                 rows,
-                widths=[1.35, 1.9, 0.9, 2.9, 1.2, 2.3],
+                widths=[1.3, 2.75, 1.45, 0.85, 2.45, 1.25, 2.1],
                 size=13,
                 min_size=10,
-                max_h=1.75,
+                max_h=3.35,
+                align=["l", "l", "l", "c", "c", "c", "c"],
                 style=style,
                 name="mcnemar",
             )
-            y += fit.height_in + 0.1
+            y += fit.height_in + 0.15
             self.cur.source(self.ctx.source("study"))
-            # The rule: a significant reduction against BOTH C1 and C2 in at least one outcome.
-            met = [
-                phrase
-                for outcome, _, phrase in outcomes
-                if reduced.get((outcome, "C1")) and reduced.get((outcome, "C2"))
-            ]
-            if met:
+        # The rule: a significant reduction against BOTH C1 and C2 in at least one outcome.
+        rule = self.get("deck.stats.rule")
+        if isinstance(rule, dict) and rule.get("primary_total"):
+            phrases = {
+                "hallucination": "the hallucination rate",
+                "unsafe": "the unsafe-answer rate",
+            }
+            met = [phrases.get(o, o) for o in rule.get("outcomes_met") or []]
+            k, n = rule.get("primary_significant"), rule.get("primary_total")
+            if rule.get("met"):
                 verdict = (
                     f"**Decision rule:** met. C5 significantly reduces {' and '.join(met)} "
-                    "against both C1 and C2 (Holm-corrected)."
+                    f"against both C1 and C2 ({k} of {n} primary comparisons, Holm-corrected, "
+                    "LLM judge)."
                 )
             else:
                 verdict = (
-                    f"**Decision rule:** not met. {sig_count} of {total} primary comparisons show "
-                    "a significant reduction; the error analysis and the V1 / V2 variants are in "
+                    f"**Decision rule:** not met. {k} of {n} primary comparisons show a "
+                    "significant reduction; the error analysis and the V1 / V2 variants are in "
                     "the report."
                 )
+            body = [P(verdict), P(self.r(spec.get("decision_followup", "")), space_before=6)]
         else:
-            verdict = "**Decision rule:** [PENDING: hallucination study]"
-        kit.text(
+            body = [P("**Decision rule:** [PENDING: hallucination study]")]
+        lw = 6.3
+        h = BODY_BOTTOM + 0.02 - y
+        kit.card(
             slide,
             MX,
             y,
-            CW,
-            BODY_BOTTOM + 0.02 - y,
-            verdict,
-            size=14,
+            lw,
+            h,
+            self.r(spec.get("decision_title", "Decision rule fixed in advance")),
+            body,
+            TONES["gate"],
+            title_size=15,
+            body_size=13.5,
             min_size=10,
-            color=K.NAVY,
-            name="verdict",
-            claim=True,
+            name="decision",
+            title_h=0.4,
+        )
+        kit.card(
+            slide,
+            MX + lw + 0.2,
+            y,
+            CW - lw - 0.2,
+            h,
+            self.r(spec.get("ablation_title", "Reading the ablation")),
+            self.bullets(spec.get("ablation") or [], color=TONES["llm"].line, gap=4),
+            TONES["llm"],
+            title_size=15,
+            body_size=13.5,
+            min_size=10,
+            name="ablation",
+            title_h=0.4,
         )
         self.sources_line(slide)
         self.set_notes(slide, spec.get("notes", "") + "\n\n" + self._study_notes())
 
+    @staticmethod
+    def _ratio_pct(d: Any) -> str:
+        """``{estimate, low, high}`` fraction as ``26.3 [22.2, 30.8]``."""
+        if not isinstance(d, dict):
+            return tables.pct(d)
+        return tables.pct({"rate": d.get("estimate"), "low": d.get("low"), "high": d.get("high")})
+
+    def s_results_tradeoff(self, spec: dict[str, Any]) -> None:
+        per = self._study()
+        slide = self.new_slide(spec)
+        kit = self.kit
+        if per is None:
+            self._pending_results(
+                spec,
+                slide,
+                "coverage and claim profile of C1, C5 and V2",
+                "evaluation/results/summary.json is written by python -m evaluation.analyze",
+            )
+            return
+        self.chrome(slide, spec)
+        conds = [str(c) for c in spec.get("conditions") or ["C1", "C5", "V2"]]
+        conds = [c for c in conds if isinstance(per.get(c), dict)]
+        labels = spec.get("condition_labels") or {}
+        default = str(spec.get("default_condition", "V2"))
+
+        def llm(m: dict[str, Any]) -> dict[str, Any]:
+            return m.get("llm") or {}
+
+        def claim_bearing(m: dict[str, Any]) -> str:
+            n = (llm(m).get("hallucination_given_claims") or {}).get("n")
+            total = m.get("n_valid")
+            return f"{n} of {total}" if n is not None and total else "—"
+
+        metrics: list[tuple[str, Callable[[dict[str, Any]], str]]] = [
+            (
+                "Hallucinated responses, all turns, %",
+                lambda m: tables.pct(llm(m).get("hallucination")),
+            ),
+            ("Replies that make clinical claims", claim_bearing),
+            (
+                "… of those, hallucinated, %",
+                lambda m: tables.pct(llm(m).get("hallucination_given_claims")),
+            ),
+            ("Claims per response", lambda m: tables.num(llm(m).get("claims_per_response"), 1)),
+            (
+                "Unsupported claims, % of all claims",
+                lambda m: self._ratio_pct(llm(m).get("unsupported_claim_ratio")),
+            ),
+            (
+                "Coverage of answerable turns, %",
+                lambda m: tables.pct(m.get("coverage_answerable"), ci=False),
+            ),
+            (
+                "Over-abstention on answerable turns, %",
+                lambda m: tables.pct(m.get("over_abstention"), ci=False),
+            ),
+            (
+                "Unsafe answers, unanswerable turns, %",
+                lambda m: tables.pct(llm(m).get("unsafe_answer")),
+            ),
+        ]
+        rows = [[label] + [fn(per[c]) for c in conds] for label, fn in metrics]
+        header = [self.r(spec.get("table_title", "Metric (LLM judge, test split)"))] + [
+            self.r(labels.get(c, c)) for c in conds
+        ]
+
+        def style(r: int, c: int, value: str) -> K.CellStyle | None:
+            if c == 0:
+                return None
+            cond = conds[c - 1]
+            if cond == default:
+                return K.CellStyle(fill=TONES["safe"].fill, color=TONES["safe"].text, bold=True)
+            if cond == "C5":
+                return K.CellStyle(fill=TONES["gate"].fill, color=TONES["gate"].text)
+            return None
+
+        lw = 7.15
+        fit = kit.table(
+            slide,
+            MX,
+            BODY_TOP,
+            lw,
+            header,
+            rows,
+            widths=[2.55] + [(lw - 2.55) / max(len(conds), 1)] * len(conds),
+            size=13,
+            min_size=10,
+            max_h=4.35,
+            align=["l"] + ["c"] * len(conds),
+            style=style,
+            name="tradeoff-table",
+        )
+        y = BODY_TOP + fit.height_in + 0.08
+        kit.text(
+            slide,
+            MX,
+            y,
+            lw,
+            BODY_BOTTOM + 0.02 - y,
+            self.r(spec.get("table_note", "")),
+            size=11.5,
+            min_size=9,
+            color=K.MUTED,
+            name="tradeoff-note",
+            claim=True,
+        )
+        self.cur.source(self.ctx.source("study"))
+        rx = MX + lw + 0.3
+        rw = MX + CW - rx
+        cards = spec.get("cards") or []
+        gap = 0.18
+        heights = [float(c.get("height", 0)) for c in cards]
+        free = BODY_BOTTOM + 0.02 - BODY_TOP - gap * max(len(cards) - 1, 0)
+        flex = [i for i, h in enumerate(heights) if h <= 0]
+        rest = free - sum(h for h in heights if h > 0)
+        for i in flex:
+            heights[i] = rest / len(flex)
+        cy = BODY_TOP
+        for i, card in enumerate(cards):
+            tone = TONES.get(str(card.get("tone", "note")), TONES["note"])
+            kit.card(
+                slide,
+                rx,
+                cy,
+                rw,
+                heights[i],
+                self.r(card.get("title", "")),
+                self.bullets(card.get("bullets") or [], color=tone.line, gap=4),
+                tone,
+                title_size=15,
+                body_size=13,
+                min_size=9.5,
+                name=f"card-{i}",
+                title_h=0.4,
+            )
+            cy += heights[i] + gap
+        self.sources_line(slide)
+        self.set_notes(slide, spec.get("notes", "") + "\n\n" + self._study_notes())
+
     # -- robustness, performance, testing -------------------------------
+
+    def _panel(
+        self,
+        slide: Any,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        title: str,
+        tone: Tone,
+        *,
+        name: str,
+    ) -> float:
+        """Tinted panel with an accent bar and a one-line title; returns the content top."""
+        kit = self.kit
+        kit.claim(name, x, y, w, h)
+        kit.rect(slide, x, y, w, h, fill=tone.fill, line=tone.line, line_w=1.0)
+        kit.rect(slide, x, y + 0.12, 0.07, h - 0.24, fill=tone.line, radius=None)
+        kit.text(
+            slide,
+            x + 0.18,
+            y + 0.08,
+            w - 0.3,
+            0.4,
+            P(title, bold=True),
+            size=15.5,
+            min_size=12,
+            color=tone.text,
+            name=f"{name}-title",
+        )
+        return y + 0.5
+
+    def _robust_table(
+        self, key: str
+    ) -> tuple[list[str], list[list[str]], Callable[[int, int, str], K.CellStyle | None]] | None:
+        """Header, rows and cell style of one robustness panel (None when no live run)."""
+        good, bad = TONES["safe"].text, TONES["emergency"].text
+
+        def pc(v: Any) -> str:
+            return "—" if v is None else f"{tables.perc(v)} %"
+
+        if key == "aq":
+            m = self.get("aq.metrics")
+            if not isinstance(m, dict):
+                return None
+            self.cur.source(self.ctx.source("aq"))
+            targets = self.get("deck.robust.aq_targets") or {}
+            acc = m.get("acceptance") or {}
+
+            def target(name: str, text: str) -> str:
+                ok = acc.get(name)
+                return text if ok is None else f"{text}: {'met' if ok else 'missed'}"
+
+            def tgt(name: str, prefix: str = "") -> str:
+                v = targets.get(name)
+                return "—" if v is None else f"{prefix}{v:g} %"
+
+            rows = [
+                [
+                    "Routing accuracy",
+                    pc(m.get("overall_routing_accuracy")),
+                    target("routing_accuracy", tgt("routing_accuracy", "≥ ")),
+                ],
+                [
+                    "Citation precision",
+                    pc(m.get("overall_citation_precision")),
+                    target("citation_precision", tgt("citation_precision", "≥ ")),
+                ],
+                [
+                    "Emergency recall",
+                    f"{pc(m.get('emergency_detection_recall'))} "
+                    f"({tables.integer(m.get('emergency_detected_count'))} of "
+                    f"{tables.integer(m.get('emergency_count'))})",
+                    target("emergency_recall", tgt("emergency_recall")),
+                ],
+                [
+                    "Out-of-domain answered",
+                    f"{tables.integer(m.get('out_of_domain_answer_count'))} of "
+                    f"{tables.integer(m.get('out_of_domain_count'))}",
+                    target("ood_answer_rate", tgt("ood_answer_rate")),
+                ],
+            ]
+
+            def aq_style(r: int, c: int, value: str) -> K.CellStyle | None:
+                if c == 2 and value.endswith("missed"):
+                    return K.CellStyle(color=bad, bold=True)
+                if c == 2 and value.endswith("met"):
+                    return K.CellStyle(color=good, bold=True)
+                return None
+
+            return ["Metric", "Live", "Target"], rows, aq_style
+        if key == "rabbits":
+            after = self.get("rabbits")
+            if not isinstance(after, dict):
+                return None
+            before = self.get("deck.robust.rabbits_before") or {}
+            self.cur.source(before.get("source"), self.ctx.source("rabbits"))
+
+            def indian(d: dict[str, Any]) -> Any:
+                return ((d.get("by_origin") or {}).get("indian") or {}).get(
+                    "action_consistency_pct"
+                )
+
+            def jac(v: Any) -> str:
+                return tables.num(v, 3) if v is not None else "—"
+
+            rows = [
+                [
+                    "Same action, brand vs generic",
+                    pc(before.get("action_consistency_pct")),
+                    pc(after.get("action_consistency_pct")),
+                ],
+                ["… Indian brands only", pc(indian(before)), pc(indian(after))],
+                [
+                    "Same generic stored (personal)",
+                    pc(before.get("extraction_consistency_pct")),
+                    pc(after.get("extraction_consistency_pct")),
+                ],
+                [
+                    "Brand stored as its generic",
+                    pc(before.get("brand_normalised_pct")),
+                    pc(after.get("brand_normalised_pct")),
+                ],
+                [
+                    "Citation-set Jaccard",
+                    jac(before.get("citation_jaccard_mean")),
+                    jac(after.get("citation_jaccard_mean")),
+                ],
+            ]
+
+            def rb_style(r: int, c: int, value: str) -> K.CellStyle | None:
+                return K.CellStyle(color=good, bold=True) if c == 2 else None
+
+            return ["Metric", "Before fix", "After fix"], rows, rb_style
+        if key == "adversarial":
+            after = self.get("adversarial.counts")
+            if not isinstance(after, dict):
+                return None
+            before = (self.get("deck.robust.adversarial_before") or {}).get("counts") or {}
+            self.cur.source(
+                (self.get("deck.robust.adversarial_before") or {}).get("source"),
+                self.ctx.source("adversarial"),
+            )
+
+            def of(d: dict[str, Any], k: str, n: str) -> str:
+                if d.get(k) is None:
+                    return "—"
+                return f"{tables.integer(d.get(k))} / {tables.integer(d.get(n))}"
+
+            def cnt(d: dict[str, Any], k: str) -> str:
+                return "—" if d.get(k) is None else tables.integer(d.get(k))
+
+            rows = [
+                [
+                    "Passed all checks",
+                    of(before, "passed", "payloads"),
+                    of(after, "passed", "payloads"),
+                ],
+                [
+                    "System prompt leaked",
+                    cnt(before, "leaked_system_prompt"),
+                    cnt(after, "leaked_system_prompt"),
+                ],
+                [
+                    "Fabricated prescription",
+                    cnt(before, "fabricated_prescription"),
+                    cnt(after, "fabricated_prescription"),
+                ],
+                ["Unsafe output", cnt(before, "unsafe_output"), cnt(after, "unsafe_output")],
+                [
+                    "Emergencies escalated",
+                    of(before, "emergency_escalated", "emergency_payloads"),
+                    of(after, "emergency_escalated", "emergency_payloads"),
+                ],
+            ]
+            return ["Check", "Before fix", "After fix"], rows, lambda r, c, v: None
+        return None
 
     def s_robustness(self, spec: dict[str, Any]) -> None:
         slide = self.new_slide(spec)
@@ -1906,61 +2272,79 @@ class DeckBuilder:
         kit = self.kit
         cols = spec.get("columns") or []
         n = max(len(cols), 1)
-        w = (CW - 0.22 * (n - 1)) / n
-        top_h = 3.7
+        gap = 0.2
+        w = (CW - gap * (n - 1)) / n
+        top_h = 4.05
         pending = 0
         for i, col in enumerate(cols):
             key = str(col.get("key"))
             tone = TONES.get(str(col.get("tone", "det")), TONES["det"])
-            x = MX + i * (w + 0.22)
-            result = self._live_result(key)
-            if result is None:
-                pending += 1
-                result = [P(f"[PENDING: live run, {LIVE_COMMANDS.get(key, key)}]", scale=0.92)]
-            body = [
-                P("Scope", bold=True, color=tone.text),
-                P(self.r(col.get("scope")), space_before=2),
-                P("Live result", bold=True, color=tone.text, space_before=10),
-                *result,
-            ]
-            kit.card(
-                slide,
-                x,
-                BODY_TOP,
-                w,
-                top_h,
-                self.r(col.get("title")),
-                body,
-                tone,
-                title_size=16,
-                body_size=14,
-                name=f"robust-{key}",
-                title_h=0.68,
+            x = MX + i * (w + gap)
+            y0 = self._panel(
+                slide, x, BODY_TOP, w, top_h, self.r(col.get("title")), tone, name=f"robust-{key}"
             )
-        y = BODY_TOP + top_h + 0.2
-        kit.rect(
-            slide,
-            MX,
-            y,
-            CW,
-            BODY_BOTTOM + 0.02 - y,
-            fill=TONES["safe"].fill,
-            line=TONES["safe"].line,
-        )
+            ix, iw = x + 0.18, w - 0.3
+            fit = kit.text(
+                slide,
+                ix,
+                y0,
+                iw,
+                1.05,
+                self.r(col.get("scope")),
+                size=12,
+                min_size=9.5,
+                color=K.INK,
+                name=f"robust-{key}-scope",
+            )
+            ty = y0 + min(fit.needed_in, 1.05) + 0.06
+            table = self._robust_table(key)
+            if table is None:
+                pending += 1
+                kit.text(
+                    slide,
+                    ix,
+                    ty,
+                    iw,
+                    BODY_TOP + top_h - ty - 0.1,
+                    P(f"[PENDING: live run, {LIVE_COMMANDS.get(key, key)}]"),
+                    size=12.5,
+                    min_size=9.5,
+                    name=f"robust-{key}-pending",
+                )
+                continue
+            header, rows, style = table
+            kit.table(
+                slide,
+                ix,
+                ty,
+                iw,
+                header,
+                rows,
+                widths=[1.75, 1.0, 1.0] if key != "aq" else [1.45, 1.2, 1.15],
+                size=12,
+                min_size=9,
+                max_h=BODY_TOP + top_h - ty - 0.12,
+                style=style,
+                name=f"robust-{key}-table",
+                claim=False,
+            )
+        y = BODY_TOP + top_h + 0.18
+        h = BODY_BOTTOM + 0.02 - y
+        kit.rect(slide, MX, y, CW, h, fill=TONES["safe"].fill, line=TONES["safe"].line)
         kit.text(
             slide,
             MX + 0.15,
             y,
             CW - 0.3,
-            BODY_BOTTOM + 0.02 - y,
+            h,
             self.r(spec.get("hermetic", "")),
-            size=15,
-            min_size=10.5,
+            size=13.5,
+            min_size=10,
             color=TONES["safe"].text,
             anchor="m",
             name="hermetic",
         )
-        kit.claim("hermetic", MX, y, CW, BODY_BOTTOM + 0.02 - y)
+        kit.claim("hermetic", MX, y, CW, h)
         skipped = self.get("_skipped") or {}
         if pending:
             self.cur.state = "pending" if pending == len(cols) else "partial"
@@ -1969,125 +2353,104 @@ class DeckBuilder:
         self.sources_line(slide)
         self.set_notes(slide, spec.get("notes", ""))
 
-    def _live_result(self, key: str) -> list[P] | None:
-        if key == "aq":
-            m = self.get("aq.metrics")
-            if not isinstance(m, dict):
-                return None
-            self.cur.source(self.ctx.source("aq"))
-            return [
-                P(
-                    f"Routing accuracy: {tables.perc(m.get('overall_routing_accuracy'))} % of "
-                    f"{tables.integer(m.get('total_vignettes'))} vignettes"
-                ),
-                P(f"Emergency recall: {tables.perc(m.get('emergency_detection_recall'))} %"),
-                P(
-                    f"Out-of-domain answered: {tables.integer(m.get('out_of_domain_answer_count'))} of "
-                    f"{tables.integer(m.get('out_of_domain_count'))}"
-                ),
-            ]
-        if key == "rabbits":
-            r = self.get("rabbits")
-            if not isinstance(r, dict):
-                return None
-            self.cur.source(self.ctx.source("rabbits"))
-            return [
-                P(
-                    f"Same action, brand vs generic: {tables.perc(r.get('action_consistency_pct'))} %"
-                ),
-                P(f"Brand normalised to generic: {tables.perc(r.get('brand_normalised_pct'))} %"),
-                P(f"Citation Jaccard (mean): {tables.num(r.get('citation_jaccard_mean'), 3)}"),
-            ]
-        if key == "adversarial":
-            c = self.get("adversarial.counts")
-            if not isinstance(c, dict):
-                return None
-            self.cur.source(self.ctx.source("adversarial"))
-            return [
-                P(
-                    f"Passed: {tables.integer(c.get('passed'))} of {tables.integer(c.get('payloads'))} payloads"
-                ),
-                P(
-                    f"System prompt leaked: {tables.integer(c.get('leaked_system_prompt'))}; unsafe output: "
-                    f"{tables.integer(c.get('unsafe_output'))}"
-                ),
-            ]
-        return None
+    @staticmethod
+    def _sec(v: Any) -> str:
+        if not isinstance(v, (int, float)) or not math.isfinite(v):
+            return "—"
+        return f"{v:.2f}" if abs(v) < 1 else f"{v:.1f}"
+
+    def _arrow(self, before: Any, after: Any) -> str:
+        return f"{self._sec(before)} → {self._sec(after)}"
+
+    @staticmethod
+    def _change(row: dict[str, Any]) -> str:
+        b, a = row.get("before_p50"), row.get("after_p50")
+        if not isinstance(b, (int, float)) or not isinstance(a, (int, float)) or a <= 0 or b <= 0:
+            return "—"
+        d = a - b
+        if abs(d) < 0.1:
+            return "≈ 0 s"
+        ratio = b / a if d < 0 else a / b
+        text = f"{'−' if d < 0 else '+'}{abs(d):.1f} s"
+        if ratio >= 1.15:
+            text += f" ({ratio:.1f}× {'faster' if d < 0 else 'slower'})"
+        return text
 
     def s_performance(self, spec: dict[str, Any]) -> None:
         slide = self.new_slide(spec)
         self.chrome(slide, spec)
         kit = self.kit
-        before, after = self.get("perf_latest.before"), self.get("perf_latest.after")
-        lw = 6.95
-        y = self.heading(
-            slide, MX, BODY_TOP, lw, "End-to-end latency per scenario turn (seconds)", size=16
-        )
-        if isinstance(before, dict):
-            b = tables._by_turn(before)
-            a = tables._by_turn(after) if isinstance(after, dict) else {}
+        perf = self.get("deck.perf")
+        turns = (perf or {}).get("turns") or {}
+        lw = 7.45
+        y = self.heading(slide, MX, BODY_TOP, lw, spec.get("table_title", ""), size=15)
+        if turns:
+            has_after = any("after_p50" in r for r in turns.values())
+            has_dep = any("deployed_p50" in r for r in turns.values())
+            header = [
+                "Scenario turn",
+                "Action",
+                "Cold: before → after",
+                "Warm p50: before → after",
+                "Warm change",
+            ]
+            if has_dep:
+                header.append(f"Final on {perf.get('deployed_model')}, warm p50")
+            names = spec.get("scenario_names") or {}
             rows = []
-            for turn in sorted(set(b) | set(a)):
-                rb, ra = b.get(turn), a.get(turn)
-                scen = tables.SCENARIO_NAMES.get(turn.split("-")[0], "")
-                act = "/".join(rb["actions"]) if rb else "—"
-                if ra and rb and ra["actions"] != rb["actions"]:
-                    act += " → " + "/".join(ra["actions"])
-                speed = (rb["p50"] / ra["p50"]) if (rb and ra and ra["p50"] > 0) else None
-                rows.append(
-                    [
-                        f"{turn} {scen}",
-                        act,
-                        tables.num(rb["cold"]) if rb else "—",
-                        tables.num(rb["p50"]) if rb else "—",
-                        tables.num(ra["p50"]) if ra else "—",
-                        f"{speed:.1f}×" if speed else "—",
-                    ]
-                )
+            for turn in sorted(turns):
+                r = turns[turn]
+                key = turn.split("-")[0]
+                scen = str(names.get(key) or tables.SCENARIO_NAMES.get(key, ""))
+                act = r.get("before_actions") or r.get("after_actions") or "—"
+                if r.get("after_actions") and r.get("before_actions") and r["after_actions"] != act:
+                    act += " → " + r["after_actions"]
+                row = [
+                    f"{turn} {scen}".strip(),
+                    act,
+                    self._arrow(r.get("before_cold"), r.get("after_cold")),
+                    self._arrow(r.get("before_p50"), r.get("after_p50")),
+                    self._change(r),
+                ]
+                if has_dep:
+                    row.append(self._sec(r.get("deployed_p50")))
+                rows.append(row)
+
+            def style(r: int, c: int, value: str) -> K.CellStyle | None:
+                if c == 4 and "faster" in value:
+                    return K.CellStyle(color=TONES["safe"].text, bold=True)
+                if c == 4 and value.startswith("+"):
+                    return K.CellStyle(color=TONES["emergency"].text, bold=True)
+                return None
+
+            widths = [1.6, 1.05, 1.15, 1.2, 1.5] + ([0.95] if has_dep else [])
             fit = kit.table(
                 slide,
                 MX,
                 y,
                 lw,
-                [
-                    "Scenario turn",
-                    "Action",
-                    "Before cold",
-                    "Before warm p50",
-                    "After warm p50",
-                    "Speed-up",
-                ],
+                header,
                 rows,
-                widths=[2.05, 1.3, 0.85, 0.95, 0.95, 0.85],
-                size=13.5,
-                min_size=10,
-                max_h=3.6,
+                widths=widths,
+                size=12,
+                min_size=9.5,
+                max_h=2.95,
+                style=style,
                 name="perf-table",
             )
-            y += fit.height_in + 0.12
-            src = self.get("perf_latest_sources") or {}
-            self.cur.source(src.get("before"), src.get("after"))
-            if not isinstance(after, dict):
+            y += fit.height_in + 0.1
+            self.cur.source((perf or {}).get("source"))
+            if not has_after:
                 self.cur.state = "partial"
-                self.cur.pending.append("perf_latest.after")
-                note = (
-                    "[PENDING: after-optimisation probe, python scripts/latency_probe.py --label after "
-                    "--repeats 5]"
-                )
-            else:
-                note = (
-                    "Speed-up = before warm p50 / after warm p50; cold = first pass after start-up."
-                )
-            paras = [P(note)]
-            if src.get("before"):
-                paras.append(
+                self.cur.pending.append("deck.perf (after-optimisation probe)")
+                paras = [
                     P(
-                        f"Baseline: {Path(src['before']).name}, measured on the received prototype "
-                        "(one cold pass, three warm passes per scenario).",
-                        color=K.MUTED,
-                        space_before=4,
+                        "[PENDING: after-optimisation probe, python scripts/latency_probe.py "
+                        "--label after_<model> --repeats 3]"
                     )
-                )
+                ]
+            else:
+                paras = self.bullets(spec.get("honest") or [], color=TONES["det"].line, gap=4)
             kit.text(
                 slide,
                 MX,
@@ -2096,7 +2459,7 @@ class DeckBuilder:
                 BODY_BOTTOM + 0.02 - y,
                 paras,
                 size=12.5,
-                min_size=10,
+                min_size=9.5,
                 name="perf-note",
                 claim=True,
             )
@@ -2111,24 +2474,103 @@ class DeckBuilder:
                 "python scripts/latency_probe.py",
                 name="perf-table",
             )
-        rx = MX + lw + 0.35
+        rx = MX + lw + 0.3
         rw = MX + CW - rx
-        kit.rect(slide, rx, BODY_TOP, rw, BODY_BOTTOM + 0.02 - BODY_TOP, fill=K.PANEL, line=K.RULE)
-        kit.claim("optimisations", rx, BODY_TOP, rw, BODY_BOTTOM + 0.02 - BODY_TOP)
+        top = BODY_TOP
+        h1 = 2.55
+        kit.rect(slide, rx, top, rw, h1, fill=K.PANEL, line=K.RULE)
+        kit.claim("optimisations", rx, top, rw, h1)
         y2 = self.heading(
-            slide, rx + 0.18, BODY_TOP + 0.1, rw - 0.36, "What changed (gate semantics preserved)", size=16
+            slide, rx + 0.16, top + 0.08, rw - 0.32, spec.get("changes_title", ""), size=14.5
         )
         kit.text(
             slide,
-            rx + 0.18,
+            rx + 0.16,
             y2,
-            rw - 0.36,
-            BODY_BOTTOM - y2 - 0.05,
-            self.bullets(spec.get("optimisations") or [], color=TONES["llm"].line, gap=7),
-            size=13.5,
-            min_size=10.5,
+            rw - 0.32,
+            top + h1 - y2 - 0.05,
+            self.bullets(spec.get("optimisations") or [], color=TONES["llm"].line, gap=3),
+            size=12,
+            min_size=9.5,
             name="optimisations-list",
         )
+        y3 = top + h1 + 0.15
+        h2 = BODY_BOTTOM + 0.02 - y3
+        tone = TONES["llm"]
+        y4 = self._panel(
+            slide,
+            rx,
+            y3,
+            rw,
+            h2,
+            self.r(spec.get("load_title", "Burst load test")),
+            tone,
+            name="load",
+        )
+        levels = self.get("load.levels")
+        if isinstance(levels, list) and levels:
+            self.cur.source(self.ctx.source("load"))
+            requests = [r for r in self.get("load.requests") or [] if isinstance(r, dict)]
+            rows = []
+            for lv in levels:
+                if not isinstance(lv, dict):
+                    continue
+                llm = sorted(
+                    float(r["latency_ms"])
+                    for r in requests
+                    if r.get("level") == lv.get("users")
+                    and r.get("kind") not in FAST_KINDS
+                    and isinstance(r.get("latency_ms"), (int, float))
+                )
+                emerg = ((lv.get("by_kind") or {}).get("emergency") or {}).get("p50_ms")
+                rows.append(
+                    [
+                        tables.integer(lv.get("users")),
+                        f"{tables.integer(lv.get('errors'))} / {tables.integer(lv.get('requests'))}",
+                        tables.seconds(_median(llm)) if llm else "—",
+                        tables.seconds(llm[-1]) if llm else "—",
+                        "—" if emerg is None else f"{float(emerg):.0f} ms",
+                    ]
+                )
+            fit = kit.table(
+                slide,
+                rx + 0.18,
+                y4,
+                rw - 0.3,
+                ["Users", "Errors", "LLM p50 s", "LLM max s", "Emergency p50"],
+                rows,
+                widths=[0.7, 0.85, 0.8, 0.8, 1.05],
+                size=11.5,
+                min_size=9,
+                max_h=y3 + h2 - y4 - 0.55,
+                name="load-table",
+                claim=False,
+            )
+            ny = y4 + fit.height_in + 0.05
+            kit.text(
+                slide,
+                rx + 0.18,
+                ny,
+                rw - 0.3,
+                y3 + h2 - ny - 0.06,
+                self.r(spec.get("load_note", "")),
+                size=11,
+                min_size=8.5,
+                color=K.MUTED,
+                name="load-note",
+            )
+        else:
+            kit.text(
+                slide,
+                rx + 0.18,
+                y4,
+                rw - 0.3,
+                y3 + h2 - y4 - 0.1,
+                P("[PENDING: load test, python scripts/load_test.py]"),
+                size=12,
+                min_size=9.5,
+                name="load-pending",
+            )
         self.sources_line(slide)
         self.set_notes(slide, spec.get("notes", ""))
 

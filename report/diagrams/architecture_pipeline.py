@@ -6,7 +6,7 @@ Mirrors ``medbridge/core/orchestrator.py`` (``PipelineOrchestrator._run_turn`` a
 
   privacy → emergency → load_state → small_talk → extraction (+ projection)
   → context_gate (+ speculative retrieval, loop-breaker) → retrieval / rerank
-  → evidence_gate → generation (template bypass) → verification (Gate 3, optional)
+  → evidence_gate → generation (template bypass) → verification (Gate 3, on by default)
   → citation validation → persistence (one ``turn_store.persist_turn`` flush) → SSE.
 
 Facts encoded here and where they come from:
@@ -20,8 +20,9 @@ Facts encoded here and where they come from:
 * RRF k = 60 inside Qdrant, top-20 → cross-encoder top-5 (``hybrid_retriever.RRF_K``,
   ``RETRIEVAL_TOP_K_CANDIDATES`` / ``RETRIEVAL_TOP_K_RERANKED``);
 * ABSTAIN / ESCALATE never reach the generator (``_stage_generation``);
-* Gate 3 runs before citation validation (``_run_stages`` order) and is off by
-  default (``GROUNDING_VERIFIER_ENABLED=false``);
+* Gate 3 runs before citation validation (``_run_stages`` order) and is on by
+  default since commit 7a3bc67 (``GROUNDING_VERIFIER_ENABLED=true``); since 16e594b a
+  draft whose every claim is unsupported is withdrawn too (``_gate3_exceeds``);
 * persistence = one ``persist_turn`` call (events, snapshot, 2 messages, audit row).
 
 Run: ``python report/diagrams/architecture_pipeline.py`` →
@@ -213,19 +214,20 @@ def build() -> list[Path]:
     )
     g3 = c.box(
         XR,
-        7.66,
+        7.68,
         WR,
-        0.62,
+        0.80,
         "Gate 3 · grounding verifier",
         [
-            "optional (V2) · NLI, no LLM",
+            "on by default (V2) · NLI, no LLM",
             "drops unsupported sentences;",
-            "> τ → GENERALIZE / ABSTAIN",
+            "> τ or all claims unsupported",
+            "→ GENERALIZE / ABSTAIN",
         ],
         kind="gate",
-        optional=True,
+        optional=False,
         title_size=8.0,
-        sub_size=6.6,
+        sub_size=6.4,
     )
     c.box(
         XL,
@@ -342,11 +344,11 @@ def build() -> list[Path]:
     )
     down(g2, s7, "ANSWER / GENERALIZE", color=AMBER)
     # generation → (Gate 3) → citation validation
-    c.arrow([(s7.right, s7.cy), (g3.left, s7.cy)], color=AMBER, dashed=True)
+    c.arrow([(s7.right, s7.cy), (g3.left, s7.cy)], color=AMBER)
     lab((s7.right + g3.left) / 2, s7.cy - 0.09, "draft", color=AMBER, size=6.3)
-    c.arrow([(g3.cx, g3.bottom), (g3.cx, cv.cy), (cv.right, cv.cy)], color=AMBER, dashed=True)
+    c.arrow([(g3.cx, g3.bottom), (g3.cx, cv.cy), (cv.right, cv.cy)], color=AMBER)
     lab(5.35, cv.cy - 0.09, "verified draft", color=AMBER, size=6.3)
-    down(s7, cv, "draft (Gate 3 off)", color=BLUE)
+    down(s7, cv, "draft (only if Gate 3 disabled)", color=BLUE)
     down(cv, s8, "final text + valid citations")
     down(s8, out, "MessageResponse")
     c.arrow([(4.66, s8.bottom), (4.66, pg_w.cy), (pg_w.left, pg_w.cy)], color=PURPLE, lw=1.6)

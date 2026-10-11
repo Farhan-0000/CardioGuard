@@ -17,11 +17,22 @@ model_selection_r1     evaluation/results/model_selection_round1_prefix/summary.
 corpus                 reports/corpus_stats.json
 pii                    reports/privacy_redaction_metrics.json
 perf                   reports/performance/<stem>.json (every JSON file, by stem)
-perf_latest            {"before": ..., "after": ...} newest latency-probe file per label
+perf_latest            {"before": ..., "after": ...} newest latency-probe file per label; when
+                       no probe is labelled plain "after", "after" aliases the after probe of the
+                       baseline's model (before_<model>.json -> after_<model>.json)
+perf_derived           per probe and turn: time in LLM stages and its share of the server total
 aq                     reports/medbridge_aq_benchmark_report.json (LIVE runs only)
 rabbits                reports/rabbits_benchmark_report.json (LIVE runs only)
+rabbits_before         reports/rabbits_before_fix/rabbits_benchmark_report.json (LIVE, pre-fix)
+rabbits_counts         {"before", "after"}: flips and abstentions counted from items_detail
 adversarial            reports/adversarial_live_report.json (LIVE runs only)
+adversarial_before     reports/adversarial_before_fix/adversarial_live_report.json (LIVE, pre-fix)
 load                   reports/performance/load_test.json
+annotation             counts computed from evaluation/annotation/human_annotation_sheet.csv
+smoke_inputs           request texts parsed (AST) from scripts/smoke_test.py
+study_gate3            Gate 3 outcomes of the V2 / V12 test runs joined with the LLM judge
+routing_errors         misroutes of C5 (HalluBench) and of the live AQ run, from confusion matrices
+corpus_orgs            issuing organisations of the corpus with joint labels ("AHA/ACC") split
 tests                  reports/test_summary.json (or JUnit XML in reports/tests/)
 calibration            evaluation/results/calibration.json
 human_agreement        evaluation/results/human_agreement.json
@@ -29,6 +40,10 @@ smoke                  reports/smoke_test_latest.json
 hallubench             statistics computed from evaluation/datasets/hallubench_v1.json
 manifest               data/corpus_manifest.json
 manifest_stats         statistics computed from the manifest
+study_manifests        evaluation/results/runs/manifest_*.json (full run manifests, by run id)
+judge_manifests        evaluation/results/judgments/manifest_judge_*.json (by file stem)
+study_records          counts computed from evaluation/results/runs/<condition>.jsonl
+study_judgments        counts computed from evaluation/results/judgments/{llm,nli}/*.jsonl
 =====================  ===========================================================
 
 Mock-mode benchmark reports (routing simulator, no LLM call) are deliberately NOT
@@ -67,12 +82,22 @@ LIVE_ONLY_SOURCES: dict[str, str] = {
     "aq": "reports/medbridge_aq_benchmark_report.json",
     "rabbits": "reports/rabbits_benchmark_report.json",
     "adversarial": "reports/adversarial_live_report.json",
+    # live runs of the code before the brand-name robustness fix (commit 02d9774)
+    "rabbits_before": "reports/rabbits_before_fix/rabbits_benchmark_report.json",
+    "adversarial_before": "reports/adversarial_before_fix/adversarial_live_report.json",
 }
+
+ANNOTATION_SHEET = "evaluation/annotation/human_annotation_sheet.csv"
+SMOKE_SCRIPT = "scripts/smoke_test.py"
+#: Server stages that are language-model calls (see the orchestrator's stage names).
+LLM_STAGES: tuple[str, ...] = ("extraction", "context_gate", "evidence_gate", "generation")
 
 RERANKER_DIR = "evaluation/results/retrieval/reranker_ablation"
 PERF_DIR = "reports/performance"
 HALLUBENCH_PATH = "evaluation/datasets/hallubench_v1.json"
 JUNIT_DIR = "reports/tests"
+RUNS_DIR = "evaluation/results/runs"
+JUDGMENTS_DIR = "evaluation/results/judgments"
 
 
 class Missing(KeyError):
@@ -180,6 +205,134 @@ def manifest_stats(data: Any) -> dict[str, Any] | None:
     }
 
 
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    try:
+        with path.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(rec, dict):
+                    out.append(rec)
+    except OSError:
+        return []
+    return out
+
+
+def _latest_complete(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Per item, the most recent attempt that recorded every turn (rule of evaluation/io.py)."""
+    attempts: dict[tuple[str, str], dict[int, dict[str, Any]]] = {}
+    order: dict[tuple[str, str], int] = {}
+    for position, rec in enumerate(records):
+        if "item_id" not in rec or "turn_index" not in rec:
+            continue
+        key = (str(rec["item_id"]), str(rec.get("attempt_id", "")))
+        attempts.setdefault(key, {})[int(rec["turn_index"])] = rec
+        order[key] = position
+    best: dict[str, tuple[int, dict[int, dict[str, Any]]]] = {}
+    for (item_id, attempt_id), turns in attempts.items():
+        n_turns = int(next(iter(turns.values())).get("n_turns", len(turns)) or len(turns))
+        if set(turns) != set(range(n_turns)):
+            continue
+        position = order[(item_id, attempt_id)]
+        if item_id not in best or position > best[item_id][0]:
+            best[item_id] = (position, turns)
+    return [best[i][1][t] for i in sorted(best) for t in sorted(best[i][1])]
+
+
+def study_record_stats(runs_dir: Path, split: str = "test") -> dict[str, Any] | None:
+    """Provenance of the study outputs in ``evaluation/results/runs/<condition>.jsonl``.
+
+    ``by_condition[C]``: lines and final turns of ``split`` and which run produced the final
+    records; ``by_run[run_id]``: records written (any split) with first and last timestamps,
+    so that interrupted runs whose manifest never got a ``finished_at`` still have a span.
+    """
+    files = sorted(p for p in runs_dir.glob("*.jsonl") if not p.name.startswith("manifest"))
+    if not files:
+        return None
+    by_condition: dict[str, dict[str, Any]] = {}
+    by_run: dict[str, dict[str, Any]] = {}
+    for path in files:
+        records = _read_jsonl(path)
+        if not records:
+            continue
+        cond = path.stem
+        for rec in records:
+            run = by_run.setdefault(
+                str(rec.get("run_id")), {"records": 0, "first": None, "last": None, "by_split": {}}
+            )
+            run["records"] += 1
+            sp = str(rec.get("split"))
+            run["by_split"].setdefault(sp, {}).setdefault(cond, 0)
+            run["by_split"][sp][cond] += 1
+            ts = rec.get("timestamp")
+            if isinstance(ts, str):
+                run["first"] = ts if run["first"] is None or ts < run["first"] else run["first"]
+                run["last"] = ts if run["last"] is None or ts > run["last"] else run["last"]
+        selected = [r for r in records if str(r.get("split")) == split]
+        final = _latest_complete(selected)
+        by_condition[cond] = {
+            "lines": len(selected),
+            "final_turns": len(final),
+            "final_items": len({r["item_id"] for r in final}),
+            "final_by_run": dict(Counter(str(r.get("run_id")) for r in final)),
+            "degraded": sum(1 for r in final if r.get("degraded")),
+        }
+    if not by_condition:
+        return None
+    return {"split": split, "by_condition": by_condition, "by_run": by_run}
+
+
+def study_judgment_stats(judgments_dir: Path, split: str = "test") -> dict[str, Any] | None:
+    """Judge coverage per condition from ``judgments/{llm,nli}/<condition>.jsonl``.
+
+    For each judge and condition (latest record per item-turn of ``split``): records, records
+    with an error (failed judgment, with item ids), template responses (zero claims) and the
+    item categories covered, which shows whether a judge covered a condition completely.
+    """
+    out: dict[str, Any] = {}
+    for judge in ("llm", "nli"):
+        per: dict[str, Any] = {}
+        for path in sorted((judgments_dir / judge).glob("*.jsonl")):
+            latest: dict[tuple[str, int], dict[str, Any]] = {}
+            splits: Counter[str] = Counter()
+            for rec in _read_jsonl(path):
+                splits[str(rec.get("split"))] += 1
+                if str(rec.get("split")) != split or "item_id" not in rec:
+                    continue
+                latest[(str(rec["item_id"]), int(rec.get("turn_index", 0)))] = rec
+            rows = list(latest.values())
+            errors = [r for r in rows if r.get("error")]
+            per[path.stem] = {
+                "records": len(rows),
+                "records_by_split": dict(splits),
+                "errors": len(errors),
+                "error_items": [
+                    {
+                        "item_id": r["item_id"],
+                        "turn": int(r.get("turn_index", 0)),
+                        "category": r.get("category"),
+                        "subcategory": r.get("subcategory"),
+                        "error": str(r.get("error"))[:120],
+                    }
+                    for r in errors
+                ],
+                "templates": sum(1 for r in rows if r.get("template")),
+                "templates_by_kind": dict(
+                    Counter(str(r.get("template")) for r in rows if r.get("template"))
+                ),
+                "by_category": dict(Counter(str(r.get("category")) for r in rows)),
+            }
+        if per:
+            out[judge] = per
+    return out or None
+
+
 def junit_summary(paths: Iterable[Path]) -> dict[str, Any] | None:
     """Test summary from JUnit XML files (one suite per file stem)."""
     suites: list[dict[str, Any]] = []
@@ -216,6 +369,303 @@ def junit_summary(paths: Iterable[Path]) -> dict[str, Any] | None:
     return {"suites": suites, "totals": totals, "source": "junit"}
 
 
+def annotation_stats(path: Path) -> dict[str, Any] | None:
+    """Counts over the exported human annotation sheet (``evaluation.human_annotation``).
+
+    Items, blinded responses and claims, claims per category and how many claims each
+    annotator has labelled so far (``A1_label`` / ``A2_label`` non-empty).
+    """
+    import csv
+
+    try:
+        with path.open(encoding="utf-8", newline="") as fh:
+            rows = list(csv.DictReader(fh))
+    except (OSError, csv.Error, UnicodeDecodeError):
+        return None
+    if not rows or "claim" not in rows[0]:
+        return None
+
+    def filled(key: str) -> int:
+        return sum(1 for r in rows if str(r.get(key) or "").strip())
+
+    return {
+        "n_items": len({r.get("item_id") for r in rows}),
+        "n_responses": len({r.get("response_code") for r in rows}),
+        "n_claims": len(rows),
+        "by_category": dict(Counter(str(r.get("category")) for r in rows)),
+        "labelled_a1": filled("A1_label"),
+        "labelled_a2": filled("A2_label"),
+        "labelled_both": sum(
+            1
+            for r in rows
+            if str(r.get("A1_label") or "").strip() and str(r.get("A2_label") or "").strip()
+        ),
+    }
+
+
+def smoke_inputs(path: Path) -> dict[str, str] | None:
+    """Request texts of the smoke test, read from ``scripts/smoke_test.py`` without importing it.
+
+    ``MessageCase("<check name>", "<message>", ...)`` definitions give the message of each
+    message check; ``PII_MESSAGE`` and ``STREAM_MESSAGE`` give those of the ``pii_redaction``
+    and ``sse_stream`` checks.
+    """
+    import ast
+
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, ValueError):
+        return None
+
+    def literal(node: ast.AST) -> str | None:
+        try:
+            value = ast.literal_eval(node)
+        except (ValueError, SyntaxError):
+            return None
+        return value if isinstance(value, str) else None
+
+    out: dict[str, str] = {}
+    constants = {"PII_MESSAGE": "pii_redaction", "STREAM_MESSAGE": "sse_stream"}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name):
+            continue
+        value = node.value
+        if (
+            isinstance(value, ast.Call)
+            and getattr(value.func, "id", None) == "MessageCase"
+            and len(value.args) >= 2
+        ):
+            name, message = literal(value.args[0]), literal(value.args[1])
+            if name and message:
+                out[name] = message
+        elif target.id in constants:
+            text = literal(value)
+            if text:
+                out[constants[target.id]] = text
+    return out or None
+
+
+def perf_derived(perf: dict[str, Any]) -> dict[str, Any] | None:
+    """Per latency probe and turn: milliseconds spent in LLM stages and their share.
+
+    Uses the per-stage server medians (``server_stage_ms_p50``) of the ``cold_summary`` and
+    ``warm_summary`` of the after-optimisation probes; the received prototype logged no
+    stage timings, so its probe has none.
+    """
+    out: dict[str, Any] = {}
+    for stem, probe in perf.items():
+        if not isinstance(probe, dict):
+            continue
+        entry: dict[str, Any] = {}
+        for phase in ("cold", "warm"):
+            summary = probe.get(f"{phase}_summary")
+            if not isinstance(summary, dict):
+                continue
+            turns: dict[str, Any] = {}
+            for key, stats in summary.items():
+                if not isinstance(stats, dict):
+                    continue
+                stages = stats.get("server_stage_ms_p50")
+                total = stats.get("server_total_ms_p50")
+                if not isinstance(stages, dict) or not total:
+                    continue
+                llm_ms = sum(float(stages.get(s) or 0.0) for s in LLM_STAGES)
+                turns[key] = {
+                    "llm_ms": round(llm_ms, 1),
+                    "llm_share": llm_ms / float(total),
+                    "other_ms": round(float(total) - llm_ms, 1),
+                }
+            if turns:
+                entry[phase] = turns
+        if entry:
+            out[stem] = entry
+    return out or None
+
+
+#: Order used to say which variant of a RABBITS pair got the more cautious action.
+CAUTION_ORDER: dict[str, int] = {
+    "ANSWER": 0,
+    "GENERALIZE": 1,
+    "SOFT-ASK": 1,
+    "ABSTAIN": 2,
+    "ESCALATE": 3,
+}
+
+
+def rabbits_counts(report: Any) -> dict[str, Any] | None:
+    """Counts over the per-item records (``items_detail``) of a RABBITS report.
+
+    ``flips``: items whose brand and generic messages were routed differently;
+    ``brand_more_cautious``: flips in which the brand message got the more cautious action
+    (ANSWER < GENERALIZE, SOFT-ASK < ABSTAIN < ESCALATE); ``brand_abstain`` /
+    ``generic_abstain``: items whose brand / generic message was abstained.
+    """
+    if not isinstance(report, dict):
+        return None
+    items = [i for i in report.get("items_detail") or [] if isinstance(i, dict)]
+    if not items:
+        return None
+    flips = [i for i in items if not i.get("action_match")]
+    pairs = Counter(f"{i.get('brand_action')} vs {i.get('generic_action')}" for i in flips)
+    return {
+        "items": len(items),
+        "flips": len(flips),
+        "brand_more_cautious": sum(
+            1
+            for i in flips
+            if CAUTION_ORDER.get(str(i.get("brand_action")), -1)
+            > CAUTION_ORDER.get(str(i.get("generic_action")), -1)
+        ),
+        "brand_abstain": sum(1 for i in items if i.get("brand_action") == "ABSTAIN"),
+        "generic_abstain": sum(1 for i in items if i.get("generic_action") == "ABSTAIN"),
+        "flip_pairs": dict(pairs.most_common()),
+        "flips_by_template": dict(Counter(str(i.get("template")) for i in flips)),
+    }
+
+
+def study_gate3_stats(
+    runs_dir: Path, judgments_dir: Path, conditions: tuple[str, ...] = ("V2", "V12")
+) -> dict[str, Any] | None:
+    """Gate 3 outcomes of the final test-split records, joined with the LLM judge.
+
+    ``all_unsupported``: turns in which the verifier checked at least one claim and found
+    every one unsupported. With tau = 1.0 the studied code then delivered the draft
+    unchanged (removing every claim leaves nothing); commit 16e594b withdraws such drafts.
+    ``all_unsupported_hallucinated``: those of them the LLM judge rated hallucinated (at
+    least one UNSUPPORTED or CONTRADICTED claim). ``all_unsupported_unchanged``: those of
+    them delivered with exactly C5's text (stripping would have left nothing, so the draft
+    went out unchanged). ``citation_downgrades``: checked turns in which Gate 3 removed
+    sentences, the citation rule then downgraded ANSWER to GENERALIZE (no valid citation
+    left) and the paired C5 turn was not downgraded. The last two need ``C5.jsonl``.
+    """
+    c5 = {
+        (str(r["item_id"]), int(r.get("turn_index", 0))): r
+        for r in _latest_complete(
+            [r for r in _read_jsonl(runs_dir / "C5.jsonl") if str(r.get("split")) == "test"]
+        )
+    }
+    out: dict[str, Any] = {}
+    for cond in conditions:
+        records = _read_jsonl(runs_dir / f"{cond}.jsonl")
+        final = _latest_complete([r for r in records if str(r.get("split")) == "test"])
+        if not final:
+            continue
+        judged: dict[tuple[str, int], dict[str, Any]] = {}
+        for rec in _read_jsonl(judgments_dir / "llm" / f"{cond}.jsonl"):
+            if str(rec.get("split")) == "test" and "item_id" in rec:
+                judged[(str(rec["item_id"]), int(rec.get("turn_index", 0)))] = rec
+        checked = downgrades = 0
+        withdrawn: list[dict[str, Any]] = []
+        for rec in final:
+            if rec.get("degraded"):
+                continue
+            g3 = (rec.get("explanation") or {}).get("gate3")
+            if not isinstance(g3, dict) or not g3.get("available", True):
+                continue
+            n = int(g3.get("n_claims") or 0)
+            if n <= 0:
+                continue
+            checked += 1
+            if int(g3.get("n_unsupported") or 0) >= n:
+                withdrawn.append(rec)
+            pair = c5.get((str(rec["item_id"]), int(rec.get("turn_index", 0))))
+            cv = (rec.get("explanation") or {}).get("citation_validation") or {}
+            pair_cv = ((pair or {}).get("explanation") or {}).get("citation_validation") or {}
+            if (
+                pair is not None
+                and cv.get("downgraded")
+                and int(g3.get("removed_sentences_count") or 0) > 0
+                and not pair_cv.get("downgraded")
+            ):
+                downgrades += 1
+        hallucinated = 0
+        for rec in withdrawn:
+            j = judged.get((str(rec["item_id"]), int(rec.get("turn_index", 0))))
+            labels = [str(c.get("label")) for c in (j or {}).get("claims") or []]
+            if any(lb in ("UNSUPPORTED", "CONTRADICTED") for lb in labels):
+                hallucinated += 1
+        unchanged = sum(
+            1
+            for rec in withdrawn
+            if (pair := c5.get((str(rec["item_id"]), int(rec.get("turn_index", 0))))) is not None
+            and pair.get("response_text") == rec.get("response_text")
+        )
+        out[cond] = {
+            "turns_checked": checked,
+            "all_unsupported": len(withdrawn),
+            "all_unsupported_hallucinated": hallucinated,
+            "all_unsupported_by_action": dict(
+                Counter(str(r.get("action") or r.get("final_action")) for r in withdrawn)
+            ),
+        }
+        if c5:
+            out[cond]["all_unsupported_unchanged"] = unchanged
+            out[cond]["citation_downgrades"] = downgrades
+    return out or None
+
+
+def corpus_org_stats(corpus: Any) -> dict[str, Any] | None:
+    """Distinct issuing organisations, joint labels split on "/".
+
+    ``totals.organisations`` of ``reports/corpus_stats.json`` counts distinct label strings,
+    so "AHA/ACC", "ACC/AHA" and "AHA" count three times; the deck and the paper count the
+    members of joint labels once each (``report/presentation/deck_data.py``).
+    """
+    docs = (corpus or {}).get("documents") if isinstance(corpus, dict) else None
+    names = sorted(
+        {
+            part.strip()
+            for doc in docs or []
+            if isinstance(doc, dict) and isinstance(doc.get("org"), str)
+            for part in doc["org"].split("/")
+            if part.strip()
+        }
+    )
+    return {"split": len(names), "names": names} if names else None
+
+
+def routing_error_stats(study: Any, aq: Any) -> dict[str, Any] | None:
+    """Misroutes of C5 on HalluBench and of the live AQ run, from their confusion matrices.
+
+    ``misroutes``: turns (vignettes) whose action differs from the gold action;
+    ``answer_generalize``: ANSWER and GENERALIZE confused in either direction;
+    ``answer_abstain``: expected ANSWER, routed to ABSTAIN.
+    """
+
+    def summarise(matrix: dict[str, dict[str, Any]]) -> dict[str, int]:
+        def cell(gold: str, pred: str) -> int:
+            return int((matrix.get(gold) or {}).get(pred) or 0)
+
+        total = sum(int(v or 0) for row in matrix.values() for v in row.values())
+        correct = sum(cell(g, g) for g in matrix)
+        return {
+            "total": total,
+            "misroutes": total - correct,
+            "answer_generalize": cell("ANSWER", "GENERALIZE") + cell("GENERALIZE", "ANSWER"),
+            "answer_abstain": cell("ANSWER", "ABSTAIN"),
+        }
+
+    out: dict[str, Any] = {}
+    routing = ((study or {}).get("per_condition") or {}).get("C5", {}).get("routing_system")
+    if isinstance(routing, dict) and routing.get("labels") and routing.get("confusion"):
+        labels = [str(x) for x in routing["labels"]]
+        out["C5"] = summarise(
+            {
+                g: dict(zip(labels, row, strict=False))
+                for g, row in zip(labels, routing["confusion"], strict=False)
+            }
+        )
+    matrix = ((aq or {}).get("metrics") or {}).get("confusion_matrix")
+    if isinstance(matrix, dict) and matrix:
+        out["aq"] = summarise(
+            {str(g): dict(row) for g, row in matrix.items() if isinstance(row, dict)}
+        )
+    return out or None
+
+
 # ----------------------------------------------------------------------
 # Loading
 # ----------------------------------------------------------------------
@@ -244,6 +694,16 @@ def load_context(repo_root: Path) -> dict[str, Any]:
         else:
             skipped[key] = f"{rel} is a '{mode}' run (not live) - not used as a result"
 
+    counts = {
+        label: rabbits_counts(ctx.get(key))
+        for label, key in (("before", "rabbits_before"), ("after", "rabbits"))
+    }
+    if any(counts.values()):
+        ctx["rabbits_counts"] = {k: v for k, v in counts.items() if v}
+        sources["rabbits_counts"] = ", ".join(
+            sources[key] for key in ("rabbits_before", "rabbits") if key in sources
+        )
+
     reranker: dict[str, Any] = {}
     for path in sorted((repo_root / RERANKER_DIR).glob("*/metrics.json")):
         data = _read_json(path)
@@ -268,10 +728,30 @@ def load_context(repo_root: Path) -> dict[str, Any]:
     if perf:
         ctx["perf"] = perf
         sources["perf"] = f"{PERF_DIR}/*.json"
+    if latest and "after" not in latest and "before" in latest:
+        # before_<model>.json is compared with after_<model>.json (same model, same scenarios)
+        model = Path(latest["before"][2]).stem.removeprefix("before_").removeprefix("before")
+        same_model = f"after_{model}" if model else ""
+        if same_model in latest:
+            latest["after"] = latest[same_model]
     if latest:
         ctx["perf_latest"] = {label: v[1] for label, v in latest.items()}
         ctx["perf_latest_sources"] = {label: v[2] for label, v in latest.items()}
-        sources["perf_latest"] = ", ".join(v[2] for v in latest.values())
+        sources["perf_latest"] = ", ".join(sorted({v[2] for v in latest.values()}))
+    derived = perf_derived(perf)
+    if derived:
+        ctx["perf_derived"] = derived
+        sources["perf_derived"] = f"{PERF_DIR}/after_*.json (server stage medians)"
+
+    annotation = annotation_stats(repo_root / ANNOTATION_SHEET)
+    if annotation:
+        ctx["annotation"] = annotation
+        sources["annotation"] = ANNOTATION_SHEET
+
+    inputs = smoke_inputs(repo_root / SMOKE_SCRIPT)
+    if inputs:
+        ctx["smoke_inputs"] = inputs
+        sources["smoke_inputs"] = SMOKE_SCRIPT
 
     if "tests" not in ctx:
         junit = junit_summary((repo_root / JUNIT_DIR).glob("*.xml"))
@@ -288,6 +768,51 @@ def load_context(repo_root: Path) -> dict[str, Any]:
     if mstats:
         ctx["manifest_stats"] = mstats
         sources["manifest_stats"] = SINGLE_SOURCES["manifest"]
+
+    run_manifests: dict[str, Any] = {}
+    for path in sorted((repo_root / RUNS_DIR).glob("manifest_*.json")):
+        data = _read_json(path)
+        if isinstance(data, dict):
+            run_manifests[str(data.get("run_id") or path.stem.removeprefix("manifest_"))] = data
+    if run_manifests:
+        ctx["study_manifests"] = run_manifests
+        sources["study_manifests"] = f"{RUNS_DIR}/manifest_*.json"
+
+    judge_manifests: dict[str, Any] = {}
+    for path in sorted((repo_root / JUDGMENTS_DIR).glob("manifest_judge_*.json")):
+        data = _read_json(path)
+        if isinstance(data, dict):
+            judge_manifests[path.stem] = data
+    if judge_manifests:
+        ctx["judge_manifests"] = judge_manifests
+        sources["judge_manifests"] = f"{JUDGMENTS_DIR}/manifest_judge_*.json"
+
+    records = study_record_stats(repo_root / RUNS_DIR)
+    if records:
+        ctx["study_records"] = records
+        sources["study_records"] = f"{RUNS_DIR}/<condition>.jsonl"
+
+    judgments = study_judgment_stats(repo_root / JUDGMENTS_DIR)
+    if judgments:
+        ctx["study_judgments"] = judgments
+        sources["study_judgments"] = f"{JUDGMENTS_DIR}/{{llm,nli}}/<condition>.jsonl"
+
+    orgs = corpus_org_stats(ctx.get("corpus"))
+    if orgs:
+        ctx["corpus_orgs"] = orgs
+        sources["corpus_orgs"] = SINGLE_SOURCES["corpus"]
+
+    errors = routing_error_stats(ctx.get("study"), ctx.get("aq"))
+    if errors:
+        ctx["routing_errors"] = errors
+        sources["routing_errors"] = ", ".join(
+            sources[key] for key in ("study", "aq") if key in sources
+        )
+
+    gate3 = study_gate3_stats(repo_root / RUNS_DIR, repo_root / JUDGMENTS_DIR)
+    if gate3:
+        ctx["study_gate3"] = gate3
+        sources["study_gate3"] = f"{RUNS_DIR}/V2.jsonl, {RUNS_DIR}/V12.jsonl + LLM judgments"
 
     ctx["_sources"] = sources
     ctx["_skipped"] = skipped
@@ -406,6 +931,41 @@ def _ci(value: Any, digits: int = 1, percent: bool = True) -> str:
     return text
 
 
+_SUPERSCRIPT = str.maketrans("0123456789-", "⁰¹²³⁴⁵⁶⁷⁸⁹⁻")
+
+
+def format_sci(value: float, digits: int = 2) -> str:
+    """``5.41e-16`` -> ``5.41 × 10⁻¹⁶`` (Unicode superscripts, readable in Word and PDF)."""
+    if value == 0:
+        return "0"
+    mantissa, exponent = f"{value:.{digits}e}".split("e")
+    return f"{mantissa} × 10{str(int(exponent)).translate(_SUPERSCRIPT)}"
+
+
+def format_p(value: Any) -> str:
+    """p-value: 3 decimals from 0.01, 4 decimals from 0.001, scientific notation below."""
+    p = _as_float(value)
+    if _is_nan(p):
+        return "n/a"
+    if p >= 0.01:
+        return f"{p:.3f}"
+    if p >= 0.001:
+        return f"{p:.4f}"
+    return format_sci(p)
+
+
+def _pp(value: Any) -> str:
+    """Risk difference (fraction) in percentage points, with its interval if present."""
+    if isinstance(value, dict):
+        est = value.get("estimate", value.get("rate"))
+        text = f"{100 * float(est):.1f} pp"
+        low, high = value.get("low"), value.get("high")
+        if low is not None and high is not None and not (_is_nan(low) or _is_nan(high)):
+            text += f" [{100 * float(low):.1f}, {100 * float(high):.1f}]"
+        return text
+    return f"{100 * _as_float(value):.1f} pp"
+
+
 def format_value(value: Any, filters: list[str] | None = None) -> str:
     """Apply formatting filters (see README "Inline values") to a resolved value."""
     filters = [f.strip() for f in (filters or []) if f.strip()]
@@ -442,6 +1002,12 @@ def format_value(value: Any, filters: list[str] | None = None) -> str:
             out = _ci(out, int(arg) if arg.isdigit() else 1)
         elif name == "cif":  # interval as plain numbers
             out = _ci(out, int(arg) if arg.isdigit() else 3, percent=False)
+        elif name == "p":  # p-value (scientific notation below 0.001)
+            out = format_p(out)
+        elif name == "sci":
+            out = format_sci(_as_float(out), int(arg) if arg.isdigit() else 2)
+        elif name == "pp":  # fraction difference -> percentage points (with CI if a dict)
+            out = _pp(out)
         elif name == "len":
             out = str(len(out)) if hasattr(out, "__len__") else "n/a"
         elif name == "upper":

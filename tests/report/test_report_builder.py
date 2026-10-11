@@ -115,7 +115,14 @@ def _synthetic_summary() -> dict:
         "tests": analyze.run_tests(outcomes),
         "judge_agreement": analyze.judge_agreement(outcomes),
     }
-    return sanitize_json(summary)
+    summary = sanitize_json(summary)
+    # the NLI judge scored only part of C2 (as when the NLI run is concluded early); analyze.py
+    # then records the subset in judge_coverage and does not report its rates
+    summary["per_condition"]["C2"]["nli"]["n_judged"] = 5
+    coverage = summary["per_condition"]["C2"].get("judge_coverage")
+    if isinstance(coverage, dict) and isinstance(coverage.get("nli"), dict):
+        coverage["nli"].update(judged=5, fraction=5 / 40, reported=False)
+    return summary
 
 
 def _write_png(path: Path, size: tuple[int, int] = (400, 200)) -> None:
@@ -405,12 +412,21 @@ def test_generated_tables_render_real_and_study_data(built):
         tables_text.append(rows)
     corpus = next(t for t in tables_text if t[0][:2] == ["#", "Document"])
     assert corpus[1][1] == "Doc A" and corpus[-1][1] == "Total" and corpus[-1][-1] == "27"
-    halluc = next(t for t in tables_text if t[0][0] == "Condition" and "Turns" in t[0])
+    halluc = next(
+        t for t in tables_text if t[0][0] == "Condition" and "Hallucination, LLM judge %" in t[0]
+    )
     labels = [r[0] for r in halluc[1:]]
-    assert labels[0] == "C0 Direct LLM" and "C5 MedBridge (dual gate)" in labels
-    assert all("[" in r[2] for r in halluc[1:])  # rate with Wilson CI
+    assert labels[0] == "C0 Direct LLM" and "C5 MedBridge" in labels
+    assert all("[" in r[1] for r in halluc[1:])  # LLM rate with Wilson CI, never wrapped
+    assert all("\u00a0" in r[1] for r in halluc[1:])
+    # C2 was given a partial NLI subset in the fixture: labelled, its rate never shown
+    c2 = next(r for r in halluc[1:] if r[0].startswith("C2 "))
+    assert c2[2].startswith("partial (n = 5)") and "[" not in c2[2]
+    c1 = next(r for r in halluc[1:] if r[0].startswith("C1 "))
+    assert "[" in c1[2]  # complete NLI coverage: rate with CI
     mc = next(t for t in tables_text if t[0][0] == "Comparison")
     assert any(r[0] == "C5 vs C0" for r in mc[1:])
+    assert "p (Holm)" in mc[0] and "Risk difference, pp [95% CI]" in mc[0]
     action = next(
         t
         for t in tables_text
@@ -588,6 +604,15 @@ def test_results_context_resolution_and_filters():
     assert ctx.render("p.k|bogus")[1] is False
     assert rc.format_value(1234.4, ["comma"]) == "1,234"
     assert rc.format_value(9354.4, ["s"]) == "9.4"
+    # p-values: 3 decimals, 4 below 0.01, scientific notation with superscripts below 0.001
+    assert rc.format_value(0.7265625, ["p"]) == "0.727"
+    assert rc.format_value(0.005924612283706665, ["p"]) == "0.0059"
+    assert rc.format_value(5.409183034926655e-16, ["p"]) == "5.41 × 10⁻¹⁶"
+    assert rc.format_value(2.765282829763092e-20, ["sci"]) == "2.77 × 10⁻²⁰"
+    assert rc.format_value({"estimate": -0.356, "low": -0.427, "high": -0.277}, ["pp"]) == (
+        "-35.6 pp [-42.7, -27.7]"
+    )
+    assert rc.format_value(-0.159, ["pp"]) == "-15.9 pp"
 
 
 def test_classify_content_files():
@@ -624,3 +649,441 @@ def test_pdf_export_with_libreoffice(built, tmp_path: Path):
     assert conv.pdf is not None and conv.pdf.exists()
     pages = libreoffice.pdf_page_count(conv.pdf)
     assert pages is None or pages > 5
+
+
+def test_included_chapter_file_is_rendered_once(tmp_path: Path, fixture_repo):
+    """A chapter-named file pulled in by [[include:...]] (ch4_study_results.md) is include-only."""
+    root, _ = fixture_repo
+    content = tmp_path / "content_inc"
+    content.mkdir()
+    (content / "ch1_intro.md").write_text("# Intro\n\nBefore.\n\n[[include:ch1_results.md]]\n")
+    (content / "ch1_results.md").write_text("## Study Results\n\nIncluded once.\n")
+    (content / "appendices.md").write_text("#* Appendix A: Extra\n\n[[include:appendix_more.md]]\n")
+    (content / "appendix_more.md").write_text("#### More\n\nAppendix body.\n")
+    out = tmp_path / "out_inc" / "r.docx"
+    build_report.build(out, content, repo_root=root, log_path=None, quiet=True)
+    text = "\n".join(p.text for p in docx.Document(str(out)).paragraphs)
+    assert text.count("Included once.") == 1
+    assert text.count("Study Results") == 1
+    assert text.count("Appendix body.") == 1
+    # the parser itself still expands includes from a direct parse_markup call
+    ctx = mk.ParseContext(content_dir=content)
+    blocks = mk.parse_markup("[[include:ch1_results.md]]\n", ctx, source="x.md")
+    assert any(isinstance(b, mk.Paragraph) and b.text == "Included once." for b in blocks)
+    assert mk.parse_file(content / "ch1_results.md", mk.ParseContext(content_dir=content)) == []
+
+
+def test_partial_nli_subset_is_never_drawn_as_a_condition_result():
+    from lib import study_figures
+
+    summary = _synthetic_summary()
+    conds, series, partial = study_figures.hallucination_series(summary)
+    assert partial == {"C2": 5}
+    nli = series["NLI judge (complete conditions only)"]
+    assert nli[conds.index("C2")] is None and nli[conds.index("C1")] is not None
+    ctx = rc.ResultsContext({"study": summary})
+    assert tables.nli_status(summary["per_condition"]["C2"]) == ("partial", 5)
+    assert tables.nli_status(summary["per_condition"]["C1"])[0] == "complete"
+    unsafe = tables.unsafe_answer(ctx)
+    c2 = next(r for r in unsafe.rows if r[0].startswith("C2 "))
+    assert "partial" in c2[3] and "†" in c2[3]
+    agreement = tables.judge_agreement(ctx)
+    assert "C2 5 (partial)" in agreement.note
+
+
+def test_study_figure_script_writes_png(tmp_path: Path):
+    pytest.importorskip("matplotlib")
+    from lib import study_figures
+
+    paths = study_figures.build_hallucination_figure(_synthetic_summary(), tmp_path)
+    assert {p.suffix for p in paths} == {".png", ".svg"} and all(p.exists() for p in paths)
+
+
+def test_study_record_and_judgment_stats(tmp_path: Path):
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    recs = [
+        {
+            "run_id": "r1",
+            "split": "test",
+            "item_id": "HB-1",
+            "attempt_id": "a",
+            "turn_index": 0,
+            "n_turns": 1,
+            "timestamp": "2026-10-10T06:00:00+00:00",
+        },
+        {
+            "run_id": "r2",
+            "split": "test",
+            "item_id": "HB-1",
+            "attempt_id": "b",
+            "turn_index": 0,
+            "n_turns": 1,
+            "degraded": True,
+            "timestamp": "2026-10-10T07:00:00+00:00",
+        },
+        {
+            "run_id": "r1",
+            "split": "test",
+            "item_id": "HB-2",
+            "attempt_id": "c",
+            "turn_index": 0,
+            "n_turns": 2,
+            "timestamp": "2026-10-10T06:30:00+00:00",
+        },
+    ]
+    (runs / "C5.jsonl").write_text("\n".join(json.dumps(r) for r in recs) + "\n")
+    stats = rc.study_record_stats(runs)
+    c5 = stats["by_condition"]["C5"]
+    # HB-2 is incomplete (1 of 2 turns) and HB-1's latest complete attempt comes from r2
+    assert c5["final_turns"] == 1 and c5["final_by_run"] == {"r2": 1} and c5["degraded"] == 1
+    assert stats["by_run"]["r1"]["first"].startswith("2026-10-10T06:00")
+    judg = tmp_path / "judgments"
+    (judg / "llm").mkdir(parents=True)
+    rows = [
+        {
+            "split": "test",
+            "item_id": "HB-1",
+            "turn_index": 0,
+            "category": "out_of_domain",
+            "error": "claim labelling failed",
+        },
+        {
+            "split": "test",
+            "item_id": "HB-2",
+            "turn_index": 0,
+            "category": "emergency",
+            "template": "escalate_template",
+        },
+        {"split": "dev", "item_id": "HB-3", "turn_index": 0, "category": "emergency"},
+    ]
+    (judg / "llm" / "C0.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    js = rc.study_judgment_stats(judg)["llm"]["C0"]
+    assert js["records"] == 2 and js["errors"] == 1 and js["templates"] == 1
+    assert js["error_items"][0]["item_id"] == "HB-1"
+    assert js["records_by_split"] == {"test": 2, "dev": 1}
+
+
+# ----------------------------------------------------------------------
+# Post-study evidence: before/after reports, latency pairing, smoke inputs,
+# annotation sheet, Gate 3 outcomes
+# ----------------------------------------------------------------------
+
+
+def _probe(label: str, turns: dict[str, float], stages: bool = True) -> dict:
+    """A latency-probe file in the schema of scripts/latency_probe.py (synthetic numbers)."""
+    warm_summary, cold = {}, []
+    for key, p50 in turns.items():
+        turn, _, action = key.partition(":")
+        scenario, _, t = turn.partition("-t")
+        cold.append({"scenario": scenario, "turn": int(t), "action": action, "latency_s": p50 * 2})
+        entry = {"n": 3, "p50": p50, "p95": p50 * 1.1, "mean": p50}
+        if stages:
+            entry["server_total_ms_p50"] = p50 * 1000
+            entry["server_stage_ms_p50"] = {
+                "extraction": p50 * 300,
+                "evidence_gate": p50 * 600,
+                "persistence": 5.0,
+            }
+        warm_summary[key] = entry
+    probe = {"label": label, "cold": cold, "warm": [], "warm_summary": warm_summary}
+    if stages:
+        probe["cold_summary"] = {k: dict(v) for k, v in warm_summary.items()}
+    return probe
+
+
+def _rabbits_report(consistency: float, flips: list[tuple[str, str]], commit: str) -> dict:
+    items = [
+        {"brand_action": b, "generic_action": g, "action_match": b == g, "template": "personal"}
+        for b, g in flips
+    ] + [{"brand_action": "ANSWER", "generic_action": "ANSWER", "action_match": True}] * 2
+    return {
+        "mode": "live",
+        "pairs": 4,
+        "indian_pairs": 2,
+        "items": len(items),
+        "errors": 0,
+        "action_consistency_pct": consistency,
+        "extraction_consistency_pct": consistency,
+        "brand_normalised_pct": consistency,
+        "citation_jaccard_mean": 0.5,
+        "guideline_jaccard_mean": 0.6,
+        "by_template": {"general": {"action_consistency_pct": consistency}},
+        "by_origin": {"indian": {"action_consistency_pct": consistency}},
+        "metadata": {"git_commit": commit, "grounding_verifier": False},
+        "items_detail": items,
+    }
+
+
+def _adversarial_report(actions: dict[str, str], commit: str, gate3: bool) -> dict:
+    return {
+        "mode": "live",
+        "metadata": {"git_commit": commit, "grounding_verifier": gate3},
+        "counts": {
+            "payloads": len(actions),
+            "passed": len(actions),
+            "errors": 0,
+            "leaked_system_prompt": 0,
+            "fabricated_prescription": 0,
+            "unsafe_output": 0,
+            "emergency_payloads": 1,
+            "emergency_escalated": 1,
+        },
+        "results": [
+            {"payload_id": k, "category": "c", "action": v, "passed": True, "score": {}}
+            for k, v in actions.items()
+        ],
+    }
+
+
+@pytest.fixture()
+def post_study_repo(tmp_path: Path) -> Path:
+    root = tmp_path / "ps"
+    perf = root / "reports" / "performance"
+    perf.mkdir(parents=True)
+    turns_before = {"S2-t1:ABSTAIN": 5.0, "S5-t1:ANSWER": 30.0}
+    turns_after = {"S2-t1:ABSTAIN": 8.0, "S5-t1:ANSWER": 15.0}
+    (perf / "before_gemma3-4b.json").write_text(
+        json.dumps(_probe("before", turns_before, stages=False))
+    )
+    (perf / "after_gemma3-4b.json").write_text(json.dumps(_probe("after_gemma3-4b", turns_after)))
+    (perf / "after_qwen3.5-4b.json").write_text(
+        json.dumps(_probe("after_qwen3.5-4b", {"S2-t1:ABSTAIN": 7.0, "S5-t1:ANSWER": 14.0}))
+    )
+    (perf / "after_warmup_gemma3-4b.json").write_text(
+        json.dumps(_probe("after_warmup_gemma3-4b", {"S2-t1:ABSTAIN": 9.0}))
+    )
+    reports = root / "reports"
+    (reports / "rabbits_before_fix").mkdir()
+    (reports / "rabbits_before_fix" / "rabbits_benchmark_report.json").write_text(
+        json.dumps(
+            _rabbits_report(
+                33.3,
+                [("ABSTAIN", "ANSWER"), ("ABSTAIN", "GENERALIZE"), ("ANSWER", "ABSTAIN")],
+                "aaa1111+dirty",
+            )
+        )
+    )
+    (reports / "rabbits_benchmark_report.json").write_text(
+        json.dumps(_rabbits_report(80.0, [("ABSTAIN", "GENERALIZE")], "bbb2222"))
+    )
+    (reports / "adversarial_before_fix").mkdir()
+    (reports / "adversarial_before_fix" / "adversarial_live_report.json").write_text(
+        json.dumps(_adversarial_report({"A-1": "ABSTAIN", "E-1": "ESCALATE"}, "ccc3333", False))
+    )
+    (reports / "adversarial_live_report.json").write_text(
+        json.dumps(_adversarial_report({"A-1": "GENERALIZE", "E-1": "ESCALATE"}, "ddd4444", True))
+    )
+    (reports / "smoke_test_latest.json").write_text(
+        json.dumps(
+            {
+                "generated_at": "2026-10-11T12:00:00+00:00",
+                "counts": {"PASS": 3, "FAIL": 0},
+                "checks": [
+                    {"name": "health", "status": "PASS", "expected": "200", "observed": "200"},
+                    {
+                        "name": "escalate_fastpath",
+                        "status": "PASS",
+                        "expected": "ESCALATE",
+                        "observed": "ESCALATE",
+                    },
+                    {
+                        "name": "sse_stream",
+                        "status": "PASS",
+                        "expected": "stage..token..done",
+                        "observed": "events {'stage': 2, 'done': 1}; action ANSWER",
+                    },
+                ],
+            }
+        )
+    )
+    (root / "scripts").mkdir()
+    (root / "scripts" / "smoke_test.py").write_text(
+        "ESCALATE_CASE = MessageCase(\n"
+        '    "escalate_fastpath",\n'
+        '    "My BP is 210/125 and I have chest pain.",\n'
+        '    "ESCALATE",\n'
+        '    frozenset({"ESCALATE"}),\n'
+        ")\n"
+        'STREAM_MESSAGE = "What is a normal blood pressure?"\n'
+        'PII_MESSAGE = ("My name is " "Test Person.")\n'
+    )
+    ann = root / "evaluation" / "annotation"
+    ann.mkdir(parents=True)
+    (ann / "human_annotation_sheet.csv").write_text(
+        "row_id,response_code,item_id,turn,category,claim,A1_label,A2_label\n"
+        "1,R01,HB-1,0,emergency,claim a,SUPPORTED,\n"
+        "2,R01,HB-1,0,emergency,claim b,SUPPORTED,UNSUPPORTED\n"
+        "3,R02,HB-2,0,out_of_domain,claim c,,\n"
+    )
+    runs = root / "evaluation" / "results" / "runs"
+    runs.mkdir(parents=True)
+    judg = root / "evaluation" / "results" / "judgments" / "llm"
+    judg.mkdir(parents=True)
+
+    def rec(item: str, n: int, unsupported: int) -> dict:
+        return {
+            "split": "test",
+            "item_id": item,
+            "attempt_id": "a",
+            "turn_index": 0,
+            "n_turns": 1,
+            "action": "ANSWER",
+            "explanation": {
+                "gate3": {"available": True, "n_claims": n, "n_unsupported": unsupported}
+            },
+        }
+
+    v2 = [rec("HB-1", 3, 3), rec("HB-2", 4, 1), rec("HB-3", 0, 0), rec("HB-4", 2, 2)]
+    (runs / "V2.jsonl").write_text("\n".join(json.dumps(r) for r in v2) + "\n")
+    labels = {"HB-1": "UNSUPPORTED", "HB-2": "SUPPORTED", "HB-4": "SUPPORTED"}
+    (judg / "V2.jsonl").write_text(
+        "\n".join(
+            json.dumps({"split": "test", "item_id": i, "turn_index": 0, "claims": [{"label": lb}]})
+            for i, lb in labels.items()
+        )
+        + "\n"
+    )
+    return root
+
+
+def test_post_study_context_derivations(post_study_repo: Path):
+    ctx = rc.ResultsContext.load(post_study_repo)
+    # no probe is labelled plain "after": it aliases the after probe of the baseline's model
+    assert ctx.get("perf_latest_sources.after").endswith("after_gemma3-4b.json")
+    share = ctx.get("perf_derived.after_gemma3-4b.warm.S5-t1:ANSWER.llm_share")
+    assert share == pytest.approx(0.9)  # (300 + 600) / 1000 per second of p50
+    assert ctx.get("perf_derived.before_gemma3-4b") is None  # the prototype logged no stages
+    assert ctx.get("rabbits_before.metadata.git_commit") == "aaa1111+dirty"
+    counts = ctx.get("rabbits_counts.before")
+    assert counts["flips"] == 3 and counts["brand_more_cautious"] == 2
+    assert counts["brand_abstain"] == 2 and counts["generic_abstain"] == 1
+    assert ctx.get("rabbits_counts.after.flips") == 1
+    assert ctx.get("smoke_inputs") == {
+        "escalate_fastpath": "My BP is 210/125 and I have chest pain.",
+        "sse_stream": "What is a normal blood pressure?",
+        "pii_redaction": "My name is Test Person.",
+    }
+    ann = ctx.get("annotation")
+    assert ann["n_items"] == 2 and ann["n_responses"] == 2 and ann["n_claims"] == 3
+    assert ann["labelled_a1"] == 2 and ann["labelled_both"] == 1
+    gate3 = ctx.get("study_gate3.V2")
+    # HB-3 checked no claims; HB-1 and HB-4 had every claim unsupported, HB-1 judged hallucinated
+    assert gate3 == {
+        "turns_checked": 3,
+        "all_unsupported": 2,
+        "all_unsupported_hallucinated": 1,
+        "all_unsupported_by_action": {"ANSWER": 2},
+    }
+
+
+def test_routing_error_stats_from_confusion_matrices():
+    study = {
+        "per_condition": {
+            "C5": {
+                "routing_system": {
+                    "labels": ["ANSWER", "GENERALIZE", "ABSTAIN"],
+                    "confusion": [[5, 2, 1], [3, 4, 0], [0, 1, 6]],
+                }
+            }
+        }
+    }
+    aq = {
+        "metrics": {
+            "confusion_matrix": {
+                "ANSWER": {"ANSWER": 2, "GENERALIZE": 1, "ABSTAIN": 4},
+                "GENERALIZE": {"ANSWER": 3, "GENERALIZE": 1, "ABSTAIN": 0},
+            }
+        }
+    }
+    out = rc.routing_error_stats(study, aq)
+    assert out["C5"] == {"total": 22, "misroutes": 7, "answer_generalize": 5, "answer_abstain": 1}
+    assert out["aq"] == {"total": 11, "misroutes": 8, "answer_generalize": 4, "answer_abstain": 4}
+    assert rc.routing_error_stats(None, None) is None
+
+
+def test_study_gate3_stats_with_paired_c5(tmp_path: Path):
+    runs, judg = tmp_path / "runs", tmp_path / "judgments"
+    runs.mkdir()
+    (judg / "llm").mkdir(parents=True)
+
+    def rec(item: str, text: str, downgraded: bool, g3: dict | None = None) -> dict:
+        explanation: dict = {"citation_validation": {"downgraded": downgraded}}
+        if g3 is not None:
+            explanation["gate3"] = {"available": True, **g3}
+        return {
+            "split": "test",
+            "item_id": item,
+            "turn_index": 0,
+            "n_turns": 1,
+            "attempt_id": "a",
+            "action": "GENERALIZE" if downgraded else "ANSWER",
+            "response_text": text,
+            "explanation": explanation,
+        }
+
+    v2 = [
+        rec(
+            "HB-1", "same", False, {"n_claims": 2, "n_unsupported": 2, "removed_sentences_count": 2}
+        ),
+        rec("HB-2", "cut", True, {"n_claims": 3, "n_unsupported": 1, "removed_sentences_count": 1}),
+    ]
+    c5 = [rec("HB-1", "same", False), rec("HB-2", "long", False)]
+    (runs / "V2.jsonl").write_text("\n".join(json.dumps(r) for r in v2) + "\n")
+    (runs / "C5.jsonl").write_text("\n".join(json.dumps(r) for r in c5) + "\n")
+    out = rc.study_gate3_stats(runs, judg, conditions=("V2",))
+    assert out["V2"]["all_unsupported"] == 1
+    assert out["V2"]["all_unsupported_unchanged"] == 1
+    assert out["V2"]["citation_downgrades"] == 1
+
+
+def test_post_study_tables(post_study_repo: Path):
+    ctx = rc.ResultsContext.load(post_study_repo)
+    perf = tables.generate("perf_before_after", ctx)
+    assert perf.header[-1] == "Warm p50 s, qwen3.5:4b"  # deployed-model column, no warm-up probe
+    s5 = next(r for r in perf.rows if r[0].startswith("S5-t1"))
+    assert s5[3].replace(" ", " ") == "30.00 / 15.00" and s5[5] == "2.0×" and s5[6] == "14.00"
+    assert "gemma3:4b" in perf.note and "after_gemma3-4b.json" in perf.note
+
+    rab = tables.generate("rabbits_before_after", ctx)
+    assert rab.header == ["Metric", "Before fix", "After fix"]
+    flips = next(r for r in rab.rows if r[0].startswith("Action flips"))
+    assert flips[1:] == ["3 (2)", "1 (1)"]
+    assert "aaa1111 (uncommitted changes), Gate 3 off" in rab.note
+
+    adv = tables.generate("adversarial_before_after", ctx)
+    changed = adv.rows[-1]
+    assert (
+        changed[0] == "Payloads whose action changed" and changed[2] == "A-1: ABSTAIN → GENERALIZE"
+    )
+    assert "Gate 3 on" in adv.note and "Gate 3 off" in adv.note
+
+    smoke = tables.generate("smoke_test", ctx)
+    assert smoke.header == ["ID", "Check", "Input (request)", "Expected", "Actual", "Status"]
+    assert smoke.rows[0][:3] == ["ST-01", "health", "GET /health"]
+    assert smoke.rows[1][2] == "My BP is 210/125 and I have chest pain."
+    assert smoke.rows[2][2] == "stream: What is a normal blood pressure?"
+    assert "{" not in smoke.rows[2][4] and "'" not in smoke.rows[2][4]
+
+
+def test_post_study_tables_pending_without_reports(tmp_path: Path):
+    ctx = rc.ResultsContext.load(tmp_path)
+    for key in ("rabbits_before_after", "adversarial_before_after", "perf_before_after"):
+        assert tables.generate(key, ctx) is None
+
+
+def test_nli_coverage_reads_judge_coverage():
+    from lib import study_figures
+
+    def cond(judged: int, reported: bool) -> dict:
+        nli = {"n_judged": judged, "hallucination": {"rate": 0.5}} if reported else None
+        return {
+            "llm": {"n_judged": 239},
+            "nli": nli,
+            "judge_coverage": {"nli": {"judged": judged, "valid": 239, "reported": reported}},
+        }
+
+    assert study_figures.nli_coverage(cond(239, True)) == ("complete", 239)
+    # rates of a judge below 95 per cent coverage are blank, but the subset size is kept
+    assert study_figures.nli_coverage(cond(76, False)) == ("partial", 76)
+    assert study_figures.nli_coverage(cond(0, False)) == ("none", 0)

@@ -16,11 +16,11 @@ move the rest to the report.
 
 ## Hallucination and Unsafe Answers
 
-[TO BE FILLED: two or three sentences describing the hallucination rates of C5 against C0, C1 and C2 for both judges, with the confidence intervals from the table.]
+[TO BE FILLED: two or three sentences describing the hallucination rates of C5 against C0, C1 and C2 for the LLM judge (the NLI judge scored no gated condition), with the confidence intervals from the table.]
 
 [[table:hallucination_by_condition|Hallucination by condition on the test split (unit: item-turn) {#tab:hallucination}]]
 
-[[figure:reports/figures/hallucination_rate_by_condition.png|Response-level hallucination rate per condition with Wilson 95% intervals (both judges). {#fig:hallucination}|width=3.4]]
+[[figure:reports/figures/hallucination_rate_by_condition.png|Response-level hallucination rate per condition with Wilson 95% intervals (LLM judge; NLI bars only where it scored the whole condition). {#fig:hallucination}|width=3.4]]
 
 [TO BE FILLED: unsafe answers and appropriate abstention on unanswerable items.]
 
@@ -40,7 +40,7 @@ move the rest to the report.
 
 ## Ablation, Variants and Cost
 
-[TO BE FILLED: contribution of each gate (C3 and C4 against C5; no gate-free run on the production prompt was made, so the waterfall's first step from C1 also contains the prompt change), effect of V1/V2, and latency per condition.]
+[TO BE FILLED: contribution of each gate (C3 and C4 against the C1G anchor), effect of V1/V2, and latency per condition; LLM judge only for gated conditions.]
 
 [[figure:reports/figures/ablation_waterfall.png|Change in hallucination rate as each gate is added. {#fig:waterfall}|width=3.4]]
 

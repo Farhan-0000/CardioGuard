@@ -33,7 +33,7 @@ from lib import tables  # noqa: E402
 from presentation import deck_data  # noqa: E402
 from presentation import pptx_kit as K  # noqa: E402
 
-N_SLIDES = 18
+N_SLIDES = 19
 
 
 # ----------------------------------------------------------------------
@@ -71,14 +71,23 @@ def _synthetic_summary() -> dict:
         ("emergency", "ESCALATE", ("ESCALATE",)),
     ]
     behaviour = {"ANSWER": "ANSWERED_SPECIFIC", "ABSTAIN": "ABSTAINED", "ESCALATE": "ESCALATED"}
+
+    def nli_claims(cond: str, i: int, claims: list) -> list | None:
+        if cond in ("C0", "C1", "C1G") or (cond == "C2" and i < 12):
+            return [dict(c) for c in claims]
+        return None
+
     outcomes: dict[str, list] = {}
     for cond, p_bad in (
         ("C0", 0.5),
         ("C1", 0.4),
+        ("C1G", 0.4),
         ("C2", 0.35),
         ("C3", 0.3),
         ("C4", 0.2),
         ("C5", 0.1),
+        ("V1", 0.1),
+        ("V2", 0.05),
     ):
         rows = []
         for i in range(40):
@@ -110,7 +119,10 @@ def _synthetic_summary() -> dict:
                     latency_ms=1000.0 + i,
                     latency_imputed_ms=1200.0 + i,
                     behaviour=behaviour.get(action, "GENERAL_INFO"),
-                    claims={"llm": claims, "nli": [dict(c) for c in claims]},
+                    # The NLI judge covers the ungated conditions completely, C2 only partly
+                    # (below the reporting threshold) and the gated ones not at all, as in
+                    # the real study.
+                    claims={"llm": claims, "nli": nli_claims(cond, i, claims)},
                     fastpath=action == "ESCALATE",
                 )
             )
@@ -226,7 +238,9 @@ def fixture_root(tmp_path: Path) -> Path:
         '    LLM_MODEL: str = "model-a:4b"\n'
         "    RETRIEVAL_TOP_K_CANDIDATES: int = 20\n"
         "    RETRIEVAL_TOP_K_RERANKED: int = 5\n"
-        "    SOFT_ASK_MAX_COUNT: int = 2\n",
+        "    SOFT_ASK_MAX_COUNT: int = 2\n"
+        "    GROUNDING_ENTAILMENT_THRESHOLD: float = 0.3\n"
+        "    GROUNDING_MAX_UNSUPPORTED_FRACTION: float = 0.9\n",
         encoding="utf-8",
     )
     # mock-mode benchmark reports must never be shown as results
@@ -244,6 +258,25 @@ def fixture_root(tmp_path: Path) -> Path:
 def _add_study(root: Path) -> dict:
     summary = _synthetic_summary()
     _write_json(root / "evaluation" / "results" / "summary.json", summary)
+    _write_json(
+        root / "evaluation" / "results" / "judgments" / "manifest_judge_test.json",
+        {"judge_model": "judge-model:12b"},
+    )
+    # one V2 record whose every Gate 3 claim failed, and its LLM-judge verdict
+    record = {
+        "item_id": "HB-0000",
+        "turn_index": 0,
+        "n_turns": 1,
+        "attempt_id": "a",
+        "split": "test",
+        "action": "ANSWER",
+        "error": None,
+        "explanation": {"gate3": {"available": True, "n_claims": 2, "n_unsupported": 2}},
+    }
+    verdict = {**{k: record[k] for k in ("item_id", "turn_index", "attempt_id", "split")}}
+    verdict["claims"] = [{"label": "UNSUPPORTED"}]
+    _write_json(root / "evaluation" / "results" / "runs" / "V2.jsonl", record)
+    _write_json(root / "evaluation" / "results" / "judgments" / "llm" / "V2.jsonl", verdict)
     for name in (
         "hallucination_rate_by_condition",
         "unsafe_answer_rate_unanswerable",
@@ -301,8 +334,9 @@ def test_deck_structure_notes_and_placeholders(fixture_root: Path, tmp_path: Pat
 
 def test_results_slides_are_pending_without_study(fixture_root: Path, tmp_path: Path):
     prs, log = _build(fixture_root, tmp_path)
-    assert {"results_hallucination", "results_unsafe"} <= set(log["pending_slides"])
-    for sid in ("results_hallucination", "results_unsafe"):
+    results = ("results_hallucination", "results_unsafe", "results_tradeoff")
+    assert set(results) <= set(log["pending_slides"])
+    for sid in results:
         slide = _slide(prs, log, sid)
         text = _texts(slide)
         assert "pending" in text.lower()
@@ -333,7 +367,7 @@ def test_mock_mode_benchmark_reports_are_ignored(fixture_root: Path, tmp_path: P
     prs, log = _build(fixture_root, tmp_path)
     assert {"aq", "rabbits"} <= set(log["results_skipped"])
     text = _texts(_slide(prs, log, "robustness"))
-    assert text.count("[PENDING: live run") == 3
+    assert text.count("[PENDING: live run, ") == 3  # one per panel, no table drawn
     assert "100.0" not in text
 
 
@@ -365,12 +399,16 @@ def test_results_slides_fill_from_summary(fixture_root: Path, tmp_path: Path):
     text = _texts(halluc)
     c5 = summary["per_condition"]["C5"]["llm"]["hallucination"]
     assert tables.pct(c5) in text
-    assert "Hallucination rate by condition" in text and "pending" not in text.lower()
+    unsafe_c5 = summary["per_condition"]["C5"]["llm"]["unsafe_answer"]
+    assert tables.pct(unsafe_c5) in text  # unsafe-answer rate with its CI
+    assert "Hallucinations and unsafe answers by condition" in text
+    assert "pending" not in text.lower()
     assert _pictures(halluc) == 1
     unsafe = _slide(prs, log, "results_unsafe")
     utext = _texts(unsafe)
-    assert _pictures(unsafe) == 2
-    assert "C5 vs C1" in utext and "C5 vs C2" in utext
+    assert _pictures(unsafe) == 0
+    assert "C5 vs C1" in utext and "C5 vs C2" in utext and "V2 vs C5" in utext
+    assert "pending" not in utext.lower()
     t = next(
         m
         for m in summary["tests"]["mcnemar"]
@@ -380,7 +418,62 @@ def test_results_slides_fill_from_summary(fixture_root: Path, tmp_path: Path):
     assert "Decision rule:" in utext
     notes = halluc.notes_slide.notes_text_frame.text
     assert tables.pct(c5) in notes
+    tradeoff = _slide(prs, log, "results_tradeoff")
+    ttext = _texts(tradeoff)
+    assert "pending" not in ttext.lower()
+    v2 = summary["per_condition"]["V2"]
+    assert tables.num(v2["llm"]["claims_per_response"], 1) in ttext
+    assert tables.pct(v2["coverage_answerable"], ci=False) in ttext
     assert log["layout_issues"] == [], log["layout_issues"]
+
+
+def test_partial_nli_judge_is_never_quoted(fixture_root: Path, tmp_path: Path):
+    summary = _add_study(fixture_root)
+    per = summary["per_condition"]
+    # C2 was judged on part of its turns only: the analysis withholds its NLI rates
+    assert per["C2"]["judge_coverage"]["nli"]["reported"] is False and per["C2"]["nli"] is None
+    assert per["C1"]["judge_coverage"]["nli"]["reported"] is True
+    prs, log = _build(fixture_root, tmp_path)
+    halluc = _slide(prs, log, "results_hallucination")
+    assert "NLI" not in " ".join(
+        cell.text
+        for shape in halluc.shapes
+        if getattr(shape, "has_table", False) and shape.has_table
+        for cell in shape.table.rows[0].cells
+    ), "the table carries LLM-judge rates only"
+    notes = halluc.notes_slide.notes_text_frame.text
+    nli_lines = [line for line in notes.splitlines() if "; NLI judge" in line]
+    assert nli_lines and all(not line.startswith("- C2 ") for line in nli_lines)
+    assert any(line.startswith("- C1 ") for line in nli_lines)
+    assert "C0, C1, C1G" in _texts(halluc)  # the conditions the NLI judge covered
+
+
+def test_decision_rule_and_study_stats(fixture_root: Path):
+    summary = _add_study(fixture_root)
+    stats = deck_data.study_stats(fixture_root)
+    assert stats is not None and stats["nli_reported"] == ["C0", "C1", "C1G"]
+    t = stats["mcnemar"]["C5_vs_C1"]["hallucination"]
+    assert t["verdict"] == deck_data.verdict_label(t)
+    expected = [
+        o
+        for o in ("hallucination", "unsafe")
+        if all(
+            deck_data.verdict_label(m) == "significant reduction"
+            for m in summary["tests"]["mcnemar"]
+            if m["treatment"] == "C5"
+            and m["control"] in ("C1", "C2")
+            and m["outcome"] == o
+            and m["judge"] == "llm"
+        )
+    ]
+    assert stats["rule"]["outcomes_met"] == expected
+    assert stats["rule"]["met"] is bool(expected)
+    assert deck_data.verdict_label({"pvalue_holm": 0.01, "risk_difference": {"estimate": 0.1}}) == (
+        "significant increase"
+    )
+    assert deck_data.verdict_label({"pvalue_holm": 0.2, "risk_difference": {"estimate": -0.1}}) == (
+        "not significant"
+    )
 
 
 def test_verdict_is_mechanical(fixture_root: Path, tmp_path: Path):
@@ -394,6 +487,309 @@ def test_verdict_is_mechanical(fixture_root: Path, tmp_path: Path):
     )
     assert (
         builder._significant({"pvalue_holm": 0.2, "risk_difference": {"estimate": -0.2}}) is False
+    )
+
+
+# ----------------------------------------------------------------------
+# Robustness before/after, performance and post-study facts
+# ----------------------------------------------------------------------
+
+
+def _rabbits_report(action: float, extraction: float, indian: float, commit: str) -> dict:
+    return {
+        "mode": "live",
+        "pairs": 4,
+        "indian_pairs": 2,
+        "items": 8,
+        "action_consistency_pct": action,
+        "extraction_consistency_pct": extraction,
+        "brand_normalised_pct": extraction,
+        "citation_jaccard_mean": 0.5,
+        "by_origin": {"indian": {"action_consistency_pct": indian}},
+        "metadata": {"git_commit": f"{commit}+dirty", "grounding_verifier": False},
+        "items_detail": [{"brand": "x"}],
+    }
+
+
+def _adversarial_report(passed: int, commit: str, gate3: bool) -> dict:
+    return {
+        "mode": "live",
+        "metadata": {"git_commit": commit, "grounding_verifier": gate3},
+        "counts": {
+            "payloads": 5,
+            "passed": passed,
+            "leaked_system_prompt": 0,
+            "fabricated_prescription": 0,
+            "unsafe_output": 5 - passed,
+            "emergency_payloads": 1,
+            "emergency_escalated": 1,
+        },
+    }
+
+
+def test_robustness_shows_before_and_after_the_fix(fixture_root: Path, tmp_path: Path):
+    reports = fixture_root / "reports"
+    _write_json(
+        reports / "rabbits_benchmark_report.json", _rabbits_report(81.5, 99.5, 77.5, "aaa1111")
+    )
+    _write_json(
+        reports / "rabbits_before_fix" / "rabbits_benchmark_report.json",
+        _rabbits_report(41.5, 2.5, 33.5, "bbb2222"),
+    )
+    _write_json(reports / "adversarial_live_report.json", _adversarial_report(5, "ccc3333", True))
+    _write_json(
+        reports / "adversarial_before_fix" / "adversarial_live_report.json",
+        _adversarial_report(4, "ddd4444", False),
+    )
+    runs = deck_data.robustness_runs(fixture_root)
+    assert runs["rabbits_before"]["commit"] == "bbb2222" and runs["rabbits_before"]["dirty"]
+    assert "items_detail" not in runs["rabbits_before"]
+    assert runs["adversarial_after"]["gate3_label"] == "Gate 3 on"
+    assert "aq_after" not in runs  # the fixture's AQ report is a mock run
+    prs, log = _build(fixture_root, tmp_path)
+    text = _texts(_slide(prs, log, "robustness"))
+    for value in ("41.5 %", "81.5 %", "33.5 %", "77.5 %", "2.5 %", "99.5 %", "4 / 5", "5 / 5"):
+        assert value in text, value
+    assert "bbb2222" in text and "aaa1111" in text and "ddd4444" in text and "ccc3333" in text
+    assert text.count("[PENDING: live run, ") == 1  # only AQ is missing (mock)
+    assert log["layout_issues"] == [], log["layout_issues"]
+
+
+def test_mock_pre_fix_run_is_ignored(fixture_root: Path):
+    mock = _rabbits_report(100.0, 100.0, 100.0, "eee5555")
+    mock["mode"] = "mock"
+    _write_json(
+        fixture_root / "reports" / "rabbits_before_fix" / "rabbits_benchmark_report.json", mock
+    )
+    assert "rabbits_before" not in (deck_data.robustness_runs(fixture_root) or {})
+
+
+def _probe(label: str, rows: dict[str, tuple[str, float, float]], stages: bool = True) -> dict:
+    warm, cold = {}, []
+    for turn, (action, p50, cold_s) in rows.items():
+        scen, _, t = turn.partition("-t")
+        entry: dict = {"n": 3, "p50": p50, "p95": p50 + 0.1}
+        if stages:
+            entry["server_stage_ms_p50"] = {"evidence_gate": 4000.0}
+            if action == "ANSWER":
+                entry["server_stage_ms_p50"]["verification"] = 500.0
+        warm[f"{turn}:{action}"] = entry
+        cold.append({"scenario": scen, "turn": int(t), "action": action, "latency_s": cold_s})
+    return {"label": label, "cold": cold, "warm_summary": warm}
+
+
+def test_performance_compares_the_same_model(fixture_root: Path, tmp_path: Path):
+    perf_dir = fixture_root / "reports" / "performance"
+    (perf_dir / "before_test.json").unlink()
+    before = {
+        "S2-t1": ("ABSTAIN", 5.0, 15.0),
+        "S4-t2": ("ANSWER", 17.8, 19.7),
+        "S5-t1": ("ANSWER", 30.0, 37.0),
+    }
+    after = {
+        "S2-t1": ("ABSTAIN", 8.0, 13.0),
+        "S4-t2": ("ANSWER", 18.2, 24.3),
+        "S5-t1": ("ANSWER", 15.0, 18.0),
+    }
+    _write_json(perf_dir / "before_tiny-4b.json", _probe("before", before, stages=False))
+    _write_json(perf_dir / "after_tiny-4b.json", _probe("after_tiny-4b", after))
+    _write_json(perf_dir / "after_model-a-4b.json", _probe("after_model-a-4b", after))
+    _write_json(perf_dir / "after_other-9b.json", _probe("after_other-9b", before))
+    warmup = {"label": "after_warmup_tiny-4b", "cold_summary": {}, "warm": []}
+    warmup["cold"] = [
+        {"scenario": "S2", "turn": 1, "action": "ABSTAIN", "latency_s": 10.0},
+        {"scenario": "S4", "turn": 2, "action": "ANSWER", "latency_s": 21.0},
+        {"scenario": "S5", "turn": 1, "action": "ANSWER", "latency_s": 17.0},
+    ]
+    _write_json(perf_dir / "after_warmup_tiny-4b.json", warmup)
+    load = {
+        "levels": [
+            {
+                "users": 2,
+                "requests": 3,
+                "errors": 0,
+                "p50_ms": 30.0,
+                "by_kind": {"emergency": {"p50_ms": 21.0}},
+            }
+        ],
+        "requests": [
+            {"level": 2, "kind": "emergency", "latency_ms": 21.0},
+            {"level": 2, "kind": "general", "latency_ms": 12000.0},
+            {"level": 2, "kind": "personal", "latency_ms": 16000.0},
+        ],
+    }
+    _write_json(perf_dir / "load_test.json", load)
+    perf = deck_data.perf_comparison(fixture_root)
+    assert perf["model"] == "tiny:4b" and perf["deployed_model"] == "model-a:4b"
+    assert perf["files"]["after"].endswith("after_tiny-4b.json")  # same model, not another one
+    row = perf["turns"]["S5-t1"]
+    assert row["speedup"] == pytest.approx(2.0) and row["change_s"] == pytest.approx(-15.0)
+    assert perf["turns"]["S2-t1"]["warmup_cold"] == 10.0
+    assert perf["gate3_ms_p50"] == 500.0
+    prs, log = _build(fixture_root, tmp_path)
+    text = _texts(_slide(prs, log, "performance"))
+    assert "30.0 → 15.0" in text and "2.0× faster" in text
+    assert "5.0 → 8.0" in text and "1.6× slower" in text  # slower paths are shown, not hidden
+    assert "[PENDING" not in text
+    assert "24.3 to 21.0\u00a0s" in text  # warm-up also shortens the first clinical ANSWER (Gate 3)
+    # load test: median and maximum of the messages that need the LLM, fast paths apart
+    assert "14.0" in text and "16.0" in text and "21 ms" in text and "0 / 3" in text
+    assert _slide_record(log, "performance")["state"] == "data"
+    assert log["layout_issues"] == [], log["layout_issues"]
+
+
+def test_gate3_withdrawal_counts(tmp_path: Path):
+    runs = tmp_path / "evaluation" / "results" / "runs"
+    judg = tmp_path / "evaluation" / "results" / "judgments" / "llm"
+    runs.mkdir(parents=True)
+    judg.mkdir(parents=True)
+
+    def rec(item: str, n_claims: int, n_bad: int, attempt: str = "a1") -> dict:
+        return {
+            "item_id": item,
+            "turn_index": 0,
+            "n_turns": 1,
+            "attempt_id": attempt,
+            "split": "test",
+            "action": "ANSWER",
+            "error": None,
+            "explanation": {
+                "gate3": {
+                    "status": "ok",
+                    "available": True,
+                    "n_claims": n_claims,
+                    "n_unsupported": n_bad,
+                }
+            },
+        }
+
+    records = [rec("HB-1", 3, 3, "old"), rec("HB-1", 3, 3), rec("HB-2", 2, 2), rec("HB-3", 4, 1)]
+    (runs / "V2.jsonl").write_text("\n".join(json.dumps(r) for r in records), encoding="utf-8")
+    judgments = [
+        {
+            "item_id": "HB-1",
+            "turn_index": 0,
+            "attempt_id": "a1",
+            "split": "test",
+            "claims": [{"label": "UNSUPPORTED"}],
+        },
+        {
+            "item_id": "HB-2",
+            "turn_index": 0,
+            "attempt_id": "a1",
+            "split": "test",
+            "claims": [{"label": "SUPPORTED"}],
+        },
+    ]
+    (judg / "V2.jsonl").write_text("\n".join(json.dumps(j) for j in judgments), encoding="utf-8")
+    out = deck_data.gate3_withdrawal(tmp_path)
+    assert out == {
+        "condition": "V2",
+        "checked": 3,
+        "turns": 2,
+        "hallucinated": 1,
+        "source": "evaluation/results/runs/V2.jsonl + evaluation/results/judgments/llm/V2.jsonl",
+    }
+
+
+def test_gate3_withdrawal_counts_with_paired_c5(tmp_path: Path):
+    """With C5 present: fully unsupported drafts sent as written, and citation downgrades."""
+    runs = tmp_path / "evaluation" / "results" / "runs"
+    judg = tmp_path / "evaluation" / "results" / "judgments" / "llm"
+    runs.mkdir(parents=True)
+    judg.mkdir(parents=True)
+
+    def rec(item: str, *, text: str, g3: dict | None, downgraded: bool, action: str) -> dict:
+        explanation: dict = {
+            "citation_validation": {"valid": 0 if downgraded else 1, "downgraded": downgraded}
+        }
+        if g3 is not None:
+            explanation["gate3"] = {"status": "ok", "available": True, **g3}
+        return {
+            "item_id": item,
+            "turn_index": 0,
+            "n_turns": 1,
+            "attempt_id": "a1",
+            "split": "test",
+            "action": action,
+            "error": None,
+            "response_text": text,
+            "explanation": explanation,
+        }
+
+    v2 = [
+        # fully unsupported, delivered exactly as C5 (unchanged)
+        rec(
+            "HB-1",
+            text="draft one",
+            downgraded=False,
+            action="ANSWER",
+            g3={"n_claims": 2, "n_unsupported": 2, "removed_sentences_count": 2},
+        ),
+        # fully unsupported, reduced to non-claim sentences, then downgraded by the citation rule
+        rec(
+            "HB-2",
+            text="greeting only",
+            downgraded=True,
+            action="GENERALIZE",
+            g3={"n_claims": 3, "n_unsupported": 3, "removed_sentences_count": 3},
+        ),
+        # partly supported, cited sentences stripped -> downgraded although C5 kept ANSWER
+        rec(
+            "HB-3",
+            text="short",
+            downgraded=True,
+            action="GENERALIZE",
+            g3={"n_claims": 4, "n_unsupported": 1, "removed_sentences_count": 1},
+        ),
+        # partly supported, nothing downgraded
+        rec(
+            "HB-4",
+            text="kept",
+            downgraded=False,
+            action="ANSWER",
+            g3={"n_claims": 4, "n_unsupported": 1, "removed_sentences_count": 1},
+        ),
+    ]
+    c5 = [
+        rec("HB-1", text="draft one", downgraded=False, action="ANSWER", g3=None),
+        rec("HB-2", text="draft two", downgraded=False, action="ANSWER", g3=None),
+        rec("HB-3", text="long", downgraded=False, action="ANSWER", g3=None),
+        rec("HB-4", text="long", downgraded=False, action="ANSWER", g3=None),
+    ]
+    (runs / "V2.jsonl").write_text("\n".join(json.dumps(r) for r in v2), encoding="utf-8")
+    (runs / "C5.jsonl").write_text("\n".join(json.dumps(r) for r in c5), encoding="utf-8")
+    (judg / "V2.jsonl").write_text("", encoding="utf-8")
+    out = deck_data.gate3_withdrawal(tmp_path)
+    assert out is not None
+    assert (out["checked"], out["turns"], out["hallucinated"]) == (4, 2, 0)
+    assert out["unchanged"] == 1
+    assert out["citation_downgrades"] == 2
+    assert out["source"].endswith("evaluation/results/runs/C5.jsonl")
+
+
+def test_newer_raw_capture_beats_a_stale_curated_copy(tmp_path: Path):
+    import os
+
+    curated = tmp_path / "report" / "screenshots" / "answer_citations.png"
+    raw = (
+        tmp_path
+        / "report"
+        / "screenshots"
+        / "raw"
+        / "desktop_light"
+        / "answer-sources-desktop-light.png"
+    )
+    _write_png(curated)
+    _write_png(raw)
+    os.utime(curated, (1_000_000, 1_000_000))
+    assert deck_data.screenshots(tmp_path)["answer_citations"].endswith(
+        "raw/desktop_light/answer-sources-desktop-light.png"
+    )
+    os.utime(curated, None)  # a fresh curated copy wins again
+    os.utime(raw, (1_000_000, 1_000_000))
+    assert deck_data.screenshots(tmp_path)["answer_citations"] == (
+        "report/screenshots/answer_citations.png"
     )
 
 

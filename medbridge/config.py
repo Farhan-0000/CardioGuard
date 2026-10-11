@@ -83,8 +83,9 @@ class Settings(BaseSettings):
     # V2 — post-generation Grounding Verifier ("Gate 3"). Enabled by default after the
     # hallucination study (ADL-052): V2 reduced the test-split hallucination rate vs C5
     # (21.3% vs 37.2%, McNemar p < 0.0001). Thresholds are the dev-split calibration in
-    # evaluation/results/calibration.json (tau = 1.0: strip unsupported sentences only,
-    # never withdraw an answer).
+    # evaluation/results/calibration.json (tau = 1.0: strip unsupported sentences from a partly
+    # supported draft; a draft whose every claim is unsupported is regenerated as GENERALIZE
+    # or withdrawn to ABSTAIN, ADL-061).
     GROUNDING_VERIFIER_ENABLED: bool = True
     GROUNDING_NLI_MODEL: str = "cross-encoder/nli-MiniLM2-L6-H768"
     GROUNDING_ENTAILMENT_THRESHOLD: float = 0.2

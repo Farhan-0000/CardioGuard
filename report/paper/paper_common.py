@@ -17,7 +17,9 @@ paper needs on top of it:
   and ``[@sec:name]`` "Section III" (LaTeX: ``Fig.~\\ref{fig:name}`` ...). Generated tables
   get the label ``tab:<KEY>`` unless their caption sets one. Adding ``.wide`` to a label
   (``{#tab:name .wide}``) sets a figure or table across both columns; figures wider than
-  3.6 in and tables that cannot fit one column are set across both columns automatically.
+  3.6 in and tables that cannot fit one column (or have seven or more columns) are set
+  across both columns automatically, unless the table label carries ``.column``
+  (``{#tab:name .column}``: kept in one column, for a compact table checked by hand).
 * **Numbering** in IEEE style: sections I, II, ... (subsections A, B, ...), figures 1, 2, ...,
   tables I, II, ..., algorithms 1, 2, ...
 * **Citations** are numbered in order of first appearance in the body (IEEE). Only keys of
@@ -38,6 +40,8 @@ REPORT_DIR = PAPER_DIR.parent
 REPO_ROOT = REPORT_DIR.parent
 if str(REPORT_DIR) not in sys.path:
     sys.path.insert(0, str(REPORT_DIR))
+if str(PAPER_DIR) not in sys.path:
+    sys.path.insert(0, str(PAPER_DIR))
 
 from lib.content import (  # noqa: E402
     Algorithm,
@@ -55,7 +59,7 @@ from lib.content import (  # noqa: E402
 )
 from lib.references import CitationRegistry, load_references  # noqa: E402
 from lib.results_context import ResultsContext  # noqa: E402
-from lib.tables import DEFAULT_CAPTIONS, generate  # noqa: E402
+from paper_tables import DEFAULT_CAPTIONS, generate  # noqa: E402  (paper keys, then report keys)
 
 DEFAULT_CONTENT = PAPER_DIR / "content"
 
@@ -137,6 +141,8 @@ def table_min_width_in(table: Table, font_size: float = 7.5) -> float:
 def table_is_wide(table: Table, classes: set[str] | None = None) -> bool:
     if classes and "wide" in classes:
         return True
+    if classes and "column" in classes:  # the author checked that it fits one column
+        return False
     ncols = max(len(table.header), max((len(r) for r in table.rows), default=0))
     return ncols >= 7 or table_min_width_in(table) > COLUMN_WIDTH_IN - 0.05
 
@@ -359,7 +365,7 @@ def load_paper(
                 pending = PendingTable(key=block.key, caption=f"{caption} {{#{label}}}")
                 blocks.append(pending)
             else:
-                suffix = " .wide" if "wide" in classes else ""
+                suffix = "".join(f" .{c}" for c in ("wide", "column") if c in classes)
                 table.caption = f"{caption} {{#{label}{suffix}}}"
                 blocks.append(table)
         else:

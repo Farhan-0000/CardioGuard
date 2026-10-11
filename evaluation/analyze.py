@@ -1028,8 +1028,12 @@ def build_tables(summary: dict[str, Any], tables_dir: Path) -> list[Path]:
                 "Supported citation precision %": _pct(
                     m["citations"]["supported_precision"], ci=False
                 ),
+                # same >= 95 % coverage rule as the NLI rates: a partial subset is no result
                 "Supported citation precision (NLI) %": _pct(
-                    m["citations"]["supported_precision_nli"], ci=False
+                    m["citations"]["supported_precision_nli"]
+                    if (m.get("judge_coverage") or {}).get("nli", {}).get("reported", True)
+                    else None,
+                    ci=False,
                 ),
                 "Marker validity %": _pct(m["citations"]["marker_validity"], ci=False),
                 "Latency p50 s": _num(

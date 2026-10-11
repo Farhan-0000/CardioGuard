@@ -130,6 +130,12 @@ TEX_UNICODE: dict[str, str] = {
     "\u00f8": r"\o{}",
     "\u0131": r"\i{}",
 }
+#: Unicode superscripts (p-values such as 5.4×10⁻¹⁶); consecutive ones form one $^{...}$.
+TEX_SUPERSCRIPT: dict[str, str] = {
+    **{sup: str(d) for d, sup in enumerate("⁰¹²³⁴⁵⁶⁷⁸⁹")},
+    "\u207b": "-",
+    "\u207a": "+",
+}
 #: Combining accents -> LaTeX accent commands (for NFD-decomposed Latin letters).
 TEX_ACCENTS: dict[str, str] = {
     "\u0301": "'",
@@ -203,7 +209,19 @@ class Escaper:
         return "?"
 
     def text(self, text: str) -> str:
-        return "".join(self.char(ch) for ch in str(text))
+        out: list[str] = []
+        sup: list[str] = []
+        for ch in str(text):
+            if ch in TEX_SUPERSCRIPT:  # runs such as "10⁻¹⁶" -> 10$^{-16}$
+                sup.append(TEX_SUPERSCRIPT[ch])
+                continue
+            if sup:
+                out.append("$^{" + "".join(sup) + "}$")
+                sup = []
+            out.append(self.char(ch))
+        if sup:
+            out.append("$^{" + "".join(sup) + "}$")
+        return "".join(out)
 
     def ascii_code(self, text: str) -> str:
         out = []
@@ -632,6 +650,22 @@ class LatexRenderer:
         lines += [r"\caption{" + caption + "}" + label, r"\end{" + env + "}", ""]
         self.emit(*lines)
 
+    @staticmethod
+    def _small(t: Table) -> bool:
+        """A generated table with a font size of 7 pt or less (a compact table measured by
+        hand, ``paper_tables.py``) is set in \\scriptsize with natural column widths and,
+        if it is still wider than the column, scaled to fit with \\resizebox."""
+        return bool(t.font_size) and float(t.font_size) <= 7.0
+
+    @staticmethod
+    def _natural_pt(t: Table, ncols: int, char_pt: float, pad_pt: float) -> float:
+        width = 0.0
+        for c in range(ncols):
+            cells = [pc._plain(t.header[c]) if c < len(t.header) else ""]
+            cells += [pc._plain(r[c]) for r in t.rows if c < len(r)]
+            width += max((len(x) for x in cells), default=1) * char_pt + pad_pt
+        return width
+
     def _colspec(self, t: Table, ncols: int, avail_pt: float) -> tuple[str, bool]:
         """Column spec. A table that fits keeps l/c/r columns; otherwise its wrappable
         columns become ``X`` columns of tabularx, sized in proportion to their content."""
@@ -672,19 +706,29 @@ class LatexRenderer:
         header = t.header + [""] * (ncols - len(t.header))
         rows = [r + [""] * (ncols - len(r)) for r in t.rows]
         avail = 516.0 if wide else 252.0
-        spec, tabularx = self._colspec(t, ncols, avail)
+        small = self._small(t)
+        if small:
+            aligns = (t.align + ["l"] * ncols)[:ncols]
+            spec, tabularx = "".join(a if a in "lcr" else "l" for a in aligns), False
+            # \scriptsize Times, \tabcolsep = 2pt
+            resize = self._natural_pt(t, ncols, 3.5, 4.0) > avail
+        else:
+            spec, tabularx = self._colspec(t, ncols, avail)
+            resize = False
         width = r"\textwidth" if wide else r"\columnwidth"
         lines = [r"\begin{" + env + "}[t]", r"\centering"]
         if t.caption or el is not None:
             label = r"\label{" + el.label + "}" if el is not None and el.label else ""
             lines.append(r"\caption{" + self.inline(t.caption or "") + "}" + label)
-        lines.append(r"\footnotesize")
-        lines.append(r"\setlength{\tabcolsep}{4pt}")
+        lines.append(r"\scriptsize" if small else r"\footnotesize")
+        lines.append(r"\setlength{\tabcolsep}{2pt}" if small else r"\setlength{\tabcolsep}{4pt}")
         begin = (
             (r"\begin{tabularx}{" + width + "}{" + spec + "}")
             if tabularx
             else (r"\begin{tabular}{" + spec + "}")
         )
+        if resize:
+            lines.append(r"\resizebox{" + width + "}{!}{%")
         lines += [begin, r"\toprule"]
         lines.append(" & ".join(self.inline(h, markup=t.markup) for h in header) + r" \\")
         lines.append(r"\midrule")
@@ -694,6 +738,8 @@ class LatexRenderer:
                 lines.append(r"\midrule")
             lines.append(" & ".join(cells) + r" \\")
         lines += [r"\bottomrule", r"\end{tabularx}" if tabularx else r"\end{tabular}"]
+        if resize:
+            lines.append("}")
         if t.note:
             lines.append(
                 r"\par\vspace{2pt}{\scriptsize\itshape "

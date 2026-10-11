@@ -94,6 +94,15 @@ PAPER_SIZES: dict[str, dict[str, float]] = {
         "gap": 0.166,
     },
 }
+#: Unicode superscripts (p-values such as 5.4×10⁻¹⁶) -> plain characters in superscript runs.
+_SUPERSCRIPT_MAP: dict[str, str] = {
+    **{sup: str(d) for d, sup in enumerate("⁰¹²³⁴⁵⁶⁷⁸⁹")},
+    "\u207b": "\u2212",
+    "\u207a": "+",
+}
+_SUPERSCRIPT_TABLE = str.maketrans(_SUPERSCRIPT_MAP)
+_SUPERSCRIPT_RUN = re.compile("([" + "".join(_SUPERSCRIPT_MAP) + "]+)")
+
 _HIGHLIGHT_PREFIXES = (
     "[PENDING",
     "[TABLE PENDING",
@@ -333,8 +342,31 @@ class PaperRenderer:
         highlight: bool = False,
         small_caps: bool = False,
         font: str | None = None,
+        superscript: bool = False,
     ) -> Any:
+        if not superscript and _SUPERSCRIPT_RUN.search(text):
+            # "5.4×10⁻¹⁶": Unicode superscripts become real superscript runs (fonts such
+            # as Times New Roman lack some of those glyphs)
+            run = None
+            for part in _SUPERSCRIPT_RUN.split(text):
+                if not part:
+                    continue
+                sup = part[0] in _SUPERSCRIPT_MAP
+                run = self._run(
+                    para,
+                    part.translate(_SUPERSCRIPT_TABLE) if sup else part,
+                    bold=bold,
+                    italic=italic,
+                    size=size,
+                    highlight=highlight,
+                    small_caps=small_caps,
+                    font=font,
+                    superscript=sup,
+                )
+            return run
         run = para.add_run(text)
+        if superscript:
+            run.font.superscript = True
         if bold:
             run.bold = True
         if italic:
@@ -589,13 +621,20 @@ class PaperRenderer:
         ncols = max(len(t.header), max((len(r) for r in t.rows), default=0))
         header = t.header + [""] * (ncols - len(t.header))
         rows = [r + [""] * (ncols - len(r)) for r in t.rows]
-        size = 8.0 if ncols <= 5 else 7.5 if ncols <= 7 else 7.0
+        size = t.font_size or (8.0 if ncols <= 5 else 7.5 if ncols <= 7 else 7.0)
         table = self.doc.add_table(rows=1 + len(rows), cols=ncols)
-        widths = dh.compute_column_widths(
-            header, rows, total=self.avail, weights=t.col_widths, font_size=size, padding=0.1
-        )
+        compact = bool(t.font_size) and bool(t.col_widths) and len(t.col_widths) == ncols
+        if compact:
+            # a generated table with its own font size and column weights (paper_tables.py)
+            # was measured by hand: use the weights as they are, with narrow cell margins
+            widths = [w * self.avail / sum(t.col_widths) for w in t.col_widths]
+        else:
+            widths = dh.compute_column_widths(
+                header, rows, total=self.avail, weights=t.col_widths, font_size=size, padding=0.1
+            )
         dh.set_column_widths(table, widths)
-        dh.set_cell_margins(table, top=20, bottom=20, left=50, right=50)
+        side = 30 if compact else 50
+        dh.set_cell_margins(table, top=20, bottom=20, left=side, right=side)
         tbl_pr = table._tbl.tblPr
         borders = dh.get_or_add_ordered(tbl_pr, "tblBorders", dh.TBLPR_ORDER)
         for edge, val, sz in (
