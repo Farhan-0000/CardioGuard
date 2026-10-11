@@ -1,2 +1,47 @@
 
 [2026-10-11 17:57:11] === UI screenshots ===
+saved report/screenshots/raw/desktop_light/consent-desktop-light.png
+saved report/screenshots/raw/desktop_light/welcome-desktop-light.png
+saved report/screenshots/raw/desktop_light/streaming-desktop-light.png
+saved report/screenshots/raw/desktop_light/answer-sources-desktop-light.png
+saved report/screenshots/raw/desktop_light/why-expanded-desktop-light.png
+saved report/screenshots/raw/desktop_light/softask-desktop-light.png
+saved report/screenshots/raw/desktop_light/escalate-desktop-light.png
+saved report/screenshots/raw/desktop_light/abstain-desktop-light.png
+saved report/screenshots/raw/desktop_light/context-desktop-light.png
+saved report/screenshots/raw/desktop_light/dashboard-login-desktop-light.png
+saved report/screenshots/raw/desktop_light/dashboard-desktop-light.png
+saved report/screenshots/raw/desktop_dark/consent-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/welcome-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/streaming-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/answer-sources-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/why-expanded-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/softask-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/escalate-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/abstain-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/context-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/dashboard-login-desktop-dark.png
+saved report/screenshots/raw/desktop_dark/dashboard-desktop-dark.png
+saved report/screenshots/raw/mobile_light/consent-mobile-light.png
+saved report/screenshots/raw/mobile_light/welcome-mobile-light.png
+saved report/screenshots/raw/mobile_light/streaming-mobile-light.png
+saved report/screenshots/raw/mobile_light/answer-sources-mobile-light.png
+saved report/screenshots/raw/mobile_light/why-expanded-mobile-light.png
+saved report/screenshots/raw/mobile_light/softask-mobile-light.png
+saved report/screenshots/raw/mobile_light/escalate-mobile-light.png
+saved report/screenshots/raw/mobile_light/abstain-mobile-light.png
+saved report/screenshots/raw/mobile_light/context-mobile-light.png
+saved report/screenshots/raw/mobile_light/dashboard-mobile-light.png
+saved report/screenshots/raw/mobile_dark/consent-mobile-dark.png
+saved report/screenshots/raw/mobile_dark/welcome-mobile-dark.png
+saved report/screenshots/raw/mobile_dark/streaming-mobile-dark.png
+saved report/screenshots/raw/mobile_dark/answer-sources-mobile-dark.png
+saved report/screenshots/raw/mobile_dark/why-expanded-mobile-dark.png
+saved report/screenshots/raw/mobile_dark/softask-mobile-dark.png
+saved report/screenshots/raw/mobile_dark/escalate-mobile-dark.png
+saved report/screenshots/raw/mobile_dark/abstain-mobile-dark.png
+saved report/screenshots/raw/mobile_dark/context-mobile-dark.png
+saved report/screenshots/raw/mobile_dark/dashboard-mobile-dark.png
+scripts/run_post_study.sh: line 39: 88441 Terminated: 15          LLM_MODEL="$1" OLLAMA_BASE_URL="$APP_OLLAMA" RATE_LIMIT_PER_MINUTE="${RATE_LIMIT:-30}" nohup "$PY" -m uvicorn medbridge.main:app --host 127.0.0.1 --port "$PORT" > "evaluation/results/logs/uvicorn_post_$(date +%H%M%S).log" 2>&1
+
+[2026-10-11 18:04:47] === post-study steps complete: screenshots ===
