@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T10:38:27+00:00",
+  "generated_at": "2026-10-11T12:10:28+00:00",
   "split": "test",
   "unit": "item-turn",
   "conditions": [
@@ -230,6 +230,20 @@
       "n_errors": 0,
       "n_degraded_excluded": 1,
       "n_items": 197,
+      "judge_coverage": {
+        "llm": {
+          "judged": 236,
+          "valid": 238,
+          "fraction": 0.9916,
+          "reported": true
+        },
+        "nli": {
+          "judged": 236,
+          "valid": 238,
+          "fraction": 0.9916,
+          "reported": true
+        }
+      },
       "llm": {
         "n_judged": 236,
         "hallucination": {
@@ -621,6 +635,20 @@
       "n_errors": 0,
       "n_degraded_excluded": 0,
       "n_items": 198,
+      "judge_coverage": {
+        "llm": {
+          "judged": 239,
+          "valid": 239,
+          "fraction": 1.0,
+          "reported": true
+        },
+        "nli": {
+          "judged": 239,
+          "valid": 239,
+          "fraction": 1.0,
+          "reported": true
+        }
+      },
       "llm": {
         "n_judged": 239,
         "hallucination": {
@@ -1012,6 +1040,20 @@
       "n_errors": 0,
       "n_degraded_excluded": 0,
       "n_items": 198,
+      "judge_coverage": {
+        "llm": {
+          "judged": 239,
+          "valid": 239,
+          "fraction": 1.0,
+          "reported": true
+        },
+        "nli": {
+          "judged": 239,
+          "valid": 239,
+          "fraction": 1.0,
+          "reported": true
+        }
+      },
       "llm": {
         "n_judged": 239,
         "hallucination": {
@@ -1403,6 +1445,20 @@
       "n_errors": 0,
       "n_degraded_excluded": 0,
       "n_items": 198,
+      "judge_coverage": {
+        "llm": {
+          "judged": 239,
+          "valid": 239,
+          "fraction": 1.0,
+          "reported": true
+        },
+        "nli": {
+          "judged": 76,
+          "valid": 239,
+          "fraction": 0.318,
+          "reported": false
+        }
+      },
       "llm": {
         "n_judged": 239,
         "hallucination": {
@@ -1483,58 +1539,7 @@
           }
         }
       },
-      "nli": {
-        "n_judged": 76,
-        "hallucination": {
-          "k": 73,
-          "n": 76,
-          "rate": 0.9605263157894737,
-          "low": 0.8902521225345447,
-          "high": 0.9864853649054605
-        },
-        "hallucination_given_claims": {
-          "k": 73,
-          "n": 75,
-          "rate": 0.9733333333333334,
-          "low": 0.9078851181224086,
-          "high": 0.9926563109938686
-        },
-        "claims_total": 703,
-        "claims_per_response": 9.25,
-        "claim_labels": {
-          "SUPPORTED": 432,
-          "UNSUPPORTED": 65,
-          "CONTRADICTED": 206
-        },
-        "unsupported_claim_ratio": {
-          "estimate": 0.38549075391180654,
-          "low": 0.34332425068119893,
-          "high": 0.4283814071331124
-        },
-        "unsafe_answer": {
-          "k": 0,
-          "n": 0,
-          "rate": null,
-          "low": null,
-          "high": null
-        },
-        "hallucination_by_category": {
-          "answerable_complete": {
-            "k": 48,
-            "n": 51,
-            "rate": 0.9411764705882353,
-            "low": 0.8407537395119957,
-            "high": 0.9797933605775353
-          },
-          "answerable_missing_context": {
-            "k": 25,
-            "n": 25,
-            "rate": 1.0,
-            "low": 0.8668077490609515,
-            "high": 1.0
-          }
-        }
-      },
+      "nli": null,
       "behaviour_distribution": {
         "ANSWERED_SPECIFIC": 59,
         "GENERAL_INFO": 73,
@@ -1766,6 +1771,20 @@
       "n_errors": 0,
       "n_degraded_excluded": 0,
       "n_items": 198,
+      "judge_coverage": {
+        "llm": {
+          "judged": 239,
+          "valid": 239,
+          "fraction": 1.0,
+          "reported": true
+        },
+        "nli": {
+          "judged": 0,
+          "valid": 239,
+          "fraction": 0.0,
+          "reported": false
+        }
+      },
       "llm": {
         "n_judged": 239,
         "hallucination": {
@@ -2176,6 +2195,20 @@
       "n_errors": 0,
       "n_degraded_excluded": 0,
       "n_items": 198,
+      "judge_coverage": {
+        "llm": {
+          "judged": 239,
+          "valid": 239,
+          "fraction": 1.0,
+          "reported": true
+        },
+        "nli": {
+          "judged": 0,
+          "valid": 239,
+          "fraction": 0.0,
+          "reported": false
+        }
+      },
       "llm": {
         "n_judged": 239,
         "hallucination": {
@@ -2586,6 +2619,20 @@
       "n_errors": 0,
       "n_degraded_excluded": 0,
       "n_items": 198,
+      "judge_coverage": {
+        "llm": {
+          "judged": 239,
+          "valid": 239,
+          "fraction": 1.0,
+          "reported": true
+        },
+        "nli": {
+          "judged": 0,
+          "valid": 239,
+          "fraction": 0.0,
+          "reported": false
+        }
+      },
       "llm": {
         "n_judged": 239,
         "hallucination": {
@@ -2996,6 +3043,20 @@
       "n_errors": 0,
       "n_degraded_excluded": 1,
       "n_items": 198,
+      "judge_coverage": {
+        "llm": {
+          "judged": 238,
+          "valid": 238,
+          "fraction": 1.0,
+          "reported": true
+        },
+        "nli": {
+          "judged": 0,
+          "valid": 238,
+          "fraction": 0.0,
+          "reported": false
+        }
+      },
       "llm": {
         "n_judged": 238,
         "hallucination": {
@@ -3406,6 +3467,20 @@
       "n_errors": 0,
       "n_degraded_excluded": 0,
       "n_items": 198,
+      "judge_coverage": {
+        "llm": {
+          "judged": 239,
+          "valid": 239,
+          "fraction": 1.0,
+          "reported": true
+        },
+        "nli": {
+          "judged": 0,
+          "valid": 239,
+          "fraction": 0.0,
+          "reported": false
+        }
+      },
       "llm": {
         "n_judged": 239,
         "hallucination": {
@@ -3816,6 +3891,20 @@
       "n_errors": 0,
       "n_degraded_excluded": 1,
       "n_items": 198,
+      "judge_coverage": {
+        "llm": {
+          "judged": 238,
+          "valid": 238,
+          "fraction": 1.0,
+          "reported": true
+        },
+        "nli": {
+          "judged": 0,
+          "valid": 238,
+          "fraction": 0.0,
+          "reported": false
+        }
+      },
       "llm": {
         "n_judged": 238,
         "hallucination": {
@@ -5182,20 +5271,8 @@
             "low": 0.5005847591462179,
             "high": 0.7285055300626205
           },
-          "hallucination_nli": {
-            "k": 73,
-            "n": 76,
-            "rate": 0.9605263157894737,
-            "low": 0.8902521225345447,
-            "high": 0.9864853649054605
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 25,
             "n": 66,
@@ -5228,20 +5305,8 @@
             "low": 0.5311216021303434,
             "high": 0.7552412593807046
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 13,
             "n": 66,
@@ -5274,20 +5339,8 @@
             "low": 0.09569583347617375,
             "high": 0.27430587119952043
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 55,
             "n": 66,
@@ -5320,20 +5373,8 @@
             "low": 0.08443636982671272,
             "high": 0.25692904869787664
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 46,
             "n": 66,
@@ -5366,20 +5407,8 @@
             "low": 0.07343320265668933,
             "high": 0.2392959297167952
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 47,
             "n": 66,
@@ -5412,20 +5441,8 @@
             "low": 0.05233347255479488,
             "high": 0.20312308751648012
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 49,
             "n": 66,
@@ -5458,20 +5475,8 @@
             "low": 0.04233297507051134,
             "high": 0.18448729884965878
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 50,
             "n": 66,
@@ -6148,20 +6153,8 @@
             "low": 0.47980918511657444,
             "high": 0.7146808848095354
           },
-          "hallucination_nli": {
-            "k": 69,
-            "n": 72,
-            "rate": 0.9583333333333334,
-            "low": 0.8845072325868389,
-            "high": 0.9857291925330748
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 25,
             "n": 63,
@@ -6194,20 +6187,8 @@
             "low": 0.5114870970152784,
             "high": 0.7428460713496347
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 13,
             "n": 63,
@@ -6240,20 +6221,8 @@
             "low": 0.08857092396514156,
             "high": 0.2681157678177255
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 53,
             "n": 63,
@@ -6286,20 +6255,8 @@
             "low": 0.07701948334720692,
             "high": 0.24974565921625858
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 44,
             "n": 63,
@@ -6332,20 +6289,8 @@
             "low": 0.07701948334720692,
             "high": 0.24974565921625858
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 44,
             "n": 63,
@@ -6378,20 +6323,8 @@
             "low": 0.04438348427689201,
             "high": 0.19261701062836892
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 47,
             "n": 63,
@@ -6424,20 +6357,8 @@
             "low": 0.04438348427689201,
             "high": 0.19261701062836892
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 47,
             "n": 63,
@@ -7662,20 +7583,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -7708,20 +7617,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -7754,20 +7651,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -7800,20 +7685,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -7846,20 +7719,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -7892,20 +7753,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -8325,20 +8174,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 25,
-            "n": 25,
-            "rate": 1.0,
-            "low": 0.8668077490609515,
-            "high": 1.0
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -8371,20 +8208,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -8417,20 +8242,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -8463,20 +8276,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -8509,20 +8310,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -8555,20 +8344,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -8601,20 +8378,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -9034,20 +8799,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -9080,20 +8833,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -9126,20 +8867,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -9172,20 +8901,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -9218,20 +8935,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -9264,20 +8969,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -9310,20 +9003,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -9743,20 +9424,8 @@
             "low": 0.6939599725535115,
             "high": 0.9168408335360192
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 7,
             "n": 42,
@@ -9789,20 +9458,8 @@
             "low": 0.5893126929422804,
             "high": 0.8469735971216702
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 3,
             "n": 42,
@@ -9835,20 +9492,8 @@
             "low": 0.1530264028783298,
             "high": 0.4106873070577196
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 31,
             "n": 42,
@@ -9881,20 +9526,8 @@
             "low": 0.13480964224647127,
             "high": 0.38527543868318304
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 24,
             "n": 42,
@@ -9927,20 +9560,8 @@
             "low": 0.11705799876003031,
             "high": 0.35939845316322905
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 25,
             "n": 42,
@@ -9973,20 +9594,8 @@
             "low": 0.08315916646398075,
             "high": 0.3060400274464885
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 27,
             "n": 42,
@@ -10019,20 +9628,8 @@
             "low": 0.06715967015962647,
             "high": 0.27841089474444775
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 28,
             "n": 42,
@@ -10543,34 +10140,10 @@
         "C0": {
           "n_turns": 24,
           "n_valid": 23,
-          "hallucination_llm": {
-            "k": 17,
-            "n": 21,
-            "rate": 0.8095238095238095,
-            "low": 0.5999943530979508,
-            "high": 0.9233243494723822
-          },
-          "unsafe_llm": {
-            "k": 17,
-            "n": 21,
-            "rate": 0.8095238095238095,
-            "low": 0.5999943530979508,
-            "high": 0.9233243494723822
-          },
-          "hallucination_nli": {
-            "k": 17,
-            "n": 21,
-            "rate": 0.8095238095238095,
-            "low": 0.5999943530979508,
-            "high": 0.9233243494723822
-          },
-          "unsafe_nli": {
-            "k": 17,
-            "n": 21,
-            "rate": 0.8095238095238095,
-            "low": 0.5999943530979508,
-            "high": 0.9233243494723822
-          },
+          "hallucination_llm": null,
+          "unsafe_llm": null,
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 2,
             "n": 21,
@@ -10695,20 +10268,8 @@
             "low": 0.11999366228595004,
             "high": 0.44899444005154004
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 18,
             "n": 24,
@@ -10741,20 +10302,8 @@
             "low": 0.3142742581957335,
             "high": 0.6857257418042665
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 10,
             "n": 24,
@@ -10787,20 +10336,8 @@
             "low": 0.0,
             "high": 0.13797620467498017
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 24,
             "n": 24,
@@ -10833,20 +10370,8 @@
             "low": 0.0,
             "high": 0.13797620467498017
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 22,
             "n": 24,
@@ -10879,20 +10404,8 @@
             "low": 0.0,
             "high": 0.13797620467498017
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 22,
             "n": 24,
@@ -10925,20 +10438,8 @@
             "low": 0.0,
             "high": 0.13797620467498017
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 22,
             "n": 24,
@@ -10971,20 +10472,8 @@
             "low": 0.0,
             "high": 0.13797620467498017
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 22,
             "n": 24,
@@ -11647,20 +11136,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -11693,20 +11170,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -11739,20 +11204,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -11785,20 +11238,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -11831,20 +11272,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -11877,20 +11306,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,
@@ -11923,20 +11340,8 @@
             "low": null,
             "high": null
           },
-          "hallucination_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
-          "unsafe_nli": {
-            "k": 0,
-            "n": 0,
-            "rate": null,
-            "low": null,
-            "high": null
-          },
+          "hallucination_nli": null,
+          "unsafe_nli": null,
           "appropriate_abstention": {
             "k": 0,
             "n": 0,

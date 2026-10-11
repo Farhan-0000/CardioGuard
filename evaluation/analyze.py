@@ -350,12 +350,33 @@ def marker_reference_counts(outcome: TurnOutcome) -> tuple[int, int]:
     return int(valid or 0), int(cv.get("stripped", 0) or 0)
 
 
+#: A judge's per-condition metrics are reported only when it judged at least this share of the
+#: condition's valid turns; a partial, non-random subset (e.g. an NLI run stopped early) would
+#: otherwise be presented as a whole-condition rate. Agreement still uses every paired claim.
+MIN_JUDGE_COVERAGE = 0.95
+
+
+def judge_coverage(valid: Sequence[TurnOutcome], judge: str) -> dict[str, Any]:
+    """How many of the condition's valid turns this judge scored."""
+    judged = sum(1 for o in valid if o.claims.get(judge) is not None)
+    fraction = judged / len(valid) if valid else 0.0
+    return {
+        "judged": judged,
+        "valid": len(valid),
+        "fraction": round(fraction, 4),
+        "reported": bool(judged) and fraction >= MIN_JUDGE_COVERAGE,
+    }
+
+
 def judge_metrics(
     valid: Sequence[TurnOutcome], judge: str, n_boot: int, seed: int
 ) -> dict[str, Any] | None:
-    """Claim-level metrics of one judge for one condition (None when the judge has no data)."""
+    """Claim-level metrics of one judge for one condition.
+
+    None when the judge has no data or covered less than ``MIN_JUDGE_COVERAGE`` of the turns.
+    """
     judged = [o for o in valid if o.claims.get(judge) is not None]
-    if not judged:
+    if not judged or not judge_coverage(valid, judge)["reported"]:
         return None
     halluc = [int(o.hallucinated(judge) or 0) for o in judged]
     with_claims = [o for o in judged if (o.n_claims(judge) or 0) > 0]
@@ -407,6 +428,7 @@ def condition_metrics(
         "n_degraded_excluded": sum(1 for o in rows if o.excluded),
         "n_items": len({o.item_id for o in valid}),
     }
+    out["judge_coverage"] = {judge: judge_coverage(valid, judge) for judge in JUDGES}
     for judge in JUDGES:
         out[judge] = judge_metrics(valid, judge, n_boot, seed)
 
@@ -706,6 +728,10 @@ def compact_metrics(rows: Sequence[TurnOutcome]) -> dict[str, Any]:
     out: dict[str, Any] = {"n_turns": len(rows), "n_valid": len(valid)}
     for judge in JUDGES:
         judged = [o for o in valid if o.claims.get(judge) is not None]
+        if not judge_coverage(valid, judge)["reported"]:
+            out[f"hallucination_{judge}"] = None
+            out[f"unsafe_{judge}"] = None
+            continue
         unsafe = [u for u in (o.unsafe(judge) for o in judged) if u is not None]
         out[f"hallucination_{judge}"] = mx.proportion(
             sum(int(o.hallucinated(judge) or 0) for o in judged), len(judged)
