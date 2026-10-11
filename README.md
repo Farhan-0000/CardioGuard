@@ -479,25 +479,25 @@ Source: `reports/performance/after_gemma3-4b.json`, `reports/performance/after_w
 
 ### Test suite
 
-- Current: 3050 passed, 0 failed, 1 skipped of 3051 collected, exit code 0 (run of 2026-10-10, `reports/test_summary.json`); line coverage 93.0% (`reports/tests/coverage.json`).
+- Current: 3474 passed, 0 failed, 1 skipped of 3475 collected, exit code 0 (run of 2026-10-11, `reports/test_summary.json`); line coverage 93.1% (`reports/tests/coverage.json`).
 - Received version (`fad6fea`): 5 failed, 480 passed, 12 warnings in 98.82s (0:01:38) (`reports/baseline/pytest_baseline.txt`).
 
 | Package | Line coverage |
 | --- | ---: |
-| evaluation | 91.1% |
+| evaluation | 91.2% |
 | medbridge | 92.0% |
 | medbridge/ai | 97.8% |
 | medbridge/api | 97.8% |
-| medbridge/core | 97.4% |
+| medbridge/core | 97.5% |
 | medbridge/db | 97.8% |
 | medbridge/features | 97.7% |
 | medbridge/frontend | 82.4% |
 | medbridge/ingestion | 92.4% |
-| medbridge/nlp | 99.6% |
+| medbridge/nlp | 99.2% |
 | medbridge/privacy | 97.1% |
 | medbridge/retrieval | 98.9% |
 | medbridge/state | 96.2% |
-| medbridge/web | 65.9% |
+| medbridge/web | 65.6% |
 
 Source: `reports/tests/coverage.json`.
 <!-- RESULTS:END -->
