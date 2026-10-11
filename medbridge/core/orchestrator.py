@@ -398,6 +398,21 @@ def _emergency_record(action: ActionEnum | None, result: Any) -> dict[str, Any]:
     }
 
 
+def _gate3_exceeds(record: dict[str, Any], tau: float) -> bool:
+    """True when Gate 3 must not deliver the (cleaned) draft.
+
+    Either the unsupported fraction is above ``tau``, or every checked claim is unsupported:
+    removing all of them would leave no content, and delivering the original draft would
+    pass exactly the claims the verifier rejected (ADL-061). An unavailable verifier never
+    withdraws a draft.
+    """
+    if not record.get("available", True):
+        return False
+    n_claims = int(record.get("n_claims", 0) or 0)
+    fully_unsupported = n_claims > 0 and int(record.get("n_unsupported", 0) or 0) >= n_claims
+    return fully_unsupported or float(record.get("unsupported_fraction", 0.0)) > tau
+
+
 def _cleaned_text(result: Any, fallback: str) -> str:
     cleaned = getattr(result, "cleaned_text", None)
     if isinstance(cleaned, str) and cleaned.strip():
@@ -1296,7 +1311,7 @@ class PipelineOrchestrator:
         result = await verifier.verify(ctx.draft, ctx.chunks)
         record: dict[str, Any] = {**_gate3_record(result), "threshold": tau, "attempts": 1}
 
-        if record["unsupported_fraction"] <= tau:
+        if not _gate3_exceeds(record, tau):
             ctx.draft = _cleaned_text(result, ctx.draft)
             record.update(action_change=None, removed_sentences_count=record["n_unsupported"])
             ctx.explanation.gate3 = record
@@ -1317,7 +1332,7 @@ class PipelineOrchestrator:
                 "attempts": 2,
                 "initial_unsupported_fraction": record["unsupported_fraction"],
             }
-            if record["unsupported_fraction"] <= tau:
+            if not _gate3_exceeds(record, tau):
                 ctx.final_action = ActionEnum.GENERALIZE
                 ctx.draft = _cleaned_text(second, regenerated)
                 record.update(

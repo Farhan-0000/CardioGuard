@@ -1110,6 +1110,68 @@ async def test_v2_unsupported_generalize_abstains(components, store):
     assert components.response_generator.generate.await_count == 1
 
 
+async def test_v2_production_tau_withdraws_fully_unsupported_answer(components, store):
+    """tau = 1.0 (dev calibration) must still not deliver a draft whose every claim failed."""
+    components.response_generator.generate.side_effect = [
+        ResponseGeneratorOutput(response_text="Unsupported claim [1]."),
+        ResponseGeneratorOutput(response_text="General guidance [2]. Another claim [1]."),
+    ]
+    verifier = verifier_with(
+        grounding(1.0, cleaned="", n_claims=3, n_unsupported=3),
+        grounding(0.5, cleaned="General guidance [2].", n_claims=2, n_unsupported=1),
+    )
+    response = await run(
+        build(components, store, verifier=verifier, GROUNDING_MAX_UNSUPPORTED_FRACTION=1.0),
+        ablation=AblationConfig.preset("V2"),
+    )
+    assert response.action == ActionEnum.GENERALIZE
+    assert response.response_text == "General guidance [1]."
+    assert response.explanation.gate3["action_change"] == "ANSWER->GENERALIZE"
+
+
+async def test_v2_production_tau_abstains_when_regeneration_also_fully_unsupported(
+    components, store
+):
+    components.response_generator.generate.side_effect = [
+        ResponseGeneratorOutput(response_text="Claim [1]."),
+        ResponseGeneratorOutput(response_text="Other claim [1]."),
+    ]
+    verifier = verifier_with(
+        grounding(1.0, n_claims=2, n_unsupported=2), grounding(1.0, n_claims=1, n_unsupported=1)
+    )
+    response = await run(
+        build(components, store, verifier=verifier, GROUNDING_MAX_UNSUPPORTED_FRACTION=1.0),
+        ablation=AblationConfig.preset("V2"),
+    )
+    assert response.action == ActionEnum.ABSTAIN
+    assert response.response_text == ABSTAIN_TEMPLATE
+
+
+async def test_v2_production_tau_keeps_partially_supported_draft(components, store):
+    verifier = verifier_with(
+        grounding(0.75, cleaned="Keep checking at home [1].", n_claims=4, n_unsupported=3)
+    )
+    response = await run(
+        build(components, store, verifier=verifier, GROUNDING_MAX_UNSUPPORTED_FRACTION=1.0),
+        ablation=AblationConfig.preset("V2"),
+    )
+    assert response.action == ActionEnum.ANSWER
+    assert response.response_text == "Keep checking at home [1]."
+    assert components.response_generator.generate.await_count == 1
+
+
+async def test_v2_unavailable_verifier_never_withdraws(components, store):
+    unavailable = grounding(0.0, cleaned="", n_claims=2, n_unsupported=2)
+    unavailable.available = False
+    response = await run(
+        build(components, store, verifier=verifier_with(unavailable),
+              GROUNDING_MAX_UNSUPPORTED_FRACTION=1.0),
+        ablation=AblationConfig.preset("V2"),
+    )
+    assert response.action == ActionEnum.ANSWER
+    assert components.response_generator.generate.await_count == 1
+
+
 async def test_v2_verifier_failure_keeps_draft(components, store):
     verifier = MagicMock()
     verifier.verify = AsyncMock(side_effect=RuntimeError("nli model missing"))
