@@ -5,7 +5,9 @@ Every LLM-backed component (extractor, both gates, generator) is a
 deterministic fake, so no LLM is ever called; the database (encrypted turn
 store, separate ``medbridge_test`` database), the emergency classifier, PII
 redaction, hybrid retrieval over the indexed corpus and the cross-encoder
-reranker are real.
+reranker are real. Gate 3 is off with the fakes, because the fake reply is not
+drawn from the retrieved evidence; it has its own tests (test_grounding_verifier.py,
+test_orchestrator.py).
 
 Covers: emergency fast-path, a two-turn SOFT-ASK → ANSWER conversation with
 state accumulation, the loop-breaker, ABSTAIN template bypass, regeneration,
@@ -31,6 +33,7 @@ from medbridge.ai.schemas.evidence_gate import EvidenceGateOutput
 from medbridge.ai.schemas.extractor import DeltaEvent, ExtractorOutput
 from medbridge.ai.schemas.response_generator import ResponseGeneratorOutput
 from medbridge.api.schemas.enums import ActionEnum, EventTypeEnum
+from medbridge.config import get_settings
 from medbridge.core import emergency_classifier
 from medbridge.core.orchestrator import PipelineOrchestrator
 from medbridge.core.templates import ABSTAIN_TEMPLATE, LOOP_BREAKER_PREFIX
@@ -72,6 +75,11 @@ async def retriever() -> AsyncIterator[HybridRetriever]:
     instance = HybridRetriever()  # fresh client bound to this test's event loop
     yield instance
     await instance.close()
+
+
+def no_gate3() -> Any:
+    """Settings with Gate 3 off (see the module docstring)."""
+    return get_settings().model_copy(update={"GROUNDING_VERIFIER_ENABLED": False})
 
 
 def fake_llm_components() -> dict[str, Any]:
@@ -118,7 +126,9 @@ async def audit_rows(db: AsyncSession, sid: uuid.UUID) -> list[AuditLog]:
 
 async def test_emergency_fast_path_latency_and_persistence(db_session, session_id, retriever):
     components = fake_llm_components()
-    orchestrator = PipelineOrchestrator(hybrid_retriever=retriever, **components)
+    orchestrator = PipelineOrchestrator(
+        hybrid_retriever=retriever, settings=no_gate3(), **components
+    )
 
     start = time.perf_counter()
     assert emergency_classifier.classify(EMERGENCY) == ActionEnum.ESCALATE
@@ -194,7 +204,9 @@ async def test_multi_turn_soft_ask_then_answer(db_session, session_id, retriever
             response_text="Most guidelines aim for below 130/80 mmHg [1]. Combination therapy is common [2]."
         ),
     ]
-    orchestrator = PipelineOrchestrator(hybrid_retriever=retriever, **components)
+    orchestrator = PipelineOrchestrator(
+        hybrid_retriever=retriever, settings=no_gate3(), **components
+    )
 
     first = await orchestrator.process_message(
         session_id, "I'm 58 and my BP was 155/95 this morning.", db=db_session
@@ -255,7 +267,9 @@ async def test_loop_breaker_forces_generalize(db_session, session_id, retriever)
     components["response_generator"].generate.return_value = ResponseGeneratorOutput(
         response_text="Regular home monitoring helps [1]."
     )
-    orchestrator = PipelineOrchestrator(hybrid_retriever=retriever, **components)
+    orchestrator = PipelineOrchestrator(
+        hybrid_retriever=retriever, settings=no_gate3(), **components
+    )
     response = await orchestrator.process_message(
         session_id, "What should I do about my condition?", db=db_session
     )
@@ -281,7 +295,9 @@ async def test_insufficient_evidence_abstains_without_generator(db_session, sess
     components["evidence_gate"].evaluate.return_value = EvidenceGateOutput(
         action="ABSTAIN", evidence_sufficient=False, rationale="Dermatology is out of scope."
     )
-    orchestrator = PipelineOrchestrator(hybrid_retriever=retriever, **components)
+    orchestrator = PipelineOrchestrator(
+        hybrid_retriever=retriever, settings=no_gate3(), **components
+    )
     response = await orchestrator.process_message(
         session_id, "What dose of topical steroid should I use for eczema?", db=db_session
     )
@@ -310,7 +326,9 @@ async def test_regenerate_adds_answer_without_new_user_message(db_session, sessi
         search_query="blood pressure target",
         raw_intent="target",
     )
-    orchestrator = PipelineOrchestrator(hybrid_retriever=retriever, **components)
+    orchestrator = PipelineOrchestrator(
+        hybrid_retriever=retriever, settings=no_gate3(), **components
+    )
     first = await orchestrator.process_message(
         session_id, "My BP is 140/90, what target?", db=db_session
     )

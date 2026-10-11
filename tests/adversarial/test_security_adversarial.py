@@ -36,6 +36,7 @@ from medbridge.ai.context_gate import ContextGate
 from medbridge.ai.evidence_gate import EvidenceGate
 from medbridge.ai.response_generator import ResponseGenerator
 from medbridge.api.schemas.enums import ActionEnum
+from medbridge.config import get_settings
 from medbridge.core.emergency_classifier import classify as classify_emergency
 from medbridge.core.orchestrator import PipelineOrchestrator
 from medbridge.core.templates import ABSTAIN_TEMPLATE, get_template
@@ -212,8 +213,13 @@ def test_fast_path_escalates_despite_injection(wrapper: str) -> None:
 def make_orchestrator(
     llm: RecordingLLM, store: InMemoryTurnStore | None = None
 ) -> PipelineOrchestrator:
-    """Real orchestrator + real prompt builders; the LLM, retrieval and store are stubs."""
+    """Real orchestrator + real prompt builders; the LLM, retrieval and store are stubs.
+
+    Gate 3 is off: it would judge the stub replies against stub evidence, and it has its
+    own tests (test_grounding_verifier.py, test_orchestrator.py).
+    """
     return PipelineOrchestrator(
+        settings=get_settings().model_copy(update={"GROUNDING_VERIFIER_ENABLED": False}),
         context_extractor=ContextExtractor(llm=llm),  # type: ignore[arg-type]
         context_gate=ContextGate(llm=llm),  # type: ignore[arg-type]
         evidence_gate=EvidenceGate(llm=llm),  # type: ignore[arg-type]
