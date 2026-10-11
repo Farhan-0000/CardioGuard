@@ -581,9 +581,11 @@ def test_real_repository_deck_builds_cleanly(tmp_path: Path):
     prs = pptx.Presentation(str(out))
     assert len(prs.slides) == N_SLIDES
     for key in ("aq", "rabbits", "adversarial"):
-        assert key not in log["results_sources"] or "live" in json.dumps(
-            log["results_sources"][key]
-        )
+        source = log["results_sources"].get(key)
+        if source:
+            # Only live-mode benchmark reports may feed the deck (never mock output).
+            text = (bp.REPO_ROOT / source).read_text(encoding="utf-8")[:20000]
+            assert "live" in source or '"live"' in text or "mode: live" in text.lower()
 
 
 @pytest.mark.slow

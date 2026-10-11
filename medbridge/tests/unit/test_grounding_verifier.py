@@ -338,7 +338,7 @@ async def test_real_nli_model_if_cached() -> None:
     name = get_settings().GROUNDING_NLI_MODEL
     if not _model_cached(name):
         pytest.skip(f"{name} is not in the local Hugging Face cache")
-    v = GroundingVerifier(model_name=name)
+    v = GroundingVerifier(model_name=name, threshold=0.5)
     result = await v.verify(
         "Reducing salt intake lowers blood pressure [1]. Eating more salt cures hypertension [1].",
         [{"chunk_text": "Reducing dietary sodium lowers blood pressure in adults with hypertension."}],

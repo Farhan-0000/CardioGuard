@@ -220,6 +220,10 @@ def make_settings(**overrides: Any) -> Any:
         "CITATION_VALIDATION_ENABLED": True,
         "EVIDENCE_GATE_CALIBRATION_ENABLED": False,
         "GROUNDING_VERIFIER_ENABLED": False,
+        # Pin the Gate 3 thresholds the V2 tests exercise (the production defaults are the
+        # dev calibration, tau = 1.0, which never regenerates or withdraws an answer).
+        "GROUNDING_ENTAILMENT_THRESHOLD": 0.5,
+        "GROUNDING_MAX_UNSUPPORTED_FRACTION": 0.34,
         "SOFT_ASK_MAX_COUNT": 2,
         "EXTRACTOR_HISTORY_TURNS": 4,
     }

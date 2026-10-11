@@ -80,11 +80,15 @@ class Settings(BaseSettings):
     EVIDENCE_MIN_RERANK_ANSWER: float = 0.0
     EVIDENCE_MIN_RERANK_ANY: float = -6.0
     EVIDENCE_MIN_ENTITY_COVERAGE: float = 0.0
-    # V2 — post-generation Grounding Verifier ("Gate 3").
-    GROUNDING_VERIFIER_ENABLED: bool = False
+    # V2 — post-generation Grounding Verifier ("Gate 3"). Enabled by default after the
+    # hallucination study (ADL-052): V2 reduced the test-split hallucination rate vs C5
+    # (21.3% vs 37.2%, McNemar p < 0.0001). Thresholds are the dev-split calibration in
+    # evaluation/results/calibration.json (tau = 1.0: strip unsupported sentences only,
+    # never withdraw an answer).
+    GROUNDING_VERIFIER_ENABLED: bool = True
     GROUNDING_NLI_MODEL: str = "cross-encoder/nli-MiniLM2-L6-H768"
-    GROUNDING_ENTAILMENT_THRESHOLD: float = 0.5
-    GROUNDING_MAX_UNSUPPORTED_FRACTION: float = 0.34
+    GROUNDING_ENTAILMENT_THRESHOLD: float = 0.2
+    GROUNDING_MAX_UNSUPPORTED_FRACTION: float = 1.0
     WARMUP_ON_STARTUP: bool = True
 
     # ------------------------------------------------------------------
