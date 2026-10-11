@@ -1547,11 +1547,12 @@ patient context carries over within a chat.
 Backup inputs if a step does not route as hoped:
 
 - ANSWER with citations: `What lifestyle changes help lower blood pressure?` (the ANSWER scene
-  of the report screenshots; its citations survived Gate 3 there). Do **not** rely on the
-  starter card *Understand a reading* (`My blood pressure was 145/92 this morning. Is that
-  high?`) for ANSWER: since Gate 3 is on, it ended as a GENERALIZE with one remaining sentence
-  and no citations (ADL-052). It is a good live example of Gate 3 at work, though.
-- SOFT-ASK: `What dose of amlodipine should I take?`
+  of the report screenshots; its citations survived Gate 3 there). A personal reading such as
+  `My blood pressure was 145/92 this morning. Is that high?` is **not** a safe ANSWER demo:
+  since Gate 3 is on, it ended as a GENERALIZE with one remaining sentence and no citations
+  (ADL-052). It is a good live example of Gate 3 at work, though.
+- SOFT-ASK: `Should I take a higher dose of my BP medicine?` (the SOFT-ASK scene of the report
+  screenshots)
 - ESCALATE: `my face feels droopy on one side and i can't lift my left arm`
 
 ### 12.3 If something goes wrong during the demo

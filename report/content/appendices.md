@@ -7,11 +7,11 @@ This appendix gives detailed results of the hallucination study, generated from 
 
 #* Appendix B: User Interface Screenshots
 
-These screenshots complete those of Section 4.2. They were captured on 11 October 2026 with `python -m medbridge.web.screenshots` against the real backend of the final build (Gate 3 on), in a 1440 × 900 viewport (the dashboard as a full page) and the light theme unless stated, with the synthetic prompts of that script; all viewports and themes are in `report/screenshots/raw/`, and no real patient data is shown. The scripted SOFT-ASK scene ("What dose of amlodipine should I take?") was generalised by the final build: Gate 1 proceeded, as in the first error pattern of Section 4.10. The clarification flow itself passed the smoke test (Table C.2).
+These screenshots complete those of Section 4.2. They were captured on 11 October 2026 with `python -m medbridge.web.screenshots` against the real backend of the final build (Gate 3 on), in a 1440 × 900 viewport (the dashboard as a full page) and the light theme unless stated, with the synthetic prompts of that script; all viewports and themes are in `report/screenshots/raw/`, and no real patient data is shown. In the SOFT-ASK scene ("Should I take a higher dose of my BP medicine?") Gate 1 asks for the current medicines and a recent reading before answering; the clarification flow also passed the smoke test (Table C.2).
 
 [[figure:report/screenshots/welcome.png|Welcome screen with suggested questions and disclaimer|width=3.9]]
 
-[[figure:report/screenshots/soft_ask.png|Dose question of the SOFT-ASK scene, answered with GENERALIZE by the final build|width=3.9]]
+[[figure:report/screenshots/soft_ask.png|Dose question answered with SOFT-ASK: Gate 1 asks for the current medicines and a recent reading|width=3.9]]
 
 [[figure:report/screenshots/abstain.png|ABSTAIN: an out-of-domain question declined by template|width=3.9]]
 

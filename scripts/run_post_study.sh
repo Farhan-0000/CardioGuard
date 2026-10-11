@@ -13,7 +13,8 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 PY="${PY:-.venv-mac/bin/python}"; [ -x "$PY" ] || PY="python"
-STEPS="${STEPS:-rabbits_after adversarial_after perf_after load smoke screenshots annotation perf_table}"
+# annotation is not a default step: re-exporting would overwrite a sheet the team may be filling.
+STEPS="${STEPS:-rabbits_after adversarial_after perf_after load smoke screenshots perf_table}"
 APP_OLLAMA="${APP_OLLAMA:-http://127.0.0.1:11434}"
 PORT=8000
 BASE="http://127.0.0.1:$PORT"

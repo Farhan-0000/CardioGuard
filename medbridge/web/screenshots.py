@@ -24,7 +24,7 @@ from pathlib import Path
 from playwright.sync_api import Browser, Page, sync_playwright
 
 ANSWER_PROMPT = "What lifestyle changes help lower blood pressure?"
-SOFT_ASK_PROMPT = "What dose of amlodipine should I take?"
+SOFT_ASK_PROMPT = "Should I take a higher dose of my BP medicine?"
 ESCALATE_PROMPT = "I have crushing chest pain and my BP is 190/125"
 ABSTAIN_PROMPT = "Tell me about the French Revolution"
 READINGS = [(128, 82), (136, 86), (142, 91), (151, 94), (139, 88), (133, 84)]

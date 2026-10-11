@@ -22,7 +22,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -108,7 +108,7 @@ def main() -> int:
     proc = subprocess.run(cmd, cwd=REPO, check=False)
     elapsed = time.perf_counter() - start
     summary = {
-        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "command": " ".join(cmd[2:]),
         "exit_code": proc.returncode,
         "wall_time_s": round(elapsed, 1),

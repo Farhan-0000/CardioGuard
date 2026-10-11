@@ -32,7 +32,7 @@ CORPUS_MANIFEST_PATH = Path(__file__).resolve().parents[3] / "data" / "corpus_ma
 
 # Starter suggestions shown on the empty chat screen: (card title, prompt sent).
 SUGGESTIONS: tuple[tuple[str, str], ...] = (
-    ("Check a reading", "My blood pressure was 148/92 this morning. Is that high?"),
+    ("What counts as high", "What blood pressure reading counts as high?"),
     ("Lower it naturally", "What lifestyle changes help bring blood pressure down?"),
     ("Medicine side effects", "I take amlodipine 5 mg. What side effects should I watch out for?"),
     ("Targets with diabetes", "What blood pressure target is recommended if I also have diabetes?"),

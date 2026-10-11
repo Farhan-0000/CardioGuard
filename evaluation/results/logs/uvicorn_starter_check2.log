@@ -1,0 +1,505 @@
+INFO:     Started server process [7521]
+INFO:     Waiting for application startup.
+{"host": "[IP]", "port": 8000, "event": "app_startup_begin", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T14:10:31.659605Z"}
+{"event": "Database connection established successfully.", "logger": "medbridge.db.connection", "level": "info", "timestamp": "2026-10-11T14:10:31.700942Z"}
+{"event": "db_initialized_successfully", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T14:10:31.701068Z"}
+{"warmup": true, "event": "app_startup_complete", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T14:10:31.701548Z"}
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:31.831648Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:31.834002Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:32.267973Z"}
+{"event": "No modules.json found for cross-encoder/nli-MiniLM2-L6-H768, initializing a new CrossEncoder model.", "logger": "sentence_transformers.base.model", "level": "info", "timestamp": "2026-10-11T14:10:32.269986Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:32.590176Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:32.841602Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:32.849214Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:33.081801Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:33.614824Z"}
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+{"event": "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.", "logger": "huggingface_hub.utils._http", "level": "warning", "timestamp": "2026-10-11T14:10:33.616190Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:34.144079Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:34.145380Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:34.145811Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:34.156066Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:34.157167Z"}
+INFO:     127.0.0.1:61242 - "GET /health HTTP/1.1" 200 OK
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:34.159135Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:34.631638Z"}
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 13536.25it/s]
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:35.203340Z"}
+INFO:     127.0.0.1:61246 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61247 - "GET /static/css/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61246 - "GET /static/css/base.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61248 - "GET /static/js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61250 - "GET /static/css/print.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61249 - "GET /static/img/logo.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61247 - "GET /static/js/sse.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61250 - "GET /static/js/format.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61246 - "GET /static/js/errors.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61249 - "GET /static/js/normalize.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61248 - "GET /static/js/api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61251 - "GET /static/js/store.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61250 - "GET /static/js/ui/context.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61249 - "GET /static/js/ui/dom.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61247 - "GET /static/js/ui/composer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61246 - "GET /static/js/ui/drawer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61251 - "GET /static/js/ui/icons.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61248 - "GET /static/js/ui/emergency.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61250 - "GET /static/js/ui/overlay.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61249 - "GET /static/js/ui/messages.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61247 - "GET /static/js/ui/theme.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61251 - "GET /static/js/ui/sidebar.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61246 - "GET /static/js/writeguard.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61248 - "GET /static/js/actions.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61250 - "GET /static/js/bp.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61249 - "GET /static/js/ui/bpchart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61247 - "GET /static/js/ui/explanation.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61251 - "GET /static/js/markdown.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61246 - "GET /static/js/ui/stepper.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61249 - "GET /static/js/ui/charts.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61249 - "GET /api/config/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61249 - "GET /static/img/favicon.svg HTTP/1.1" 200 OK
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:35.691984Z"}
+INFO:     127.0.0.1:61260 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61261 - "GET /static/css/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61260 - "GET /static/css/base.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61263 - "GET /static/img/logo.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61262 - "GET /static/js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61264 - "GET /static/css/print.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61260 - "GET /static/js/format.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61263 - "GET /static/js/errors.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61264 - "GET /static/js/api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61262 - "GET /static/js/normalize.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61265 - "GET /static/js/store.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61263 - "GET /static/js/ui/composer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61264 - "GET /static/js/ui/dom.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61260 - "GET /static/js/ui/context.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61261 - "GET /static/js/sse.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61263 - "GET /static/js/ui/icons.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61262 - "GET /static/js/ui/drawer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61265 - "GET /static/js/ui/emergency.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61264 - "GET /static/js/ui/sidebar.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61260 - "GET /static/js/ui/messages.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61261 - "GET /static/js/ui/overlay.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61265 - "GET /static/js/ui/theme.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61260 - "GET /static/js/bp.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61263 - "GET /static/js/writeguard.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61262 - "GET /static/js/actions.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61264 - "GET /static/js/ui/bpchart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61261 - "GET /static/js/markdown.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61265 - "GET /static/js/ui/explanation.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61261 - "GET /static/js/ui/stepper.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61263 - "GET /static/js/ui/charts.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61263 - "GET /api/config/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61263 - "GET /static/img/favicon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61263 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61263 - "POST /api/sessions/e60bc85f-9c79-4e63-8244-336ae65a871f/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:36.253092Z"}
+{"model": "cross-encoder/nli-MiniLM2-L6-H768", "device": "mps", "event": "grounding_model_loaded", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T14:10:36.447803Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:37.081601Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:37.729857Z"}
+{"event": "No modules.json found for cross-encoder/ms-marco-MiniLM-L-6-v2, initializing a new CrossEncoder model.", "logger": "sentence_transformers.base.model", "level": "info", "timestamp": "2026-10-11T14:10:37.731401Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:38.414465Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:39.206389Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:39.334950Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 3462.9, "prompt_tokens": 1435, "completion_tokens": 37, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:10:39.337687Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:39.360010Z"}
+{"mode": "hybrid", "count": 20, "collection": "clinical_guidelines", "event": "retrieval_complete", "logger": "medbridge.retrieval.hybrid_retriever", "level": "info", "timestamp": "2026-10-11T14:10:39.361667Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:39.795897Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:40.284301Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:40.760653Z"}
+{"event": "HTTP Request: HEAD [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:41.088591Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:41.368601Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:41.640179Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:41.724410Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2385.7, "prompt_tokens": 1373, "completion_tokens": 42, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:10:41.726303Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:41.932029Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:42.235029Z"}
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 8896.11it/s]
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:42.557302Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:42.833799Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:43.138041Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 404 Not Found\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:43.437837Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 307 Temporary Redirect\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:43.722897Z"}
+{"event": "HTTP Request: GET [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:43.996747Z"}
+{"model": "cross-encoder/ms-marco-MiniLM-L-6-v2", "device": "mps", "event": "reranker_loaded", "logger": "medbridge.retrieval.reranker", "level": "info", "timestamp": "2026-10-11T14:10:44.104624Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 14.40it/s]
+{"embedder_dense": true, "embedder_sparse": true, "retriever": true, "llm": true, "llm_models": {"qwen3.5:4b": true}, "reranker": true, "nli_verifier": true, "warmup_ms": 12508.7, "event": "pipeline_warmup_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:10:44.210457Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 56.34it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:50.395015Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 6085.3, "prompt_tokens": 3455, "completion_tokens": 102, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:10:50.396650Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:10:58.311252Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 7908.1, "prompt_tokens": 2493, "completion_tokens": 210, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:10:58.312487Z"}
+{"n_claims": 8, "n_unsupported": 4, "available": true, "latency_ms": 645.3, "event": "grounding_verified", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T14:10:58.958508Z"}
+{"session_id": "e60bc85f-9c79-4e63-8244-336ae65a871f", "action": "ANSWER", "latency_ms": 23108, "ablation": "C5", "citations": 2, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:10:58.974810Z"}
+INFO:     127.0.0.1:61263 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61263 - "POST /api/sessions/0fd9159f-cc97-4638-b6e7-4e598a38ac05/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:01.872782Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1369.5, "prompt_tokens": 1438, "completion_tokens": 29, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:01.874884Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:01.908460Z"}
+{"mode": "hybrid", "count": 20, "collection": "clinical_guidelines", "event": "retrieval_complete", "logger": "medbridge.retrieval.hybrid_retriever", "level": "info", "timestamp": "2026-10-11T14:11:01.913935Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.84it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:03.755794Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1881.7, "prompt_tokens": 1376, "completion_tokens": 47, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:03.757706Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:05.701257Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1944.8, "prompt_tokens": 267, "completion_tokens": 64, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:05.703296Z"}
+{"session_id": "0fd9159f-cc97-4638-b6e7-4e598a38ac05", "action": "SOFT-ASK", "latency_ms": 5203, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:11:05.716164Z"}
+INFO:     127.0.0.1:61263 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61263 - "POST /api/sessions/73bc5f1d-1292-4e49-b4ff-64caa1b85291/messages/stream HTTP/1.1" 200 OK
+{"session_id": "73bc5f1d-1292-4e49-b4ff-64caa1b85291", "event": "emergency_fastpath_escalate", "logger": "medbridge.core.orchestrator", "level": "warning", "timestamp": "2026-10-11T14:11:06.542415Z"}
+{"session_id": "73bc5f1d-1292-4e49-b4ff-64caa1b85291", "action": "ESCALATE", "latency_ms": 4, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:11:06.566174Z"}
+INFO:     127.0.0.1:61263 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61263 - "POST /api/sessions/745f828e-6c64-46aa-bae0-ca7ad4f86883/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:08.691880Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1209.9, "prompt_tokens": 1433, "completion_tokens": 26, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:08.693820Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:08.716555Z"}
+{"mode": "hybrid", "count": 20, "collection": "clinical_guidelines", "event": "retrieval_complete", "logger": "medbridge.retrieval.hybrid_retriever", "level": "info", "timestamp": "2026-10-11T14:11:08.717780Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.51it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:10.107797Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1414.4, "prompt_tokens": 1368, "completion_tokens": 32, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:10.109179Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:14.407119Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 4298.8, "prompt_tokens": 3242, "completion_tokens": 41, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:14.409080Z"}
+{"session_id": "745f828e-6c64-46aa-bae0-ca7ad4f86883", "action": "ABSTAIN", "latency_ms": 6932, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:11:14.420866Z"}
+INFO:     127.0.0.1:61263 - "POST /api/sessions/745f828e-6c64-46aa-bae0-ca7ad4f86883/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61263 - "POST /api/sessions/745f828e-6c64-46aa-bae0-ca7ad4f86883/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61263 - "POST /api/sessions/745f828e-6c64-46aa-bae0-ca7ad4f86883/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61263 - "POST /api/sessions/745f828e-6c64-46aa-bae0-ca7ad4f86883/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61263 - "POST /api/sessions/745f828e-6c64-46aa-bae0-ca7ad4f86883/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61263 - "POST /api/sessions/745f828e-6c64-46aa-bae0-ca7ad4f86883/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61263 - "GET /api/sessions/745f828e-6c64-46aa-bae0-ca7ad4f86883/context HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61389 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61389 - "GET /static/css/base.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61392 - "GET /static/img/logo.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61390 - "GET /static/css/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61391 - "GET /static/js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61393 - "GET /static/css/print.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61393 - "GET /static/js/api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61391 - "GET /static/js/errors.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61394 - "GET /static/js/store.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61392 - "GET /static/js/sse.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61389 - "GET /static/js/format.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61390 - "GET /static/js/normalize.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61394 - "GET /static/js/ui/context.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61392 - "GET /static/js/ui/icons.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61390 - "GET /static/js/ui/emergency.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61393 - "GET /static/js/ui/composer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61391 - "GET /static/js/ui/dom.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61389 - "GET /static/js/ui/drawer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61394 - "GET /static/js/ui/messages.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61391 - "GET /static/js/ui/sidebar.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61389 - "GET /static/js/actions.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61392 - "GET /static/js/ui/overlay.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61393 - "GET /static/js/ui/theme.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61390 - "GET /static/js/writeguard.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61394 - "GET /static/js/bp.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61389 - "GET /static/js/markdown.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61393 - "GET /static/js/ui/explanation.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61391 - "GET /static/js/ui/bpchart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61390 - "GET /static/js/ui/stepper.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61390 - "GET /static/js/ui/charts.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61390 - "GET /api/config/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61390 - "GET /static/img/favicon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61397 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61401 - "GET /static/css/print.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61399 - "GET /static/js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61400 - "GET /static/img/logo.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61397 - "GET /static/css/base.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61398 - "GET /static/css/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61397 - "GET /static/js/errors.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61400 - "GET /static/js/normalize.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61402 - "GET /static/js/store.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61398 - "GET /static/js/api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61399 - "GET /static/js/format.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61401 - "GET /static/js/sse.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61398 - "GET /static/js/ui/composer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61397 - "GET /static/js/ui/context.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61402 - "GET /static/js/ui/dom.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61400 - "GET /static/js/ui/drawer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61401 - "GET /static/js/ui/emergency.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61399 - "GET /static/js/ui/icons.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61398 - "GET /static/js/ui/messages.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61402 - "GET /static/js/ui/overlay.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61401 - "GET /static/js/ui/theme.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61397 - "GET /static/js/writeguard.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61400 - "GET /static/js/ui/sidebar.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61399 - "GET /static/js/actions.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61402 - "GET /static/js/markdown.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61398 - "GET /static/js/bp.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61401 - "GET /static/js/ui/bpchart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61397 - "GET /static/js/ui/explanation.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61400 - "GET /static/js/ui/stepper.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61397 - "GET /static/js/ui/charts.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61397 - "GET /api/config/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61397 - "GET /static/img/favicon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61397 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61397 - "POST /api/sessions/32862d6f-33a2-42df-affe-756ed5c91b7e/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:18.881883Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1486.6, "prompt_tokens": 1435, "completion_tokens": 37, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:18.882342Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.40it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:20.568991Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1688.5, "prompt_tokens": 1373, "completion_tokens": 42, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:20.571147Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:26.617770Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 6047.2, "prompt_tokens": 3455, "completion_tokens": 102, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:26.619976Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:32.040573Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 5420.6, "prompt_tokens": 2493, "completion_tokens": 210, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:32.042686Z"}
+{"n_claims": 8, "n_unsupported": 4, "available": true, "latency_ms": 612.1, "event": "grounding_verified", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T14:11:32.655538Z"}
+{"session_id": "32862d6f-33a2-42df-affe-756ed5c91b7e", "action": "ANSWER", "latency_ms": 15264, "ablation": "C5", "citations": 2, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:11:32.663859Z"}
+INFO:     127.0.0.1:61397 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61397 - "POST /api/sessions/203884ea-0192-484d-8665-a33dbb0947f0/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:35.456636Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1286.6, "prompt_tokens": 1438, "completion_tokens": 29, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:35.458487Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 26.21it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:37.247913Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1790.0, "prompt_tokens": 1376, "completion_tokens": 47, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:37.249717Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:38.881754Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1633.2, "prompt_tokens": 267, "completion_tokens": 64, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:38.883707Z"}
+{"session_id": "203884ea-0192-484d-8665-a33dbb0947f0", "action": "SOFT-ASK", "latency_ms": 4720, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:11:38.894548Z"}
+INFO:     127.0.0.1:61397 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61397 - "POST /api/sessions/25bf0075-d69b-4b71-8a94-dc5b0cabddde/messages/stream HTTP/1.1" 200 OK
+{"session_id": "25bf0075-d69b-4b71-8a94-dc5b0cabddde", "event": "emergency_fastpath_escalate", "logger": "medbridge.core.orchestrator", "level": "warning", "timestamp": "2026-10-11T14:11:39.731284Z"}
+{"session_id": "25bf0075-d69b-4b71-8a94-dc5b0cabddde", "action": "ESCALATE", "latency_ms": 4, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:11:39.741201Z"}
+INFO:     127.0.0.1:61397 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61397 - "POST /api/sessions/b73a1ea6-14ea-4ed7-a096-b5f73b5d5d91/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:41.841178Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1192.8, "prompt_tokens": 1433, "completion_tokens": 26, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:41.843233Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 28.13it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:43.254900Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1412.1, "prompt_tokens": 1368, "completion_tokens": 32, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:43.256690Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:11:47.546591Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 4291.7, "prompt_tokens": 3242, "completion_tokens": 41, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:11:47.549629Z"}
+{"session_id": "b73a1ea6-14ea-4ed7-a096-b5f73b5d5d91", "action": "ABSTAIN", "latency_ms": 6905, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:11:47.560565Z"}
+INFO:     127.0.0.1:61397 - "POST /api/sessions/b73a1ea6-14ea-4ed7-a096-b5f73b5d5d91/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61397 - "POST /api/sessions/b73a1ea6-14ea-4ed7-a096-b5f73b5d5d91/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61397 - "POST /api/sessions/b73a1ea6-14ea-4ed7-a096-b5f73b5d5d91/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61397 - "POST /api/sessions/b73a1ea6-14ea-4ed7-a096-b5f73b5d5d91/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61397 - "POST /api/sessions/b73a1ea6-14ea-4ed7-a096-b5f73b5d5d91/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61397 - "POST /api/sessions/b73a1ea6-14ea-4ed7-a096-b5f73b5d5d91/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61397 - "GET /api/sessions/b73a1ea6-14ea-4ed7-a096-b5f73b5d5d91/context HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61631 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61631 - "GET /static/css/base.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61632 - "GET /static/css/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61635 - "GET /static/css/print.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61633 - "GET /static/js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61634 - "GET /static/img/logo.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61634 - "GET /static/js/errors.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61635 - "GET /static/js/normalize.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61632 - "GET /static/js/format.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61633 - "GET /static/js/api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61631 - "GET /static/js/sse.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61636 - "GET /static/js/store.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61634 - "GET /static/js/ui/composer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61632 - "GET /static/js/ui/drawer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61633 - "GET /static/js/ui/dom.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61635 - "GET /static/js/ui/context.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61636 - "GET /static/js/ui/icons.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61631 - "GET /static/js/ui/emergency.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61634 - "GET /static/js/ui/messages.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61633 - "GET /static/js/ui/overlay.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61632 - "GET /static/js/ui/theme.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61636 - "GET /static/js/writeguard.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61635 - "GET /static/js/ui/sidebar.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61631 - "GET /static/js/actions.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61634 - "GET /static/js/bp.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61633 - "GET /static/js/ui/bpchart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61632 - "GET /static/js/markdown.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61635 - "GET /static/js/ui/stepper.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61636 - "GET /static/js/ui/explanation.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61633 - "GET /static/js/ui/charts.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61633 - "GET /api/config/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61633 - "GET /static/img/favicon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61639 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61640 - "GET /static/css/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61639 - "GET /static/css/base.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61642 - "GET /static/img/logo.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61641 - "GET /static/js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61643 - "GET /static/css/print.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61642 - "GET /static/js/normalize.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61640 - "GET /static/js/sse.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61643 - "GET /static/js/api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61641 - "GET /static/js/errors.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61639 - "GET /static/js/format.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61644 - "GET /static/js/store.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61641 - "GET /static/js/ui/emergency.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61642 - "GET /static/js/ui/context.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61643 - "GET /static/js/ui/dom.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61639 - "GET /static/js/ui/drawer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61640 - "GET /static/js/ui/composer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61644 - "GET /static/js/ui/icons.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61641 - "GET /static/js/ui/overlay.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61640 - "GET /static/js/ui/theme.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61643 - "GET /static/js/ui/messages.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61642 - "GET /static/js/ui/sidebar.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61639 - "GET /static/js/writeguard.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61642 - "GET /static/js/markdown.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61641 - "GET /static/js/ui/bpchart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61644 - "GET /static/js/actions.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61640 - "GET /static/js/bp.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61639 - "GET /static/js/ui/stepper.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61643 - "GET /static/js/ui/explanation.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61641 - "GET /static/js/ui/charts.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61641 - "GET /api/config/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61641 - "GET /static/img/favicon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61641 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61641 - "POST /api/sessions/b1ffe5f9-f167-42ef-a7dd-0266c3707650/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:12:30.707815Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1869.5, "prompt_tokens": 1435, "completion_tokens": 37, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:12:30.709141Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.52it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  3.52it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:12:33.044443Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2335.7, "prompt_tokens": 1373, "completion_tokens": 42, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:12:33.045388Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:12:40.953492Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 7910.8, "prompt_tokens": 3455, "completion_tokens": 102, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:12:40.956934Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:12:49.413306Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 8456.5, "prompt_tokens": 2493, "completion_tokens": 210, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:12:49.414278Z"}
+{"n_claims": 8, "n_unsupported": 4, "available": true, "latency_ms": 678.8, "event": "grounding_verified", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T14:12:50.093451Z"}
+{"session_id": "b1ffe5f9-f167-42ef-a7dd-0266c3707650", "action": "ANSWER", "latency_ms": 21260, "ablation": "C5", "citations": 2, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:12:50.109017Z"}
+INFO:     127.0.0.1:61641 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61641 - "POST /api/sessions/af241987-e5ee-4136-8514-f16ee008d324/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:12:53.430721Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1760.1, "prompt_tokens": 1438, "completion_tokens": 29, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:12:53.431579Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 25.97it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:12:55.964086Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2532.9, "prompt_tokens": 1376, "completion_tokens": 47, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:12:55.964930Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:12:58.546050Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2581.6, "prompt_tokens": 267, "completion_tokens": 64, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:12:58.547003Z"}
+{"session_id": "af241987-e5ee-4136-8514-f16ee008d324", "action": "SOFT-ASK", "latency_ms": 6885, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:12:58.556907Z"}
+INFO:     127.0.0.1:61641 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61641 - "POST /api/sessions/8293e07e-1938-4512-90b1-1ac679c1f28e/messages/stream HTTP/1.1" 200 OK
+{"session_id": "8293e07e-1938-4512-90b1-1ac679c1f28e", "event": "emergency_fastpath_escalate", "logger": "medbridge.core.orchestrator", "level": "warning", "timestamp": "2026-10-11T14:12:59.395768Z"}
+{"session_id": "8293e07e-1938-4512-90b1-1ac679c1f28e", "action": "ESCALATE", "latency_ms": 5, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:12:59.407272Z"}
+INFO:     127.0.0.1:61641 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61641 - "POST /api/sessions/2be8bcee-f600-4e11-87d2-436407c7766a/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:01.971367Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1617.8, "prompt_tokens": 1433, "completion_tokens": 26, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:01.972153Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.92it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:03.897380Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1925.9, "prompt_tokens": 1368, "completion_tokens": 32, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:03.898383Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:09.104578Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 5206.4, "prompt_tokens": 3242, "completion_tokens": 41, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:09.105419Z"}
+{"session_id": "2be8bcee-f600-4e11-87d2-436407c7766a", "action": "ABSTAIN", "latency_ms": 8759, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:13:09.114186Z"}
+INFO:     127.0.0.1:61641 - "POST /api/sessions/2be8bcee-f600-4e11-87d2-436407c7766a/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61641 - "POST /api/sessions/2be8bcee-f600-4e11-87d2-436407c7766a/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61641 - "POST /api/sessions/2be8bcee-f600-4e11-87d2-436407c7766a/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61641 - "POST /api/sessions/2be8bcee-f600-4e11-87d2-436407c7766a/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61641 - "POST /api/sessions/2be8bcee-f600-4e11-87d2-436407c7766a/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61641 - "POST /api/sessions/2be8bcee-f600-4e11-87d2-436407c7766a/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61641 - "GET /api/sessions/2be8bcee-f600-4e11-87d2-436407c7766a/context HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61764 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61765 - "GET /static/css/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61767 - "GET /static/img/logo.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61766 - "GET /static/js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61764 - "GET /static/css/base.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61768 - "GET /static/css/print.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61766 - "GET /static/js/sse.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61764 - "GET /static/js/normalize.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61768 - "GET /static/js/api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61769 - "GET /static/js/store.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61767 - "GET /static/js/format.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61765 - "GET /static/js/errors.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61769 - "GET /static/js/ui/dom.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61766 - "GET /static/js/ui/composer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61768 - "GET /static/js/ui/drawer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61764 - "GET /static/js/ui/context.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61767 - "GET /static/js/ui/icons.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61765 - "GET /static/js/ui/emergency.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61769 - "GET /static/js/ui/messages.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61767 - "GET /static/js/ui/sidebar.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61768 - "GET /static/js/ui/theme.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61765 - "GET /static/js/writeguard.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61766 - "GET /static/js/ui/overlay.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61764 - "GET /static/js/actions.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61767 - "GET /static/js/bp.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61769 - "GET /static/js/markdown.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61768 - "GET /static/js/ui/bpchart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61765 - "GET /static/js/ui/explanation.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61766 - "GET /static/js/ui/stepper.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61769 - "GET /static/js/ui/charts.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61769 - "GET /api/config/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61769 - "GET /static/img/favicon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61772 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61772 - "GET /static/css/base.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61773 - "GET /static/css/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61775 - "GET /static/img/logo.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61777 - "GET /static/css/print.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61774 - "GET /static/js/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61774 - "GET /static/js/format.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61775 - "GET /static/js/errors.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61777 - "GET /static/js/api.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61773 - "GET /static/js/normalize.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61772 - "GET /static/js/sse.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61778 - "GET /static/js/store.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61773 - "GET /static/js/ui/emergency.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61775 - "GET /static/js/ui/context.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61772 - "GET /static/js/ui/dom.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61774 - "GET /static/js/ui/composer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61778 - "GET /static/js/ui/icons.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61777 - "GET /static/js/ui/drawer.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61773 - "GET /static/js/ui/messages.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61772 - "GET /static/js/ui/overlay.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61775 - "GET /static/js/ui/theme.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61774 - "GET /static/js/ui/sidebar.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61777 - "GET /static/js/actions.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61778 - "GET /static/js/writeguard.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61775 - "GET /static/js/ui/bpchart.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61773 - "GET /static/js/bp.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61774 - "GET /static/js/ui/explanation.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61778 - "GET /static/js/ui/stepper.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61772 - "GET /static/js/markdown.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61777 - "GET /static/js/ui/charts.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61777 - "GET /api/config/public HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61777 - "GET /static/img/favicon.svg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61777 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61777 - "POST /api/sessions/91139139-d734-4f1a-8404-b0cecf03ad42/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:14.316994Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1706.4, "prompt_tokens": 1435, "completion_tokens": 37, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:14.317469Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  6.96it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  6.96it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:16.004634Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1688.4, "prompt_tokens": 1373, "completion_tokens": 42, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:16.006342Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:22.924416Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 6919.8, "prompt_tokens": 3455, "completion_tokens": 102, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:22.927745Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:31.582979Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 8655.7, "prompt_tokens": 2493, "completion_tokens": 210, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:31.584262Z"}
+{"n_claims": 8, "n_unsupported": 4, "available": true, "latency_ms": 836.7, "event": "grounding_verified", "logger": "medbridge.ai.grounding_verifier", "level": "info", "timestamp": "2026-10-11T14:13:32.421278Z"}
+{"session_id": "91139139-d734-4f1a-8404-b0cecf03ad42", "action": "ANSWER", "latency_ms": 19837, "ablation": "C5", "citations": 2, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:13:32.438327Z"}
+INFO:     127.0.0.1:61777 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61777 - "POST /api/sessions/9e579bad-e0be-46ef-92b8-80862226278b/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:35.794010Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1767.5, "prompt_tokens": 1438, "completion_tokens": 29, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:35.794816Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.90it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:38.374769Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2580.6, "prompt_tokens": 1376, "completion_tokens": 47, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:38.375823Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:41.000155Z"}
+{"call": "response_generator", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 2624.5, "prompt_tokens": 267, "completion_tokens": 64, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:41.001014Z"}
+{"session_id": "9e579bad-e0be-46ef-92b8-80862226278b", "action": "SOFT-ASK", "latency_ms": 6981, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:13:41.009746Z"}
+INFO:     127.0.0.1:61777 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61777 - "POST /api/sessions/ed35e970-68ae-47dd-a511-25feae610975/messages/stream HTTP/1.1" 200 OK
+{"session_id": "ed35e970-68ae-47dd-a511-25feae610975", "event": "emergency_fastpath_escalate", "logger": "medbridge.core.orchestrator", "level": "warning", "timestamp": "2026-10-11T14:13:41.877105Z"}
+{"session_id": "ed35e970-68ae-47dd-a511-25feae610975", "action": "ESCALATE", "latency_ms": 4, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:13:41.887536Z"}
+INFO:     127.0.0.1:61777 - "POST /api/sessions HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61777 - "POST /api/sessions/9ac93500-4558-472b-9d62-dd1fde62af87/messages/stream HTTP/1.1" 200 OK
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:44.484709Z"}
+{"call": "context_extractor", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1636.5, "prompt_tokens": 1433, "completion_tokens": 26, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:44.488931Z"}
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.67it/s]
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:46.441390Z"}
+{"call": "context_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 1949.9, "prompt_tokens": 1368, "completion_tokens": 32, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:46.442246Z"}
+{"event": "HTTP Request: POST [URL] \"HTTP/1.1 200 OK\"", "logger": "httpx", "level": "info", "timestamp": "2026-10-11T14:13:51.848214Z"}
+{"call": "evidence_gate", "model": "qwen3.5:4b", "provider": "ollama", "latency_ms": 5406.2, "prompt_tokens": 3242, "completion_tokens": 41, "attempts": 1, "success": true, "cached": false, "truncated": false, "event": "llm_call", "logger": "medbridge.ai.llm_wrapper", "level": "info", "timestamp": "2026-10-11T14:13:51.849015Z"}
+{"session_id": "9ac93500-4558-472b-9d62-dd1fde62af87", "action": "ABSTAIN", "latency_ms": 9003, "ablation": "C5", "citations": 0, "event": "turn_complete", "logger": "medbridge.core.orchestrator", "level": "info", "timestamp": "2026-10-11T14:13:51.858525Z"}
+INFO:     127.0.0.1:61777 - "POST /api/sessions/9ac93500-4558-472b-9d62-dd1fde62af87/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61777 - "POST /api/sessions/9ac93500-4558-472b-9d62-dd1fde62af87/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61777 - "POST /api/sessions/9ac93500-4558-472b-9d62-dd1fde62af87/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61777 - "POST /api/sessions/9ac93500-4558-472b-9d62-dd1fde62af87/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61777 - "POST /api/sessions/9ac93500-4558-472b-9d62-dd1fde62af87/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61777 - "POST /api/sessions/9ac93500-4558-472b-9d62-dd1fde62af87/bp HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61777 - "GET /api/sessions/9ac93500-4558-472b-9d62-dd1fde62af87/context HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"event": "app_shutdown_begin", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T14:13:53.559443Z"}
+{"component": "llm_client", "event": "shutdown_closed", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T14:13:53.560377Z"}
+{"component": "qdrant_client", "event": "shutdown_closed", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T14:13:53.562169Z"}
+{"event": "Database connection pool disposed.", "logger": "medbridge.db.connection", "level": "info", "timestamp": "2026-10-11T14:13:53.569492Z"}
+{"component": "database", "event": "shutdown_closed", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T14:13:53.569682Z"}
+{"event": "app_shutdown_complete", "logger": "medbridge.main", "level": "info", "timestamp": "2026-10-11T14:13:53.569761Z"}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [7521]
+/Users/yahmad/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

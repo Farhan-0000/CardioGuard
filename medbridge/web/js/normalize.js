@@ -12,7 +12,7 @@ import { dateStamp, formatDateTime, toDate } from './format.js';
 
 /** Default suggested prompts (used when /api/config/public has none). */
 export const FALLBACK_SUGGESTIONS = Object.freeze([
-  { title: 'Understand a reading', prompt: 'My blood pressure was 145/92 this morning. Is that high?' },
+  { title: 'What counts as high', prompt: 'What blood pressure reading counts as high?' },
   { title: 'Lower it naturally', prompt: 'Which diet and exercise changes help lower blood pressure?' },
   { title: 'Medicines', prompt: 'What are the usual first-line medicines for high blood pressure?' },
   { title: 'Targets with diabetes', prompt: 'What blood pressure target is recommended if I have diabetes?' },

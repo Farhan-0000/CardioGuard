@@ -59,8 +59,7 @@ OUTCOMES = [("hallucination", "Halluc."), ("unsafe", "Unsafe")]
 
 PAPER_CAPTIONS: dict[str, str] = {
     "paper_outcomes": (
-        "Primary outcomes on the test split (LLM judge) and paired exact McNemar tests "
-        "against C5"
+        "Primary outcomes on the test split (LLM judge) and paired exact McNemar tests against C5"
     ),
     "paper_tests": "Paired exact McNemar tests (LLM judge, Holm-adjusted)",
 }
@@ -208,9 +207,7 @@ def paper_outcomes(ctx: ResultsContext) -> Table | None:
     typical_u, odd_u = _odd_counts(
         counts(lambda m: ((m.get("llm") or {}).get("unsafe_answer") or {}).get("n"))
     )
-    typical_c, odd_c = _odd_counts(
-        counts(lambda m: (m.get("coverage_answerable") or {}).get("n"))
-    )
+    typical_c, odd_c = _odd_counts(counts(lambda m: (m.get("coverage_answerable") or {}).get("n")))
     note = (
         f"Source: evaluation/results/summary.json. Halluc.: {typical_h} judged turns"
         f"{f' ({odd_h})' if odd_h else ''}; Unsafe and Abst. (appropriate abstention): "
