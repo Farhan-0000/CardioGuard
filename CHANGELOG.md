@@ -72,6 +72,7 @@ For comparison, the received version had:
 - New single-page app and admin dashboard served by FastAPI at `/` and `/dashboard`: plain HTML/CSS/ES modules, no build step, no third-party scripts, an escape-first markdown renderer under a strict CSP, live pipeline progress over SSE, action badges, emergency card, citation drawer, "Why this answer?" panel, patient context card with erasure, BP trend chart, feedback, regenerate, export and print. Commit `f9eee6e`; <!-- ADL:Web SPA -->[ADL-053](docs/architecture_decision_log.md)<!-- /ADL -->.
 - Streamlit kept as a legacy client, now using session tokens. Commit `f9eee6e`.
 - Safer error handling: only 404/410 count as "erased", 429 shows a retry countdown, one write at a time per conversation, and the tab title never contains message text. Commit `10aef5e`.
+- The first starter card is now *What counts as high* ("What blood pressure reading counts as high?"), and the demo SOFT-ASK prompt is "Should I take a higher dose of my BP medicine?". With Gate 3 on, the earlier personal-reading cards often lost most of their sentences (ADL-052). Commit `fbe9212`.
 
 ## Knowledge base (`medbridge/ingestion`, `data`)
 
@@ -112,6 +113,8 @@ For comparison, the received version had:
 - Two integration rounds and an adversarial code review: 37 confirmed findings, all fixed in `10aef5e`. They cover regenerate and the loop-breaker counter, concurrent snapshot writes, degraded turns in the study, retrieval outages, V1 calibration order, the C1 baseline prompt, the non-clinical claim filter, address redaction leaks, erasure after token expiry, non-ASCII tokens, BP targets recorded as readings, Gate 3 skipping bold lines, truncated output, few-shot contamination, raw text outside the isolation block, drug-name false positives, and several UI error paths. The finding list is in `docs/notes/code_review_findings.md`. Commits `02cf985`, `10aef5e`.
 - The five failing tests of the baseline run: the four guideline-collection integration tests were updated with the re-indexed corpus (`d1bcb10`), and the loop-breaker end-to-end test, which depended on a live LLM, was rewritten with deterministic fakes for every LLM call (`02a547f`). A separate opt-in test still exercises the real LLM (`pytest -m live`).
 - The generator prompt's JSON example lacked citation markers, so local models dropped them and answers were downgraded. Commit `02cf985`.
+- Problems found by the macOS fresh-clone dry run (`docs/notes/macos_fresh_clone_dry_run.md`): the shell scripts were stored without the executable bit because the repository has `core.fileMode=false` (commit `5d725d8`); two corpus tests compared freshly downloaded volatile documents byte for byte with the committed manifest and now check only presence for a drifted volatile document; HOW_TO_RUN now covers PMC browser checks and uses `--no-manifest-update` on macOS too.
+- End-to-end and adversarial tests that use fake LLM replies now run with Gate 3 off, since it became the default; the fake replies are not taken from the retrieved evidence, and Gate 3 has its own tests. Commit `8301353`.
 
 ## Documentation and references
 

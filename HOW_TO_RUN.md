@@ -455,7 +455,7 @@ Use `python -m alembic` rather than a bare `alembic`; it always runs the venv's 
 The 27 curated documents are listed in `data/corpus_manifest.json`. They are not stored in
 git, because several publishers do not allow redistribution (see `data/README.md`).
 
-**Step 1: automatic downloads (25 documents).**
+**Step 1: automatic downloads (up to 25 documents).**
 
 ```powershell
 python scripts\download_corpus.py
@@ -465,8 +465,17 @@ The script downloads what it can and checks each file's SHA-256 against the mani
 `drift` result is normal for files marked `volatile` (NICE PDFs and web pages change on every
 download); ingestion handles it.
 
-**Step 2: two manual downloads.** These publisher sites show a browser check to scripts, so
-download them in your browser and save them under the exact names below:
+PubMed Central (`pmc.ncbi.nlm.nih.gov`) sometimes answers scripts with a browser-check page.
+The script recognises it, does not save it, and lists the document under *Manual downloads
+required* with its URL and the file name to use. In the macOS fresh-clone dry run of
+11 October 2026, five PMC articles came back that way (20 of 27 documents downloaded, 7
+manual). Open each listed URL in your browser, save the page as HTML (Chrome or Edge:
+**Ctrl+S** / **Cmd+S**, *Webpage, HTML only*; Safari: *File, Save As*, format *Page Source*)
+under the listed name in `data/guidelines/`, then continue with the check below.
+
+**Step 2: manual downloads.** These two publisher sites always show a browser check to
+scripts, so download them in your browser and save them under the exact names below (plus any
+PMC pages the script listed in step 1):
 
 | ID | Document | Get it from | Save as |
 |---|---|---|---|
@@ -758,10 +767,10 @@ python -m alembic current         # ends with "(head)"
 
 ```bash
 python scripts/download_corpus.py
-# manual downloads: AHA_ACC_HTN_2025 and ESC_HTN_2024, see the table in 4.11
+# manual downloads: AHA_ACC_HTN_2025, ESC_HTN_2024 and any PMC page the script lists (see 4.11)
 mv ~/Downloads/<downloaded-file>.pdf data/guidelines/ehae178.pdf
-python scripts/download_corpus.py --verify-only
-python -m medbridge.ingestion --recreate        # add --no-manifest-update to keep the manifest unchanged
+python scripts/download_corpus.py --verify-only               # "27/27 documents present"
+python -m medbridge.ingestion --recreate --no-manifest-update  # keeps the committed manifest unchanged
 python -m medbridge.ingestion --stats           # corpus tables + figure for the report
 curl -s http://127.0.0.1:6333/collections/clinical_guidelines | python -m json.tool | grep points_count
 ```
@@ -801,6 +810,15 @@ scripts/run.sh --open
 calls `python -m medbridge.cli up` with your options (`--open`, `--dry-run`, `--port 8001`,
 `--no-ingest`, `--no-server`, `--skip-docker`, `--wait 300`; see section 7). It uses `.venv`,
 or `.venv-mac` if `.venv` does not exist (override with `VENV_DIR=...`).
+
+### 5.14 Recorded fresh-clone dry run
+
+On 11 October 2026 a fresh clone was set up on an Apple M5 Mac by following 5.3 and 5.8 to
+5.11: setup took about 2 minutes, indexing 2.6 minutes (2,748 chunks), and the smoke test
+passed 16/16 (`reports/smoke_test_fresh_clone_macos.json`); the test suite passed on Python
+3.12. The run found four gaps, now fixed in these instructions and in the repository (scripts
+without the executable bit, PMC browser checks, corpus tests that assumed the development
+files, and the manifest flag in 5.10). Details: `docs/notes/macos_fresh_clone_dry_run.md`.
 
 ---
 

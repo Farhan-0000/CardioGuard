@@ -1,0 +1,190 @@
+{
+  "generated_at": "2026-10-11T14:28:53.630229+00:00",
+  "base_url": "http://127.0.0.1:8000",
+  "passed": true,
+  "counts": {
+    "PASS": 16,
+    "FAIL": 0,
+    "SKIP": 0
+  },
+  "checks": [
+    {
+      "name": "health",
+      "status": "PASS",
+      "expected": "200 healthy|degraded",
+      "observed": "200 healthy",
+      "latency_ms": 17.190042010042816,
+      "note": "",
+      "details": {
+        "postgres_connected": true,
+        "qdrant_connected": true,
+        "ollama_reachable": true,
+        "qdrant_points": 2748,
+        "models_loaded": {
+          "embedder_dense": true,
+          "embedder_sparse": true,
+          "reranker": true,
+          "llm": true,
+          "nli_verifier": true
+        }
+      }
+    },
+    {
+      "name": "create_session",
+      "status": "PASS",
+      "expected": "201 + session_token",
+      "observed": "201 + token",
+      "latency_ms": 17.14279199950397,
+      "note": "",
+      "details": {}
+    },
+    {
+      "name": "escalate_fastpath",
+      "status": "PASS",
+      "expected": "ESCALATE",
+      "observed": "ESCALATE",
+      "latency_ms": 27.431875001639128,
+      "note": "",
+      "details": {
+        "citations": 0,
+        "soft_ask_count": 0,
+        "server_total_ms": 22.7
+      }
+    },
+    {
+      "name": "abstain_out_of_domain",
+      "status": "PASS",
+      "expected": "ABSTAIN/GENERALIZE",
+      "observed": "ABSTAIN",
+      "latency_ms": 9293.362708005589,
+      "note": "",
+      "details": {
+        "citations": 0,
+        "soft_ask_count": 0,
+        "server_total_ms": 9289.7
+      }
+    },
+    {
+      "name": "generalize",
+      "status": "PASS",
+      "expected": "ANSWER/GENERALIZE",
+      "observed": "GENERALIZE",
+      "latency_ms": 18197.66091700876,
+      "note": "",
+      "details": {
+        "citations": 0,
+        "soft_ask_count": 0,
+        "server_total_ms": 18193.4
+      }
+    },
+    {
+      "name": "pii_redaction",
+      "status": "PASS",
+      "expected": "redaction_count > 0",
+      "observed": "redaction_count=2",
+      "latency_ms": 22953.196250018664,
+      "note": "",
+      "details": {
+        "action": "GENERALIZE"
+      }
+    },
+    {
+      "name": "sse_stream",
+      "status": "PASS",
+      "expected": "stage..token..done",
+      "observed": "events {'stage': 24, 'meta': 1, 'token': 22, 'done': 1}; action ANSWER",
+      "latency_ms": 15195.149875013158,
+      "note": "",
+      "details": {}
+    },
+    {
+      "name": "feedback",
+      "status": "PASS",
+      "expected": "201",
+      "observed": "201",
+      "latency_ms": 18.917459005024284,
+      "note": "",
+      "details": {}
+    },
+    {
+      "name": "context",
+      "status": "PASS",
+      "expected": "200",
+      "observed": "200",
+      "latency_ms": 17.342499981168658,
+      "note": "",
+      "details": {}
+    },
+    {
+      "name": "summary",
+      "status": "PASS",
+      "expected": "200",
+      "observed": "200",
+      "latency_ms": 22.41499995579943,
+      "note": "",
+      "details": {}
+    },
+    {
+      "name": "auth_missing_token",
+      "status": "PASS",
+      "expected": "401",
+      "observed": "401",
+      "latency_ms": 2.3997919633984566,
+      "note": "",
+      "details": {}
+    },
+    {
+      "name": "create_session",
+      "status": "PASS",
+      "expected": "201 + session_token",
+      "observed": "201 + token",
+      "latency_ms": 8.88358399970457,
+      "note": "",
+      "details": {}
+    },
+    {
+      "name": "soft_ask",
+      "status": "PASS",
+      "expected": "GENERALIZE/SOFT-ASK",
+      "observed": "SOFT-ASK",
+      "latency_ms": 5070.54062501993,
+      "note": "",
+      "details": {
+        "citations": 0,
+        "soft_ask_count": 1,
+        "server_total_ms": 5065.2
+      }
+    },
+    {
+      "name": "follow_up_answer",
+      "status": "PASS",
+      "expected": "ANSWER/GENERALIZE",
+      "observed": "GENERALIZE",
+      "latency_ms": 33003.70175001444,
+      "note": "primary expectation ANSWER",
+      "details": {
+        "citations": 0,
+        "soft_ask_count": 0,
+        "server_total_ms": 32999.1
+      }
+    },
+    {
+      "name": "delete_session",
+      "status": "PASS",
+      "expected": "204",
+      "observed": "204",
+      "latency_ms": 12.443582993000746,
+      "note": "",
+      "details": {}
+    },
+    {
+      "name": "after_delete_gone",
+      "status": "PASS",
+      "expected": "410",
+      "observed": "410",
+      "latency_ms": 2.960750018246472,
+      "note": "",
+      "details": {}
+    }
+  ]
+}

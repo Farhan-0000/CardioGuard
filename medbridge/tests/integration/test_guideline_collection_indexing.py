@@ -8,7 +8,8 @@ is unreachable (``qdrant`` marker).
 Verifies:
 1. Collection ``clinical_guidelines`` has 384-d COSINE dense + IDF-weighted sparse vectors.
 2. Every curated document in ``data/corpus_manifest.json`` (>= 15) is indexed, with
-   per-document point counts matching the manifest.
+   per-document point counts matching the manifest (a volatile document re-downloaded in a
+   newer version than the manifest's only has to be present).
 3. Payloads carry every key of interface contract §3.5 with sane values.
 4. Hybrid retrieval returns relevant chunks across key clinical topics.
 """
@@ -18,13 +19,14 @@ import pytest
 from qdrant_client import AsyncQdrantClient, models
 
 from medbridge.config import get_settings
-from medbridge.ingestion.manifest import load_manifest
+from medbridge.ingestion.manifest import CorpusDocument, load_manifest, sha256_file
 from medbridge.retrieval.hybrid_retriever import HybridRetriever, RetrievedChunk
 
 pytestmark = pytest.mark.qdrant
 
 COLLECTION_NAME = "clinical_guidelines"
-MANIFEST = load_manifest(Path(__file__).resolve().parents[3] / "data" / "corpus_manifest.json")
+REPO_ROOT = Path(__file__).resolve().parents[3]
+MANIFEST = load_manifest(REPO_ROOT / "data" / "corpus_manifest.json")
 EXPECTED_IDS = set(MANIFEST.by_id())
 CONTRACT_PAYLOAD_KEYS = {
     "chunk_id", "chunk_text", "guideline_id", "doc_title", "org", "year", "section_title",
@@ -64,19 +66,37 @@ async def test_collection_configuration(live_qdrant_client: AsyncQdrantClient):
     assert sparse_config["sparse"].modifier == models.Modifier.IDF
 
 
+def _drifted(doc: CorpusDocument) -> bool:
+    """A volatile document whose downloaded file is newer than the manifest's version."""
+    path = doc.resolve_path(REPO_ROOT)
+    return doc.volatile and path.exists() and sha256_file(path) != doc.sha256
+
+
 async def test_every_manifest_document_is_indexed(live_qdrant_client: AsyncQdrantClient):
-    """>= 15 curated documents, each indexed with the manifest's chunk count and hash."""
+    """>= 15 curated documents, each indexed with the manifest's chunk count and hash.
+
+    In a fresh clone the volatile documents (NICE PDFs, web pages) are downloaded in a newer
+    version and indexed with --no-manifest-update, so for those only presence is checked.
+    """
     assert len(EXPECTED_IDS) >= 15
+    drifted = {d.guideline_id for d in MANIFEST.documents if _drifted(d)}
     info = await live_qdrant_client.get_collection(collection_name=COLLECTION_NAME)
-    assert info.points_count == sum(d.chunk_count for d in MANIFEST.documents)
+    if not drifted:
+        assert info.points_count == sum(d.chunk_count for d in MANIFEST.documents)
     for doc in MANIFEST.documents:
         indexed = await _count(live_qdrant_client, guideline_id=doc.guideline_id)
+        if doc.guideline_id in drifted:
+            assert indexed > 0, doc.guideline_id
+            continue
         assert indexed == doc.chunk_count > 0, doc.guideline_id
         same_hash = await _count(live_qdrant_client, guideline_id=doc.guideline_id,
                                  doc_sha256=doc.sha256)
         assert same_hash == indexed, f"{doc.guideline_id} indexed from a different file version"
     tables = await _count(live_qdrant_client, content_type="table")
-    assert tables == sum(d.table_chunk_count for d in MANIFEST.documents) > 0
+    if drifted:
+        assert tables > 0
+    else:
+        assert tables == sum(d.table_chunk_count for d in MANIFEST.documents) > 0
 
 
 async def test_payload_integrity(live_qdrant_client: AsyncQdrantClient):
