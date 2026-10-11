@@ -1,0 +1,48 @@
+{
+  "started_at": "2026-10-10T15:32:28+00:00",
+  "command": "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/judge.py --judge llm --judge-model gemma3:12b --conditions C0,C1,C2,C3,C4,C5,V1,V2,C1G,V12 --split test --workers 4 --ollama-url http://127.0.0.1:11435 --resume",
+  "judge": "llm",
+  "judge_model": "gemma3:12b",
+  "workers": 4,
+  "split": "test",
+  "conditions": [
+    "C0",
+    "C1",
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "V1",
+    "V2",
+    "C1G",
+    "V12"
+  ],
+  "git": {
+    "commit": "3f58b59a2ad79251cc4cfc88559c7c759501a890",
+    "dirty": true
+  },
+  "ollama": {
+    "gemma3:12b": {
+      "digest": "b92b218582c521ba287f38f1d6057dcd3c6cbff036f13cac97b5d861f5e58ec3",
+      "size_bytes": 8164039732,
+      "family": "gemma3",
+      "parameter_size": "11.8B",
+      "quantization_level": "Q4_K_M",
+      "modified_at": "2026-10-09T15:32:52.41369974+05:30"
+    }
+  },
+  "cache": {
+    "status": "enabled",
+    "path": "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/cache/llm_cache.6c4d0474bacc.sqlite",
+    "entries": 181,
+    "hits": 0,
+    "misses": 0,
+    "writes": 0,
+    "bypassed_reads": 0,
+    "rejected_incomplete": 0,
+    "model_digests": {
+      "gemma3:12b": "b92b218582c521ba287f38f1d6057dcd3c6cbff036f13cac97b5d861f5e58ec3"
+    },
+    "key_includes_digest": true
+  }
+}

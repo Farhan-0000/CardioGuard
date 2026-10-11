@@ -1,0 +1,4 @@
+Level,n,kappa [95% CI]
+"claim, 3-class",8265,"0.174 [0.162, 0.187]"
+"claim, binary (SUPPORTED vs not)",8265,"0.364 [0.344, 0.384]"
+"response, hallucinated",790,"0.683 [0.613, 0.753]"

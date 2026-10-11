@@ -1,0 +1,14 @@
+
+[2026-10-11 16:09:20] === RABBITS live on the final code ===
+
+[2026-10-11 16:09:20] === RABBITS live ===
+2026-10-11 16:09:31 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=44 latency_ms=4539.9 model=qwen3.5:4b prompt_tokens=1476 provider=ollama success=True truncated=False
+2026-10-11 16:09:31 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-11 16:09:34 [info     ] llm_call                       attempts=1 cached=False call=context_gate completion_tokens=52 latency_ms=2864.6 model=qwen3.5:4b prompt_tokens=1461 provider=ollama success=True truncated=False
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 30758.62it/s]
+2026-10-11 16:09:37 [info     ] reranker_loaded                device=mps model=cross-encoder/ms-marco-MiniLM-L-6-v2
+2026-10-11 16:09:43 [info     ] llm_call                       attempts=1 cached=False call=evidence_gate completion_tokens=71 latency_ms=5760.5 model=qwen3.5:4b prompt_tokens=3666 provider=ollama success=True truncated=False
+2026-10-11 16:09:49 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=130 latency_ms=6191.5 model=qwen3.5:4b prompt_tokens=2704 provider=ollama success=True truncated=False
+2026-10-11 16:09:49 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=1 latency_ms=22332 session_id=9ed3e167-fadd-491e-a890-e5a4ee96223a
+2026-10-11 16:09:51 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=39 latency_ms=2088.6 model=qwen3.5:4b prompt_tokens=1477 provider=ollama success=True truncated=False
+2026-10-11 16:09:54 [info     ] llm_call                       attempts=1 cached=False call=context_gate completion_tokens=40 latency_ms=2372.6 model=qwen3.5:4b prompt_tokens=1448 provider=ollama success=True truncated=False

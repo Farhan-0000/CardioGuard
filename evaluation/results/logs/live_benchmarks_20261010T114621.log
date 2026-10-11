@@ -1,0 +1,129 @@
+
+[2026-10-10 11:46:22] === MedBridge-AQ live (all vignettes) ===
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=cb38b000-c2b6-4500-b3f2-deba8b1f40b0
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=6 session_id=cb38b000-c2b6-4500-b3f2-deba8b1f40b0
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=43862b68-7a71-4a16-9c16-63c039b9b781
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=43862b68-7a71-4a16-9c16-63c039b9b781
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=47777397-622c-4ac6-b714-1401112f3c88
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=47777397-622c-4ac6-b714-1401112f3c88
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=8df081bd-d161-4917-8ea9-aeda17be3a41
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=8df081bd-d161-4917-8ea9-aeda17be3a41
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=9b01a441-dc3f-4a0c-9041-9c726e42010e
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=9b01a441-dc3f-4a0c-9041-9c726e42010e
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=c13ccd68-74c8-4b0e-a911-8e846c3d05fe
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=c13ccd68-74c8-4b0e-a911-8e846c3d05fe
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=f57c7ddc-6322-46d3-81ee-c9f31feb50f8
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=f57c7ddc-6322-46d3-81ee-c9f31feb50f8
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=c6a74922-bb68-404f-8354-b762d69e7128
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=c6a74922-bb68-404f-8354-b762d69e7128
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=485a2bd0-61c2-4374-a1fd-e672250704ea
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=485a2bd0-61c2-4374-a1fd-e672250704ea
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=67977160-084c-4b2d-9d48-b2c09e833e99
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=67977160-084c-4b2d-9d48-b2c09e833e99
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=84d08c74-340c-4c30-b91b-643aecce4b2c
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=84d08c74-340c-4c30-b91b-643aecce4b2c
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=b5ef89e6-510e-436a-84f7-7e33507e45e6
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=b5ef89e6-510e-436a-84f7-7e33507e45e6
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=23c31228-934f-4701-8f33-8306d41c9542
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=23c31228-934f-4701-8f33-8306d41c9542
+2026-10-10 11:46:30 [warning  ] emergency_fastpath_escalate    session_id=c0e05fe5-cfbb-44ae-9679-001ce2c87ee0
+2026-10-10 11:46:30 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=c0e05fe5-cfbb-44ae-9679-001ce2c87ee0
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=73517f00-08ad-4352-82a8-6d847c33d5b3
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=73517f00-08ad-4352-82a8-6d847c33d5b3
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=4ca26f55-adf0-4f84-86ed-5178eac2e4f8
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=4ca26f55-adf0-4f84-86ed-5178eac2e4f8
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=818fed2a-7f15-418b-a186-cf600ec9006e
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=818fed2a-7f15-418b-a186-cf600ec9006e
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=9c16ffc4-01b6-4453-9a7e-42566ace4159
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=9c16ffc4-01b6-4453-9a7e-42566ace4159
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=a291eef2-6dfd-409b-83fe-b0361b627235
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=a291eef2-6dfd-409b-83fe-b0361b627235
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=7bdc4307-c407-4b5b-bbce-03dae12ace5d
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=7bdc4307-c407-4b5b-bbce-03dae12ace5d
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=95b239a0-7042-4195-8279-787180cbd34b
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=95b239a0-7042-4195-8279-787180cbd34b
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=29b0d050-ba5a-41fb-ae47-8426ad525b4d
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=29b0d050-ba5a-41fb-ae47-8426ad525b4d
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=52375657-e345-45f6-8e9b-0b401fb7c1c6
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=52375657-e345-45f6-8e9b-0b401fb7c1c6
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=c2d95311-11b0-4ed7-84df-56e0f874cf19
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=c2d95311-11b0-4ed7-84df-56e0f874cf19
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=b5b0bcd4-5b9e-4db3-9075-e6bee8eba53a
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=b5b0bcd4-5b9e-4db3-9075-e6bee8eba53a
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=ece90567-defe-4d84-aa71-a82a16c8bcc5
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=ece90567-defe-4d84-aa71-a82a16c8bcc5
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=47f9d2a4-1d70-4c27-a3b2-d076e31d11a9
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=47f9d2a4-1d70-4c27-a3b2-d076e31d11a9
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=d7dc9e0d-a368-4e95-8ccf-9a03eeb9b0dc
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=d7dc9e0d-a368-4e95-8ccf-9a03eeb9b0dc
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=1d7a6de1-ff97-4c4b-b67e-0a5cacffc05b
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=1d7a6de1-ff97-4c4b-b67e-0a5cacffc05b
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=09f342b1-6385-43b7-a3ff-c16b68a05c82
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=5 session_id=09f342b1-6385-43b7-a3ff-c16b68a05c82
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=e667e079-60b0-48c3-b2ef-0cfa06c58b4c
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=e667e079-60b0-48c3-b2ef-0cfa06c58b4c
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=f6903999-10f1-4a64-bbec-e6afcfda11a6
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=f6903999-10f1-4a64-bbec-e6afcfda11a6
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=11ae62a0-bcbf-4ff8-9c0b-d2968b040e94
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=11ae62a0-bcbf-4ff8-9c0b-d2968b040e94
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=695d031a-4f95-45e5-b92e-c6ec2c6ea928
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=695d031a-4f95-45e5-b92e-c6ec2c6ea928
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=1e43a4f4-c44c-4cc5-a97e-64d219c4cbee
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=1e43a4f4-c44c-4cc5-a97e-64d219c4cbee
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=87c2a279-757f-4e7a-b40a-7c8558427bf1
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=87c2a279-757f-4e7a-b40a-7c8558427bf1
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=780afab5-dd02-4d6a-92b8-4a1bd3f02f84
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=780afab5-dd02-4d6a-92b8-4a1bd3f02f84
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=cf167ddc-e3f2-4fd5-a729-64d371f92c9a
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=cf167ddc-e3f2-4fd5-a729-64d371f92c9a
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=2fb68462-dbae-4bfa-b28e-4ea7eccf7741
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=2fb68462-dbae-4bfa-b28e-4ea7eccf7741
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=3868f51a-c138-4381-9cf8-3001255fbf55
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=3868f51a-c138-4381-9cf8-3001255fbf55
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=74b55be8-6c7f-4357-8aa1-e0bde2e615d4
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=74b55be8-6c7f-4357-8aa1-e0bde2e615d4
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=f3cd0b75-96f0-4222-82ea-0a7d4abf011f
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=f3cd0b75-96f0-4222-82ea-0a7d4abf011f
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=7761af81-e7ab-4675-8dfe-c1a711ade4c5
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=7761af81-e7ab-4675-8dfe-c1a711ade4c5
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=cded69db-1949-43cc-9d98-48bfd68fd5e2
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=cded69db-1949-43cc-9d98-48bfd68fd5e2
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=640a952b-ec3a-4cb4-8219-5bbf4c4ffab7
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=640a952b-ec3a-4cb4-8219-5bbf4c4ffab7
+2026-10-10 11:46:31 [warning  ] emergency_fastpath_escalate    session_id=24d5d2d6-8c06-4c19-9843-c799d075a42b
+2026-10-10 11:46:31 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=24d5d2d6-8c06-4c19-9843-c799d075a42b
+2026-10-10 11:48:31 [error    ] llm_timeout                    attempt=1 call=context_extractor provider=ollama
+2026-10-10 11:50:32 [error    ] llm_timeout                    attempt=2 call=context_extractor provider=ollama
+2026-10-10 11:52:34 [error    ] llm_timeout                    attempt=3 call=context_extractor provider=ollama
+2026-10-10 11:52:34 [warning  ] llm_provider_exhausted         call=context_extractor provider=ollama
+2026-10-10 11:52:34 [info     ] llm_call                       attempts=3 cached=False call=context_extractor completion_tokens=0 latency_ms=363332.9 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 11:52:34 [error    ] llm_permanent_failure          attempts=3 call=context_extractor
+2026-10-10 11:52:34 [error    ] context_extractor_failed
+2026-10-10 11:52:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 11046.78it/s]
+2026-10-10 11:52:40 [info     ] reranker_loaded                device=mps model=cross-encoder/ms-marco-MiniLM-L-6-v2
+2026-10-10 11:54:34 [error    ] llm_timeout                    attempt=1 call=context_gate provider=ollama
+2026-10-10 11:56:35 [error    ] llm_timeout                    attempt=2 call=context_gate provider=ollama
+2026-10-10 11:58:37 [error    ] llm_timeout                    attempt=3 call=context_gate provider=ollama
+2026-10-10 11:58:37 [warning  ] llm_provider_exhausted         call=context_gate provider=ollama
+2026-10-10 11:58:37 [info     ] llm_call                       attempts=3 cached=False call=context_gate completion_tokens=0 latency_ms=363089.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 11:58:37 [error    ] llm_permanent_failure          attempts=3 call=context_gate
+2026-10-10 11:58:37 [error    ] context_gate_failed
+2026-10-10 12:00:37 [error    ] llm_timeout                    attempt=1 call=evidence_gate provider=ollama
+2026-10-10 12:02:38 [error    ] llm_timeout                    attempt=2 call=evidence_gate provider=ollama
+2026-10-10 12:04:40 [error    ] llm_timeout                    attempt=3 call=evidence_gate provider=ollama
+2026-10-10 12:04:40 [warning  ] llm_provider_exhausted         call=evidence_gate provider=ollama
+2026-10-10 12:04:40 [info     ] llm_call                       attempts=3 cached=False call=evidence_gate completion_tokens=0 latency_ms=363039.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:04:40 [error    ] llm_permanent_failure          attempts=3 call=evidence_gate
+2026-10-10 12:04:40 [error    ] evidence_gate_failed
+2026-10-10 12:06:40 [error    ] llm_timeout                    attempt=1 call=response_generator provider=ollama
+2026-10-10 12:08:41 [error    ] llm_timeout                    attempt=2 call=response_generator provider=ollama
+2026-10-10 12:10:43 [error    ] llm_timeout                    attempt=3 call=response_generator provider=ollama
+2026-10-10 12:10:43 [warning  ] llm_provider_exhausted         call=response_generator provider=ollama
+2026-10-10 12:10:43 [info     ] llm_call                       attempts=3 cached=False call=response_generator completion_tokens=0 latency_ms=363025.9 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:10:43 [error    ] llm_permanent_failure          attempts=3 call=response_generator
+2026-10-10 12:10:43 [error    ] response_generator_failed      action=GENERALIZE mode=grounded
+2026-10-10 12:10:44 [info     ] turn_complete                  ablation=C5 action=GENERALIZE citations=0 latency_ms=1452551 session_id=6685acc4-9686-40d4-b897-5039e1d085d8
+/Users/yahmad/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

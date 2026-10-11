@@ -1,0 +1,637 @@
+
+[2026-10-10 11:04:18] === C5 on dev (qwen3.5:4b) ===
+[C5] 49 items to run (0 skipped, 0 re-runs of degraded attempts)
+2026-10-10 11:04:27 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=49.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:27 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:27 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=47.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:27 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:27 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=56.1 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:27 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:27 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:27 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:27 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 8994.22it/s]
+2026-10-10 11:04:33 [info     ] reranker_loaded                device=mps model=cross-encoder/ms-marco-MiniLM-L-6-v2
+2026-10-10 11:04:33 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=5.8 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:33 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=6876 session_id=a0c19805-1dd4-40aa-b265-f9558ebbd735
+[C5] 1/49 items (HB-0010) | errors 0 | degraded 0 | elapsed 0m07s | ETA 5m36s
+2026-10-10 11:04:33 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.7 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:33 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=1.1 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=2.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=GENERALIZE citations=2 latency_ms=6993 session_id=3b583533-77fb-4335-807c-e13404ce93cf
+[C5] 2/49 items (HB-0019) | errors 0 | degraded 0 | elapsed 0m07s | ETA 2m46s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=1.0 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=3 latency_ms=7097 session_id=5c1dd76f-ba93-43d8-a266-a9d62e04fcc4
+[C5] 3/49 items (HB-0008) | errors 0 | degraded 0 | elapsed 0m07s | ETA 1m49s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=1.0 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=224 session_id=f99ba915-e680-4a65-b298-816228aafdd3
+[C5] 4/49 items (HB-0020) | errors 0 | degraded 0 | elapsed 0m07s | ETA 1m21s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=2.8 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=2 latency_ms=252 session_id=4b41eafd-dec5-4bd4-ba3a-38a9fa9011d9
+[C5] 5/49 items (HB-0023) | errors 0 | degraded 0 | elapsed 0m07s | ETA 1m04s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.9 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=265 session_id=4d6d75a3-4c99-4122-8f85-0b10a90edf20
+[C5] 6/49 items (HB-0024) | errors 0 | degraded 0 | elapsed 0m07s | ETA 0m53s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=6 session_id=9a203cd7-f9a7-4e7d-9c57-96c69d8edd1a
+[C5] 7/49 items (HB-0041) | errors 0 | degraded 0 | elapsed 0m07s | ETA 0m44s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=7 session_id=696535f6-b08c-4a73-ae9e-dfcc87acc734
+[C5] 8/49 items (HB-0043) | errors 0 | degraded 0 | elapsed 0m07s | ETA 0m38s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.9 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=2.8 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=GENERALIZE citations=3 latency_ms=273 session_id=4d5daba3-edda-4261-90e8-f0a71a4c7207
+[C5] 9/49 items (HB-0026) | errors 0 | degraded 0 | elapsed 0m07s | ETA 0m33s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.9 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=GENERALIZE citations=3 latency_ms=272 session_id=d4ca235a-dd1d-44d9-940e-bd3aaa41e80a
+[C5] 10/49 items (HB-0034) | errors 0 | degraded 0 | elapsed 0m07s | ETA 0m29s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=3 latency_ms=235 session_id=3e7b6cca-8dac-4974-aada-28db5c2e5133
+[C5] 11/49 items (HB-0046) | errors 0 | degraded 0 | elapsed 0m07s | ETA 0m26s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.3 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=6 session_id=ff90afcd-9457-4583-af53-0588f5624ed2
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=2 latency_ms=275 session_id=ee1a16f6-d2d8-4d1f-80e8-8b1203c74d25
+[C5] 12/49 items (HB-0047) | errors 0 | degraded 0 | elapsed 0m07s | ETA 0m24s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=5 session_id=7dd76e8b-5536-44eb-8ec4-f6446d49f07c
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=3.1 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=1 latency_ms=281 session_id=1b19ccc2-d33c-4796-9c3d-da72bd33ba2c
+[C5] 13/49 items (HB-0060) | errors 0 | degraded 0 | elapsed 0m07s | ETA 0m22s
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=6 session_id=fcc0571c-3b82-44d9-ada8-32986b568bf6
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:34 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=3 latency_ms=271 session_id=ff90afcd-9457-4583-af53-0588f5624ed2
+[C5] 14/49 items (HB-0066) | errors 0 | degraded 0 | elapsed 0m08s | ETA 0m20s
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=7 session_id=b9aeb066-2564-44fe-a676-f962697a00cb
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.9 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=280 session_id=7dd76e8b-5536-44eb-8ec4-f6446d49f07c
+[C5] 15/49 items (HB-0069) | errors 0 | degraded 0 | elapsed 0m08s | ETA 0m18s
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.3 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=6 session_id=12b53f1e-dd40-4626-b230-c362ebe0ca1d
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=2.9 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=2 latency_ms=272 session_id=fcc0571c-3b82-44d9-ada8-32986b568bf6
+[C5] 16/49 items (HB-0074) | errors 0 | degraded 0 | elapsed 0m08s | ETA 0m17s
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=264 session_id=b9aeb066-2564-44fe-a676-f962697a00cb
+[C5] 17/49 items (HB-0078) | errors 0 | degraded 0 | elapsed 0m08s | ETA 0m15s
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=7 session_id=6e4088d5-8dc2-4da6-a8cb-044ec7aef9da
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=7 session_id=6e4088d5-8dc2-4da6-a8cb-044ec7aef9da
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.3 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.7 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=3.7 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=2 latency_ms=274 session_id=12b53f1e-dd40-4626-b230-c362ebe0ca1d
+[C5] 18/49 items (HB-0081) | errors 0 | degraded 0 | elapsed 0m08s | ETA 0m14s
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.3 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=5 session_id=e424a8c4-47e8-453b-9ac7-fae059c2cbb0
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.8 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.7 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=6 session_id=e424a8c4-47e8-453b-9ac7-fae059c2cbb0
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.9 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=2.8 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=GENERALIZE citations=4 latency_ms=280 session_id=b75de0e3-0992-4695-b93b-8f857efce66e
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.7 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=2.8 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=GENERALIZE citations=2 latency_ms=246 session_id=6e4088d5-8dc2-4da6-a8cb-044ec7aef9da
+[C5] 19/49 items (HB-0097) | errors 0 | degraded 0 | elapsed 0m08s | ETA 0m13s
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=2.8 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=GENERALIZE citations=4 latency_ms=252 session_id=e424a8c4-47e8-453b-9ac7-fae059c2cbb0
+[C5] 20/49 items (HB-0102) | errors 0 | degraded 0 | elapsed 0m08s | ETA 0m12s
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=3.0 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=2 latency_ms=270 session_id=b75de0e3-0992-4695-b93b-8f857efce66e
+[C5] 21/49 items (HB-0095) | errors 0 | degraded 0 | elapsed 0m08s | ETA 0m11s
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=3.3 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] turn_complete                  ablation=C5 action=GENERALIZE citations=2 latency_ms=265 session_id=c0a9fb56-3fc1-4e99-94c3-8b186e9ff50d
+[C5] 22/49 items (HB-0111) | errors 0 | degraded 0 | elapsed 0m08s | ETA 0m10s
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:35 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=1 latency_ms=269 session_id=1307a274-53d9-4a58-90eb-27dc290e7566
+[C5] 23/49 items (HB-0112) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m10s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.9 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=ANSWER citations=2 latency_ms=274 session_id=9cf0c9dd-4d5d-4f60-83c9-a8c901fc3650
+[C5] 24/49 items (HB-0114) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m09s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=3.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=267 session_id=863e74b0-3dd8-44b8-9783-474b7f89b5b0
+[C5] 25/49 items (HB-0129) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m08s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=8 session_id=36747f12-e46e-4dab-9c97-ec38d2082e7e
+[C5] 26/49 items (HB-0142) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m08s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=GENERALIZE citations=3 latency_ms=249 session_id=f3fd076d-460c-4a94-b739-c8b85c4ef344
+[C5] 27/49 items (HB-0131) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m07s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=1.1 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=GENERALIZE citations=2 latency_ms=259 session_id=df434861-6bf1-45f2-92da-d315f525dd9f
+[C5] 28/49 items (HB-0132) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m07s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=238 session_id=3f43422d-b983-4f18-bc33-a9fde81e1bc7
+[C5] 29/49 items (HB-0145) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m06s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.8 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=263 session_id=853b4943-ed40-4770-8b5e-ca06a6a45f84
+[C5] 30/49 items (HB-0147) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m06s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.9 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=269 session_id=6f7ca649-7c80-4a26-b8f8-09f9bd8047be
+[C5] 31/49 items (HB-0151) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m05s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.3 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=8 session_id=56587f41-4ee8-4696-9708-28affe974a76
+[C5] 32/49 items (HB-0176) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m05s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=1.1 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=268 session_id=150e14f1-49a7-4c83-aa1e-637e32ffe39a
+[C5] 33/49 items (HB-0162) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m04s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.3 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=6 session_id=514d8ef4-a3ac-4405-a8cd-14abaf034657
+[C5] 34/49 items (HB-0182) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m04s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=275 session_id=c77ab6a3-7bbb-4fd9-b94e-f801cc9cc552
+[C5] 35/49 items (HB-0172) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m03s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=260 session_id=91ff9757-0b51-4cdb-a7a3-dd33610740b0
+[C5] 36/49 items (HB-0181) | errors 0 | degraded 0 | elapsed 0m09s | ETA 0m03s
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=2.9 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=268 session_id=0e2ef5a0-1141-4252-b746-4d38b2b7c321
+[C5] 37/49 items (HB-0187) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m03s
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.3 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=1.1 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=288 session_id=1f121b0a-c2e6-405b-8ede-2f96e30a8cf7
+[C5] 38/49 items (HB-0190) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m02s
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=281 session_id=582344c5-7971-4b6f-9ffe-a4a226ed19af
+[C5] 39/49 items (HB-0196) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m02s
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=response_generator completion_tokens=0 latency_ms=0.3 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=SOFT-ASK citations=0 latency_ms=8 session_id=9ff06c8f-7aad-480d-a60d-bfef5222dbdb
+[C5] 40/49 items (HB-0202) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m02s
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=context_extractor completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=context_gate completion_tokens=0 latency_ms=0.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.5 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=272 session_id=875e4273-7755-4988-835a-154870a8e266
+[C5] 41/49 items (HB-0198) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m02s
+2026-10-10 11:04:37 [warning  ] emergency_fastpath_escalate    session_id=2cdeced5-4818-4200-8417-c4456d7df627
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=2cdeced5-4818-4200-8417-c4456d7df627
+[C5] 42/49 items (HB-0218) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m01s
+2026-10-10 11:04:37 [warning  ] emergency_fastpath_escalate    session_id=285e3bae-020e-4adf-82dc-d8498d1c1ede
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=285e3bae-020e-4adf-82dc-d8498d1c1ede
+[C5] 43/49 items (HB-0219) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m01s
+2026-10-10 11:04:37 [warning  ] emergency_fastpath_escalate    session_id=db4be4dd-86f9-4682-933b-02c9b5719a0f
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=db4be4dd-86f9-4682-933b-02c9b5719a0f
+[C5] 44/49 items (HB-0234) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m01s
+2026-10-10 11:04:37 [warning  ] emergency_fastpath_escalate    session_id=9c950f51-8eb4-43c2-9fde-d530acdf44f3
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=9c950f51-8eb4-43c2-9fde-d530acdf44f3
+[C5] 45/49 items (HB-0239) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m00s
+2026-10-10 11:04:37 [warning  ] emergency_fastpath_escalate    session_id=61b06d36-e6ad-4966-b60a-3abe4daa6cec
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=3 session_id=61b06d36-e6ad-4966-b60a-3abe4daa6cec
+[C5] 46/49 items (HB-0241) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m00s
+2026-10-10 11:04:37 [warning  ] emergency_fastpath_escalate    session_id=d3e05336-04d3-4822-85e4-475398ca66c4
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ESCALATE citations=0 latency_ms=2 session_id=d3e05336-04d3-4822-85e4-475398ca66c4
+[C5] 47/49 items (HB-0244) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m00s
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=274 session_id=44d1430e-c0d8-4ff5-a52b-7f178ac35fea
+[C5] 48/49 items (HB-0200) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m00s
+2026-10-10 11:04:37 [info     ] llm_call                       attempts=0 cached=True call=evidence_gate completion_tokens=0 latency_ms=0.3 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:04:37 [info     ] turn_complete                  ablation=C5 action=ABSTAIN citations=0 latency_ms=255 session_id=7dac6184-513d-4e56-9b7e-b551e5d2555b
+[C5] 49/49 items (HB-0210) | errors 0 | degraded 0 | elapsed 0m10s | ETA 0m00s
+2026-10-10 11:04:37 [info     ] Database connection pool disposed.
+[run] finished; manifest /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/results/runs/manifest_20261010T053418Z-ccd4b5.json; items with errors: 0; degraded items: 0
+
+[2026-10-10 11:04:38] === LLM + NLI judge on dev (gemma3:12b) ===
+2026-10-10 11:06:02 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=434 latency_ms=77042.1 model=gemma3:12b prompt_tokens=553 provider=ollama success=True truncated=False
+2026-10-10 11:06:04 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 3231.76it/s]
+2026-10-10 11:06:12 [info     ] reranker_loaded                device=mps model=cross-encoder/ms-marco-MiniLM-L-6-v2
+2026-10-10 11:06:14 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:15 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=558 latency_ms=89403.0 model=gemma3:12b prompt_tokens=556 provider=ollama success=True truncated=False
+2026-10-10 11:06:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:16 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:16 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:17 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:17 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:44 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=602 latency_ms=118611.8 model=gemma3:12b prompt_tokens=496 provider=ollama success=True truncated=False
+2026-10-10 11:06:45 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:52 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:06:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:07:36 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=292 latency_ms=78349.8 model=gemma3:12b prompt_tokens=2818 provider=ollama success=True truncated=False
+2026-10-10 11:07:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:07:37 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:07:38 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:07:38 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:07:38 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:07:49 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=327 latency_ms=92765.3 model=gemma3:12b prompt_tokens=2906 provider=ollama success=True truncated=False
+2026-10-10 11:07:50 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:07:50 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:08:00 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=268 latency_ms=65404.7 model=gemma3:12b prompt_tokens=1964 provider=ollama success=True truncated=False
+2026-10-10 11:08:00 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:08:17 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=74 latency_ms=16785.2 model=gemma3:12b prompt_tokens=1437 provider=ollama success=True truncated=False
+2026-10-10 11:08:18 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:08:18 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:08:18 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:08:31 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=111 latency_ms=40398.4 model=gemma3:12b prompt_tokens=1876 provider=ollama success=True truncated=False
+2026-10-10 11:08:31 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:08:45 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=58 latency_ms=13312.0 model=gemma3:12b prompt_tokens=1156 provider=ollama success=True truncated=False
+2026-10-10 11:08:55 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=244 latency_ms=76829.3 model=gemma3:12b prompt_tokens=2537 provider=ollama success=True truncated=False
+2026-10-10 11:09:01 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=71 latency_ms=16485.0 model=gemma3:12b prompt_tokens=708 provider=ollama success=True truncated=False
+2026-10-10 11:09:06 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=164 latency_ms=47128.3 model=gemma3:12b prompt_tokens=2622 provider=ollama success=True truncated=False
+2026-10-10 11:09:14 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=73 latency_ms=18604.5 model=gemma3:12b prompt_tokens=729 provider=ollama success=True truncated=False
+2026-10-10 11:09:21 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=65 latency_ms=14784.5 model=gemma3:12b prompt_tokens=663 provider=ollama success=True truncated=False
+2026-10-10 11:09:25 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=4345.1 model=gemma3:12b prompt_tokens=457 provider=ollama success=True truncated=False
+2026-10-10 11:09:35 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=66 latency_ms=10600.7 model=gemma3:12b prompt_tokens=602 provider=ollama success=True truncated=False
+2026-10-10 11:09:38 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=2880.9 model=gemma3:12b prompt_tokens=459 provider=ollama success=True truncated=False
+2026-10-10 11:09:50 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=66 latency_ms=11992.6 model=gemma3:12b prompt_tokens=603 provider=ollama success=True truncated=False
+2026-10-10 11:10:29 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=483 latency_ms=87884.5 model=gemma3:12b prompt_tokens=510 provider=ollama success=True truncated=False
+2026-10-10 11:10:29 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:10:30 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:10:31 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:10:31 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:10:31 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:10:57 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=356 latency_ms=67009.8 model=gemma3:12b prompt_tokens=513 provider=ollama success=True truncated=False
+2026-10-10 11:10:57 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:10:58 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:10:58 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:10:58 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:10:59 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:11:09 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=553 latency_ms=115679.5 model=gemma3:12b prompt_tokens=575 provider=ollama success=True truncated=False
+2026-10-10 11:11:10 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:11:10 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:11:10 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:11:11 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:11:11 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:11:53 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=304 latency_ms=81484.2 model=gemma3:12b prompt_tokens=3296 provider=ollama success=True truncated=False
+2026-10-10 11:11:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:11:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:11:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:12:09 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=255 latency_ms=70017.7 model=gemma3:12b prompt_tokens=2594 provider=ollama success=True truncated=False
+2026-10-10 11:12:09 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:12:09 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:12:30 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=323 latency_ms=78769.8 model=gemma3:12b prompt_tokens=3024 provider=ollama success=True truncated=False
+2026-10-10 11:12:30 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:12:31 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:12:31 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:12:31 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:12:45 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=148 latency_ms=51159.5 model=gemma3:12b prompt_tokens=2728 provider=ollama success=True truncated=False
+2026-10-10 11:12:51 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=128 latency_ms=41400.6 model=gemma3:12b prompt_tokens=1955 provider=ollama success=True truncated=False
+2026-10-10 11:13:03 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=72 latency_ms=17921.3 model=gemma3:12b prompt_tokens=654 provider=ollama success=True truncated=False
+2026-10-10 11:13:08 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=71 latency_ms=17269.3 model=gemma3:12b prompt_tokens=656 provider=ollama success=True truncated=False
+2026-10-10 11:13:29 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=219 latency_ms=57875.5 model=gemma3:12b prompt_tokens=3128 provider=ollama success=True truncated=False
+2026-10-10 11:13:42 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=70 latency_ms=12352.9 model=gemma3:12b prompt_tokens=742 provider=ollama success=True truncated=False
+[judge llm C5] 10/59 | errors 0 | ETA 43.8 min
+2026-10-10 11:13:45 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=3736.8 model=gemma3:12b prompt_tokens=451 provider=ollama success=True truncated=False
+2026-10-10 11:13:57 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=60 latency_ms=11714.8 model=gemma3:12b prompt_tokens=638 provider=ollama success=True truncated=False
+2026-10-10 11:14:14 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=375 latency_ms=65958.1 model=gemma3:12b prompt_tokens=506 provider=ollama success=True truncated=False
+2026-10-10 11:14:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:14:17 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:14:17 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:14:17 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:14:18 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:14:38 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=477 latency_ms=94968.7 model=gemma3:12b prompt_tokens=494 provider=ollama success=True truncated=False
+2026-10-10 11:14:38 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:14:38 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:14:39 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:14:39 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:14:39 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:15:14 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=358 latency_ms=77382.6 model=gemma3:12b prompt_tokens=555 provider=ollama success=True truncated=False
+2026-10-10 11:15:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:15:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:15:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:15:16 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:15:16 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:15:31 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=242 latency_ms=72613.5 model=gemma3:12b prompt_tokens=2931 provider=ollama success=True truncated=False
+2026-10-10 11:15:31 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:15:45 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=50 latency_ms=14285.3 model=gemma3:12b prompt_tokens=1552 provider=ollama success=True truncated=False
+2026-10-10 11:15:52 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=236 latency_ms=72400.4 model=gemma3:12b prompt_tokens=3285 provider=ollama success=True truncated=False
+2026-10-10 11:15:52 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:15:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:16:08 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=68 latency_ms=22312.1 model=gemma3:12b prompt_tokens=668 provider=ollama success=True truncated=False
+2026-10-10 11:16:13 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=5103.1 model=gemma3:12b prompt_tokens=433 provider=ollama success=True truncated=False
+2026-10-10 11:16:24 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=105 latency_ms=30802.4 model=gemma3:12b prompt_tokens=2102 provider=ollama success=True truncated=False
+2026-10-10 11:16:24 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:16:30 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=67 latency_ms=17609.9 model=gemma3:12b prompt_tokens=616 provider=ollama success=True truncated=False
+2026-10-10 11:16:34 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=3820.4 model=gemma3:12b prompt_tokens=434 provider=ollama success=True truncated=False
+2026-10-10 11:16:40 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=243 latency_ms=83389.3 model=gemma3:12b prompt_tokens=3365 provider=ollama success=True truncated=False
+2026-10-10 11:16:40 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:16:52 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=78 latency_ms=27547.8 model=gemma3:12b prompt_tokens=1152 provider=ollama success=True truncated=False
+2026-10-10 11:16:56 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=71 latency_ms=21524.9 model=gemma3:12b prompt_tokens=617 provider=ollama success=True truncated=False
+2026-10-10 11:17:01 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=58 latency_ms=21260.3 model=gemma3:12b prompt_tokens=1310 provider=ollama success=True truncated=False
+2026-10-10 11:17:12 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=79 latency_ms=20291.2 model=gemma3:12b prompt_tokens=663 provider=ollama success=True truncated=False
+2026-10-10 11:17:15 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=3029.6 model=gemma3:12b prompt_tokens=459 provider=ollama success=True truncated=False
+2026-10-10 11:17:19 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=67 latency_ms=17503.0 model=gemma3:12b prompt_tokens=833 provider=ollama success=True truncated=False
+2026-10-10 11:17:23 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=3593.0 model=gemma3:12b prompt_tokens=420 provider=ollama success=True truncated=False
+2026-10-10 11:17:30 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=65 latency_ms=14978.4 model=gemma3:12b prompt_tokens=622 provider=ollama success=True truncated=False
+2026-10-10 11:17:34 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=62 latency_ms=11834.2 model=gemma3:12b prompt_tokens=581 provider=ollama success=True truncated=False
+2026-10-10 11:18:31 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=370 latency_ms=56963.9 model=gemma3:12b prompt_tokens=535 provider=ollama success=True truncated=False
+2026-10-10 11:18:32 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:18:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:18:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:18:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:18:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:18:56 [error    ] llm_timeout                    attempt=1 call=judge_decompose provider=ollama
+2026-10-10 11:19:02 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=512 latency_ms=92195.8 model=gemma3:12b prompt_tokens=583 provider=ollama success=True truncated=False
+2026-10-10 11:19:02 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:19:03 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:19:03 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:19:03 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:19:04 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:19:38 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=249 latency_ms=63117.2 model=gemma3:12b prompt_tokens=3353 provider=ollama success=True truncated=False
+2026-10-10 11:19:38 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:19:53 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=49 latency_ms=14393.8 model=gemma3:12b prompt_tokens=1186 provider=ollama success=True truncated=False
+2026-10-10 11:19:59 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=222 latency_ms=54763.0 model=gemma3:12b prompt_tokens=2594 provider=ollama success=True truncated=False
+2026-10-10 11:19:59 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:19:59 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:20:17 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=71 latency_ms=24441.4 model=gemma3:12b prompt_tokens=703 provider=ollama success=True truncated=False
+2026-10-10 11:20:31 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=114 latency_ms=31799.1 model=gemma3:12b prompt_tokens=2435 provider=ollama success=True truncated=False
+2026-10-10 11:20:49 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=77 latency_ms=17441.9 model=gemma3:12b prompt_tokens=804 provider=ollama success=True truncated=False
+2026-10-10 11:20:53 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=3752.3 model=gemma3:12b prompt_tokens=425 provider=ollama success=True truncated=False
+2026-10-10 11:20:57 [error    ] llm_timeout                    attempt=2 call=judge_decompose provider=ollama
+2026-10-10 11:21:05 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=68 latency_ms=12421.9 model=gemma3:12b prompt_tokens=604 provider=ollama success=True truncated=False
+2026-10-10 11:21:08 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=3013.7 model=gemma3:12b prompt_tokens=427 provider=ollama success=True truncated=False
+2026-10-10 11:21:20 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=67 latency_ms=11746.4 model=gemma3:12b prompt_tokens=671 provider=ollama success=True truncated=False
+2026-10-10 11:22:07 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=621 latency_ms=109857.5 model=gemma3:12b prompt_tokens=546 provider=ollama success=True truncated=False
+2026-10-10 11:22:07 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:22:09 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:22:09 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:22:09 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:22:09 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:22:41 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=455 latency_ms=80726.9 model=gemma3:12b prompt_tokens=523 provider=ollama success=True truncated=False
+2026-10-10 11:22:41 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:22:41 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:22:41 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:22:42 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:22:42 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:22:59 [error    ] llm_timeout                    attempt=3 call=judge_decompose provider=ollama
+2026-10-10 11:22:59 [warning  ] llm_provider_exhausted         call=judge_decompose provider=ollama
+2026-10-10 11:22:59 [info     ] llm_call                       attempts=3 cached=False call=judge_decompose completion_tokens=0 latency_ms=363067.0 model=gemma3:12b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 11:22:59 [error    ] llm_permanent_failure          attempts=3 call=judge_decompose
+[judge llm C5] 20/59 | errors 1 | ETA 35.5 min
+2026-10-10 11:23:06 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=43 latency_ms=7516.1 model=gemma3:12b prompt_tokens=433 provider=ollama success=True truncated=False
+2026-10-10 11:23:06 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:23:18 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=252 latency_ms=68129.1 model=gemma3:12b prompt_tokens=3250 provider=ollama success=True truncated=False
+2026-10-10 11:23:18 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:23:18 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:23:19 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:23:19 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=50 latency_ms=11965.7 model=gemma3:12b prompt_tokens=1000 provider=ollama success=True truncated=False
+2026-10-10 11:23:19 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:23:19 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:23:44 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=68 latency_ms=25365.2 model=gemma3:12b prompt_tokens=595 provider=ollama success=True truncated=False
+2026-10-10 11:23:56 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=61 latency_ms=11822.6 model=gemma3:12b prompt_tokens=411 provider=ollama success=True truncated=False
+2026-10-10 11:23:56 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:24:02 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=285 latency_ms=80172.2 model=gemma3:12b prompt_tokens=3014 provider=ollama success=True truncated=False
+2026-10-10 11:24:02 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:24:16 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=49 latency_ms=19167.4 model=gemma3:12b prompt_tokens=1236 provider=ollama success=True truncated=False
+2026-10-10 11:24:25 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=59 latency_ms=21700.4 model=gemma3:12b prompt_tokens=1320 provider=ollama success=True truncated=False
+2026-10-10 11:24:30 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=235 latency_ms=70403.1 model=gemma3:12b prompt_tokens=2485 provider=ollama success=True truncated=False
+2026-10-10 11:24:30 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:24:31 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:24:31 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:24:41 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=70 latency_ms=25753.7 model=gemma3:12b prompt_tokens=646 provider=ollama success=True truncated=False
+2026-10-10 11:24:49 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=69 latency_ms=24749.2 model=gemma3:12b prompt_tokens=839 provider=ollama success=True truncated=False
+2026-10-10 11:25:08 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=154 latency_ms=36671.0 model=gemma3:12b prompt_tokens=2207 provider=ollama success=True truncated=False
+2026-10-10 11:25:23 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=68 latency_ms=15588.8 model=gemma3:12b prompt_tokens=837 provider=ollama success=True truncated=False
+[judge llm C5] 30/59 | errors 1 | ETA 19.9 min
+2026-10-10 11:26:00 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=412 latency_ms=70276.7 model=gemma3:12b prompt_tokens=461 provider=ollama success=True truncated=False
+2026-10-10 11:26:00 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:00 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:14 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=470 latency_ms=93091.4 model=gemma3:12b prompt_tokens=538 provider=ollama success=True truncated=False
+2026-10-10 11:26:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:16 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:16 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:36 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=355 latency_ms=73132.9 model=gemma3:12b prompt_tokens=495 provider=ollama success=True truncated=False
+2026-10-10 11:26:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:37 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:37 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:37 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:26:38 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:27:09 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=239 latency_ms=52488.6 model=gemma3:12b prompt_tokens=2092 provider=ollama success=True truncated=False
+2026-10-10 11:27:09 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:27:09 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:27:10 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:27:14 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=274 latency_ms=72707.9 model=gemma3:12b prompt_tokens=2632 provider=ollama success=True truncated=False
+2026-10-10 11:27:14 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:27:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:27:15 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:27:46 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=234 latency_ms=67943.1 model=gemma3:12b prompt_tokens=2203 provider=ollama success=True truncated=False
+2026-10-10 11:27:46 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:27:46 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:28:11 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=108 latency_ms=24232.4 model=gemma3:12b prompt_tokens=1617 provider=ollama success=True truncated=False
+2026-10-10 11:28:20 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=213 latency_ms=69691.1 model=gemma3:12b prompt_tokens=2864 provider=ollama success=True truncated=False
+2026-10-10 11:28:30 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=67 latency_ms=19346.5 model=gemma3:12b prompt_tokens=631 provider=ollama success=True truncated=False
+2026-10-10 11:28:36 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=64 latency_ms=16517.3 model=gemma3:12b prompt_tokens=829 provider=ollama success=True truncated=False
+2026-10-10 11:29:16 [error    ] llm_timeout                    attempt=1 call=judge_label provider=ollama
+2026-10-10 11:29:50 [info     ] llm_call                       attempts=2 cached=False call=judge_label completion_tokens=212 latency_ms=154313.8 model=gemma3:12b prompt_tokens=2479 provider=ollama success=True truncated=False
+2026-10-10 11:30:04 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=68 latency_ms=13524.6 model=gemma3:12b prompt_tokens=597 provider=ollama success=True truncated=False
+2026-10-10 11:30:29 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=680 latency_ms=112458.4 model=gemma3:12b prompt_tokens=600 provider=ollama success=True truncated=False
+2026-10-10 11:30:29 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:30:30 [error    ] llm_timeout                    attempt=1 call=judge_decompose provider=ollama
+2026-10-10 11:30:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:30:34 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:30:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:30:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:31:32 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=281 latency_ms=56440.6 model=gemma3:12b prompt_tokens=3265 provider=ollama success=True truncated=False
+2026-10-10 11:31:32 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:31:32 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:31:33 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:31:33 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:31:33 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:32:04 [error    ] llm_timeout                    attempt=1 call=judge_decompose provider=ollama
+2026-10-10 11:32:24 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=236 latency_ms=50862.0 model=gemma3:12b prompt_tokens=3076 provider=ollama success=True truncated=False
+2026-10-10 11:32:31 [error    ] llm_timeout                    attempt=2 call=judge_decompose provider=ollama
+2026-10-10 11:32:39 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=68 latency_ms=15144.1 model=gemma3:12b prompt_tokens=745 provider=ollama success=True truncated=False
+2026-10-10 11:32:44 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=5122.4 model=gemma3:12b prompt_tokens=469 provider=ollama success=True truncated=False
+2026-10-10 11:32:56 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=63 latency_ms=11653.6 model=gemma3:12b prompt_tokens=626 provider=ollama success=True truncated=False
+2026-10-10 11:33:00 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=3642.2 model=gemma3:12b prompt_tokens=434 provider=ollama success=True truncated=False
+2026-10-10 11:33:10 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=66 latency_ms=10090.5 model=gemma3:12b prompt_tokens=565 provider=ollama success=True truncated=False
+2026-10-10 11:33:14 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=3718.9 model=gemma3:12b prompt_tokens=441 provider=ollama success=True truncated=False
+2026-10-10 11:33:27 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=76 latency_ms=13354.7 model=gemma3:12b prompt_tokens=579 provider=ollama success=True truncated=False
+2026-10-10 11:33:31 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=3929.7 model=gemma3:12b prompt_tokens=432 provider=ollama success=True truncated=False
+2026-10-10 11:33:41 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=68 latency_ms=10370.6 model=gemma3:12b prompt_tokens=578 provider=ollama success=True truncated=False
+2026-10-10 11:34:05 [error    ] llm_timeout                    attempt=2 call=judge_decompose provider=ollama
+2026-10-10 11:34:24 [info     ] llm_call                       attempts=3 cached=False call=judge_decompose completion_tokens=757 latency_ms=353632.7 model=gemma3:12b prompt_tokens=518 provider=ollama success=True truncated=False
+2026-10-10 11:34:24 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:34:29 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:34:29 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:34:29 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:34:29 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:35:10 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=209 latency_ms=40562.0 model=gemma3:12b prompt_tokens=2069 provider=ollama success=True truncated=False
+2026-10-10 11:35:10 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:35:11 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:35:11 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:35:11 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:35:11 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:35:56 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=216 latency_ms=44689.4 model=gemma3:12b prompt_tokens=2061 provider=ollama success=True truncated=False
+2026-10-10 11:35:56 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:35:57 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:35:57 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:35:57 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:35:58 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:36:07 [error    ] llm_timeout                    attempt=3 call=judge_decompose provider=ollama
+2026-10-10 11:36:07 [warning  ] llm_provider_exhausted         call=judge_decompose provider=ollama
+2026-10-10 11:36:07 [info     ] llm_call                       attempts=3 cached=False call=judge_decompose completion_tokens=0 latency_ms=363063.0 model=gemma3:12b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 11:36:07 [error    ] llm_permanent_failure          attempts=3 call=judge_decompose
+2026-10-10 11:36:26 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=199 latency_ms=27628.8 model=gemma3:12b prompt_tokens=2681 provider=ollama success=True truncated=False
+2026-10-10 11:36:26 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:36:26 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:36:41 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=87 latency_ms=14808.4 model=gemma3:12b prompt_tokens=1982 provider=ollama success=True truncated=False
+2026-10-10 11:36:50 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=76 latency_ms=9434.6 model=gemma3:12b prompt_tokens=664 provider=ollama success=True truncated=False
+[judge llm C5] 40/59 | errors 2 | ETA 15.2 min
+[judge llm C5] 50/59 | errors 2 | ETA 5.8 min
+[judge llm C5] 59/59 | errors 2 | ETA 0.0 min
+[judge] done: {'C5': {'records': 59, 'judged': 59, 'errors': 2, 'templates': 24, 'truncated': 0}} None → /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/results/judgments/manifest_judge_20261010T110438.json
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+Loading weights:   0%|          | 0/202 [00:00<?, ?it/s]Loading weights: 100%|██████████| 202/202 [00:00<00:00, 10646.65it/s]
+/Users/yahmad/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

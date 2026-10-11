@@ -1,0 +1,11 @@
+Condition,Halluc. LLM % (filtered),Halluc. LLM % (unfiltered),turns w/o excluded labels,excluded claims,by reason,labels of excluded
+C0,"96.6 [93.5, 98.3]","96.6 [93.5, 98.3]",0,43,"generic_referral 38, self_reference 3, generic_emergency_advice 2","UNSUPPORTED 26, SUPPORTED 17"
+C1,"72.8 [66.8, 78.1]","73.2 [67.3, 78.4]",0,53,"generic_referral 34, self_reference 19","SUPPORTED 21, UNSUPPORTED 32"
+C1G,"74.1 [68.2, 79.2]","76.2 [70.4, 81.1]",0,104,"generic_referral 88, self_reference 16","UNSUPPORTED 52, SUPPORTED 52"
+C2,"67.8 [61.6, 73.4]","69.5 [63.3, 74.9]",0,84,"generic_referral 38, self_reference 46","SUPPORTED 15, UNSUPPORTED 69"
+C3,"57.3 [51.0, 63.4]","58.2 [51.8, 64.2]",0,61,"generic_referral 49, self_reference 12","UNSUPPORTED 30, SUPPORTED 31"
+C4,"43.5 [37.4, 49.9]","44.4 [38.2, 50.7]",0,35,"generic_referral 34, self_reference 1","UNSUPPORTED 13, SUPPORTED 22"
+C5,"37.2 [31.4, 43.5]","37.7 [31.8, 43.9]",0,24,generic_referral 24,"UNSUPPORTED 10, SUPPORTED 14"
+V1,"36.6 [30.7, 42.8]","36.6 [30.7, 42.8]",0,21,generic_referral 21,"UNSUPPORTED 7, SUPPORTED 14"
+V2,"21.3 [16.6, 27.0]","21.3 [16.6, 27.0]",0,1,generic_referral 1,SUPPORTED 1
+V12,"20.2 [15.6, 25.7]","20.2 [15.6, 25.7]",0,1,generic_referral 1,SUPPORTED 1

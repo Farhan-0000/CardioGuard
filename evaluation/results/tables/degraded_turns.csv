@@ -1,0 +1,11 @@
+Condition,n turns,degraded,rate %,errors,items affected,reasons
+C0,239,1,0.4,0,1,generator_fallback_template (1); llm_call_failed:response_generator (1); stage_failed:generation (1)
+C1,239,0,0.0,0,0,—
+C1G,239,0,0.0,0,0,—
+C2,239,0,0.0,0,0,—
+C3,239,0,0.0,0,0,—
+C4,239,0,0.0,0,0,—
+C5,239,0,0.0,0,0,—
+V1,239,1,0.4,0,1,gate2_votes_failed (1); llm_call_failed:evidence_gate (1)
+V12,239,1,0.4,0,1,gate2_votes_failed (1); llm_call_failed:evidence_gate (1)
+V2,239,0,0.0,0,0,—

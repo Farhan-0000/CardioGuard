@@ -1,0 +1,24 @@
+{
+  "started_at": "2026-10-10T06:22:08+00:00",
+  "command": "/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/judge.py --judge nli --conditions C5 --split dev --resume",
+  "judge": "nli",
+  "judge_model": "gemma3:12b",
+  "workers": 1,
+  "split": "dev",
+  "conditions": [
+    "C5"
+  ],
+  "git": {
+    "commit": "82359eb55ba6dca344b032deb52db2ec772f3ac7",
+    "dirty": true
+  },
+  "nli_model": "cross-encoder/nli-deberta-v3-base",
+  "nli": {
+    "C5": {
+      "records": 59,
+      "judged": 59,
+      "missing_llm": 0
+    }
+  },
+  "finished_at": "2026-10-10T06:28:40+00:00"
+}

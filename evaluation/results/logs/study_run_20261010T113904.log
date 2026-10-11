@@ -1,0 +1,817 @@
+
+[2026-10-10 11:39:05] === C5 on dev (qwen3.5:4b) ===
+[C5] 0 items to run (49 skipped, 0 re-runs of degraded attempts)
+2026-10-10 11:39:12 [info     ] Database connection pool disposed.
+[run] finished; manifest /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/results/runs/manifest_20261010T060905Z-c9ed47.json; items with errors: 0; degraded items: 0
+
+[2026-10-10 11:39:13] === LLM + NLI judge on dev (gemma3:12b) ===
+2026-10-10 11:39:48 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=184 latency_ms=29432.3 model=gemma3:12b prompt_tokens=605 provider=ollama success=True truncated=False
+2026-10-10 11:39:48 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-10-10 11:39:52 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=214 latency_ms=33631.2 model=gemma3:12b prompt_tokens=554 provider=ollama success=True truncated=False
+2026-10-10 11:39:52 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 10015.28it/s]
+2026-10-10 11:39:54 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=241 latency_ms=35829.8 model=gemma3:12b prompt_tokens=540 provider=ollama success=True truncated=False
+2026-10-10 11:39:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:54 [info     ] reranker_loaded                device=mps model=cross-encoder/ms-marco-MiniLM-L-6-v2
+2026-10-10 11:39:55 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:55 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:55 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:56 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:56 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:56 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:56 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:56 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:57 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:57 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:57 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:57 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:58 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:58 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:58 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:58 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:58 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:39:59 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:39 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=372 latency_ms=80291.0 model=gemma3:12b prompt_tokens=610 provider=ollama success=True truncated=False
+2026-10-10 11:40:39 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:39 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:39 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:40 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:40 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:40 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:40 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:40 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:41 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:41 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:59 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=152 latency_ms=60264.8 model=gemma3:12b prompt_tokens=3049 provider=ollama success=True truncated=False
+2026-10-10 11:40:59 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:59 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:40:59 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:41:11 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=197 latency_ms=72909.1 model=gemma3:12b prompt_tokens=3137 provider=ollama success=True truncated=False
+2026-10-10 11:41:11 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.5 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:41:18 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=228 latency_ms=79234.8 model=gemma3:12b prompt_tokens=3812 provider=ollama success=True truncated=False
+2026-10-10 11:41:18 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.6 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:41:20 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=81 latency_ms=21169.2 model=gemma3:12b prompt_tokens=2613 provider=ollama success=True truncated=False
+2026-10-10 11:41:20 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.5 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:41:20 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=2511.4 model=gemma3:12b prompt_tokens=496 provider=ollama success=True truncated=False
+2026-10-10 11:41:20 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.3 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:41:25 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=4656.5 model=gemma3:12b prompt_tokens=498 provider=ollama success=True truncated=False
+2026-10-10 11:41:25 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.4 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:41:40 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=277 latency_ms=58648.6 model=gemma3:12b prompt_tokens=3514 provider=ollama success=True truncated=False
+2026-10-10 11:41:40 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:41:40 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:41:40 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:41:54 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=232 latency_ms=43039.6 model=gemma3:12b prompt_tokens=634 provider=ollama success=True truncated=False
+2026-10-10 11:41:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:41:55 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:41:55 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:41:55 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:41:55 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:41:56 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:41:56 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:41:56 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:11 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=74 latency_ms=30783.2 model=gemma3:12b prompt_tokens=2863 provider=ollama success=True truncated=False
+2026-10-10 11:42:11 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.9 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:42:19 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=271 latency_ms=58607.3 model=gemma3:12b prompt_tokens=562 provider=ollama success=True truncated=False
+2026-10-10 11:42:19 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:19 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:20 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:20 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:20 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:20 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:20 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:21 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:21 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:21 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:25 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=273 latency_ms=59383.4 model=gemma3:12b prompt_tokens=538 provider=ollama success=True truncated=False
+2026-10-10 11:42:25 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:25 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:25 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:26 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:26 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:26 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:27 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:27 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:27 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:28 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:51 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=129 latency_ms=39327.4 model=gemma3:12b prompt_tokens=550 provider=ollama success=True truncated=False
+2026-10-10 11:42:51 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:51 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:51 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:42:52 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:43:06 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=196 latency_ms=69657.6 model=gemma3:12b prompt_tokens=3962 provider=ollama success=True truncated=False
+2026-10-10 11:43:06 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.6 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+[judge llm C5] 10/59 | errors 0 | ETA 18.6 min
+2026-10-10 11:43:08 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=2150.9 model=gemma3:12b prompt_tokens=490 provider=ollama success=True truncated=False
+2026-10-10 11:43:08 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.3 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:43:16 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=105 latency_ms=24511.2 model=gemma3:12b prompt_tokens=2773 provider=ollama success=True truncated=False
+2026-10-10 11:43:16 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.4 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:43:19 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=2841.5 model=gemma3:12b prompt_tokens=472 provider=ollama success=True truncated=False
+2026-10-10 11:43:19 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.4 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:43:22 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=2562.4 model=gemma3:12b prompt_tokens=471 provider=ollama success=True truncated=False
+2026-10-10 11:43:22 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.7 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:43:30 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=237 latency_ms=61618.1 model=gemma3:12b prompt_tokens=3525 provider=ollama success=True truncated=False
+2026-10-10 11:43:30 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:43:35 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=254 latency_ms=73582.9 model=gemma3:12b prompt_tokens=3203 provider=ollama success=True truncated=False
+2026-10-10 11:43:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:43:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:43:46 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=31 latency_ms=15459.9 model=gemma3:12b prompt_tokens=1143 provider=ollama success=True truncated=False
+2026-10-10 11:43:46 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.7 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:43:48 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=2557.2 model=gemma3:12b prompt_tokens=498 provider=ollama success=True truncated=False
+2026-10-10 11:43:48 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.6 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:43:51 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=2322.7 model=gemma3:12b prompt_tokens=454 provider=ollama success=True truncated=False
+2026-10-10 11:43:51 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=2.3 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:43:51 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=184 latency_ms=43130.1 model=gemma3:12b prompt_tokens=612 provider=ollama success=True truncated=False
+2026-10-10 11:43:51 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:43:52 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:43:52 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:43:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:43:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:43:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:43:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:04 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=46 latency_ms=28142.0 model=gemma3:12b prompt_tokens=2195 provider=ollama success=True truncated=False
+2026-10-10 11:44:04 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.7 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:44:23 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=263 latency_ms=61775.2 model=gemma3:12b prompt_tokens=638 provider=ollama success=True truncated=False
+2026-10-10 11:44:23 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:24 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:24 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:24 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:24 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:25 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:25 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:25 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:25 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:26 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=155 latency_ms=31820.7 model=gemma3:12b prompt_tokens=3564 provider=ollama success=True truncated=False
+2026-10-10 11:44:26 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.8 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:44:44 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=223 latency_ms=40778.6 model=gemma3:12b prompt_tokens=586 provider=ollama success=True truncated=False
+2026-10-10 11:44:44 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:45 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:45 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:45 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:46 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:46 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:44:46 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:14 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=200 latency_ms=48447.6 model=gemma3:12b prompt_tokens=2932 provider=ollama success=True truncated=False
+2026-10-10 11:45:21 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=392 latency_ms=90859.5 model=gemma3:12b prompt_tokens=630 provider=ollama success=True truncated=False
+2026-10-10 11:45:21 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:22 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:22 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:22 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:22 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:23 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:23 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:23 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:23 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:23 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:36 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=173 latency_ms=50195.0 model=gemma3:12b prompt_tokens=3717 provider=ollama success=True truncated=False
+2026-10-10 11:45:36 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.6 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:45:40 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=3528.7 model=gemma3:12b prompt_tokens=462 provider=ollama success=True truncated=False
+2026-10-10 11:45:40 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.3 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:45:42 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=2198.6 model=gemma3:12b prompt_tokens=466 provider=ollama success=True truncated=False
+2026-10-10 11:45:42 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.8 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:45:46 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=80 latency_ms=31903.3 model=gemma3:12b prompt_tokens=843 provider=ollama success=True truncated=False
+[judge llm C5] 20/59 | errors 0 | ETA 12.6 min
+2026-10-10 11:45:52 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=40 latency_ms=6232.8 model=gemma3:12b prompt_tokens=467 provider=ollama success=True truncated=False
+2026-10-10 11:45:52 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:45:52 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:00 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=355 latency_ms=94708.2 model=gemma3:12b prompt_tokens=603 provider=ollama success=True truncated=False
+2026-10-10 11:46:00 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:02 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:02 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:02 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:02 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:19 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=65 latency_ms=26760.1 model=gemma3:12b prompt_tokens=1362 provider=ollama success=True truncated=False
+2026-10-10 11:46:19 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.4 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:46:27 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=39 latency_ms=7844.9 model=gemma3:12b prompt_tokens=440 provider=ollama success=True truncated=False
+2026-10-10 11:46:27 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:35 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=25 latency_ms=7451.3 model=gemma3:12b prompt_tokens=1231 provider=ollama success=True truncated=False
+2026-10-10 11:46:35 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=6.5 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:46:35 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=201 latency_ms=53037.3 model=gemma3:12b prompt_tokens=572 provider=ollama success=True truncated=False
+2026-10-10 11:46:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:35 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:36 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:40 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=232 latency_ms=76764.8 model=gemma3:12b prompt_tokens=3345 provider=ollama success=True truncated=False
+2026-10-10 11:46:40 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:41 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:41 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:46:42 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:47:16 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=94 latency_ms=33725.4 model=gemma3:12b prompt_tokens=3462 provider=ollama success=True truncated=False
+2026-10-10 11:47:16 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.0 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:47:20 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=220 latency_ms=77476.8 model=gemma3:12b prompt_tokens=3524 provider=ollama success=True truncated=False
+2026-10-10 11:47:20 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:47:20 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:47:21 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:47:21 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:47:34 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=138 latency_ms=57262.2 model=gemma3:12b prompt_tokens=3780 provider=ollama success=True truncated=False
+2026-10-10 11:47:34 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.1 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:47:46 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=102 latency_ms=25270.5 model=gemma3:12b prompt_tokens=2747 provider=ollama success=True truncated=False
+2026-10-10 11:47:46 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=7.5 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+[judge llm C5] 30/59 | errors 0 | ETA 8.2 min
+2026-10-10 11:47:53 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=149 latency_ms=36775.8 model=gemma3:12b prompt_tokens=505 provider=ollama success=True truncated=False
+2026-10-10 11:47:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:47:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:47:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:47:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:47:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:47:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:47:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:06 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=271 latency_ms=90937.0 model=gemma3:12b prompt_tokens=592 provider=ollama success=True truncated=False
+2026-10-10 11:48:06 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:06 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:07 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:07 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:07 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:07 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:07 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:08 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:08 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:08 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:28 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=222 latency_ms=54760.8 model=gemma3:12b prompt_tokens=544 provider=ollama success=True truncated=False
+2026-10-10 11:48:28 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:29 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:29 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:29 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:29 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:29 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:30 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:30 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:30 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:30 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:48:48 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=183 latency_ms=54101.8 model=gemma3:12b prompt_tokens=3355 provider=ollama success=True truncated=False
+2026-10-10 11:48:48 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.5 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:48:59 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=231 latency_ms=50850.4 model=gemma3:12b prompt_tokens=3260 provider=ollama success=True truncated=False
+2026-10-10 11:48:59 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:10 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=31 latency_ms=10437.6 model=gemma3:12b prompt_tokens=1394 provider=ollama success=True truncated=False
+2026-10-10 11:49:10 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.7 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:49:19 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=224 latency_ms=48541.0 model=gemma3:12b prompt_tokens=2498 provider=ollama success=True truncated=False
+2026-10-10 11:49:19 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:27 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=27 latency_ms=7555.2 model=gemma3:12b prompt_tokens=1180 provider=ollama success=True truncated=False
+2026-10-10 11:49:27 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=3.0 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:49:31 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=3937.8 model=gemma3:12b prompt_tokens=508 provider=ollama success=True truncated=False
+2026-10-10 11:49:31 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.5 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:49:33 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=2234.2 model=gemma3:12b prompt_tokens=471 provider=ollama success=True truncated=False
+2026-10-10 11:49:33 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.3 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:49:35 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=2019.7 model=gemma3:12b prompt_tokens=480 provider=ollama success=True truncated=False
+2026-10-10 11:49:35 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.3 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:49:37 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=6 latency_ms=2053.1 model=gemma3:12b prompt_tokens=471 provider=ollama success=True truncated=False
+2026-10-10 11:49:37 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.9 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:49:43 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=483 latency_ms=116687.7 model=gemma3:12b prompt_tokens=577 provider=ollama success=True truncated=False
+2026-10-10 11:49:43 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:43 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:44 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:44 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:44 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:44 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:44 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:44 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:45 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:45 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:59 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=312 latency_ms=70515.3 model=gemma3:12b prompt_tokens=659 provider=ollama success=True truncated=False
+2026-10-10 11:49:59 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:49:59 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:00 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:00 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:00 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:00 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:01 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:20 [info     ] llm_call                       attempts=1 cached=False call=judge_decompose completion_tokens=266 latency_ms=70239.6 model=gemma3:12b prompt_tokens=584 provider=ollama success=True truncated=False
+2026-10-10 11:50:20 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:21 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:21 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:21 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:21 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:22 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:22 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:22 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:22 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:22 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:52 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=226 latency_ms=67115.4 model=gemma3:12b prompt_tokens=1763 provider=ollama success=True truncated=False
+2026-10-10 11:50:52 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:53 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:50:54 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:51:18 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=262 latency_ms=76794.0 model=gemma3:12b prompt_tokens=4073 provider=ollama success=True truncated=False
+2026-10-10 11:51:18 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:51:27 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=242 latency_ms=64725.2 model=gemma3:12b prompt_tokens=3271 provider=ollama success=True truncated=False
+2026-10-10 11:51:27 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:51:28 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:51:28 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=27 latency_ms=9105.4 model=gemma3:12b prompt_tokens=1065 provider=ollama success=True truncated=False
+2026-10-10 11:51:28 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=0.8 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+2026-10-10 11:51:41 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=57 latency_ms=12969.7 model=gemma3:12b prompt_tokens=1223 provider=ollama success=True truncated=False
+2026-10-10 11:51:48 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=226 latency_ms=53274.6 model=gemma3:12b prompt_tokens=2840 provider=ollama success=True truncated=False
+2026-10-10 11:51:48 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:51:48 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:51:48 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:51:49 [info     ] retrieval_complete             collection=clinical_guidelines count=20 mode=hybrid
+2026-10-10 11:52:01 [info     ] llm_call                       attempts=1 cached=False call=judge_behaviour completion_tokens=69 latency_ms=19719.5 model=gemma3:12b prompt_tokens=676 provider=ollama success=True truncated=False
+2026-10-10 11:52:06 [info     ] llm_call                       attempts=1 cached=False call=judge_label completion_tokens=91 latency_ms=17459.5 model=gemma3:12b prompt_tokens=2809 provider=ollama success=True truncated=False
+2026-10-10 11:52:06 [info     ] llm_call                       attempts=0 cached=True call=judge_behaviour completion_tokens=0 latency_ms=1.0 model=gemma3:12b prompt_tokens=0 provider=ollama success=True truncated=False
+[judge llm C5] 40/59 | errors 0 | ETA 6.1 min
+[judge llm C5] 50/59 | errors 0 | ETA 2.3 min
+[judge llm C5] 59/59 | errors 0 | ETA 0.0 min
+[judge] done: {'C5': {'records': 59, 'judged': 59, 'errors': 0, 'templates': 24, 'truncated': 0}} None → /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/results/judgments/manifest_judge_20261010T113913.json
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/.venv-mac/lib/python3.11/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+Loading weights:   0%|          | 0/202 [00:00<?, ?it/s]Loading weights: 100%|██████████| 202/202 [00:00<00:00, 13661.35it/s]
+[judge nli C5] judged 59 | missing LLM judgments 0
+[judge] done: None {'C5': {'records': 59, 'judged': 59, 'missing_llm': 0}} → /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/results/judgments/manifest_judge_20261010T115208.json
+
+[2026-10-10 11:58:41] === Calibrate NLI judge, V1 and V2 thresholds on dev ===
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 11742.49it/s]
+2026-10-10 11:58:50 [info     ] grounding_model_loaded         device=mps model=cross-encoder/nli-MiniLM2-L6-H768
+2026-10-10 11:58:50 [info     ] grounding_verified             available=True latency_ms=8348.8 n_claims=3 n_unsupported=2
+2026-10-10 11:58:51 [info     ] grounding_verified             available=True latency_ms=677.7 n_claims=6 n_unsupported=6
+2026-10-10 11:58:51 [info     ] grounding_verified             available=True latency_ms=106.9 n_claims=5 n_unsupported=2
+2026-10-10 11:58:51 [info     ] grounding_verified             available=True latency_ms=209.9 n_claims=4 n_unsupported=4
+2026-10-10 11:58:51 [info     ] grounding_verified             available=True latency_ms=140.6 n_claims=6 n_unsupported=4
+2026-10-10 11:58:51 [info     ] grounding_verified             available=True latency_ms=109.2 n_claims=5 n_unsupported=5
+2026-10-10 11:58:52 [info     ] grounding_verified             available=True latency_ms=240.4 n_claims=4 n_unsupported=4
+2026-10-10 11:58:52 [info     ] grounding_verified             available=True latency_ms=298.9 n_claims=4 n_unsupported=2
+2026-10-10 11:58:52 [info     ] grounding_verified             available=True latency_ms=459.3 n_claims=7 n_unsupported=5
+2026-10-10 11:58:53 [info     ] grounding_verified             available=True latency_ms=334.1 n_claims=6 n_unsupported=6
+2026-10-10 11:58:53 [info     ] grounding_verified             available=True latency_ms=288.6 n_claims=4 n_unsupported=4
+2026-10-10 11:58:53 [info     ] grounding_verified             available=True latency_ms=191.9 n_claims=5 n_unsupported=5
+2026-10-10 11:58:54 [info     ] grounding_verified             available=True latency_ms=648.3 n_claims=6 n_unsupported=6
+2026-10-10 11:58:54 [info     ] grounding_verified             available=True latency_ms=366.6 n_claims=4 n_unsupported=3
+2026-10-10 11:58:54 [info     ] grounding_verified             available=True latency_ms=160.8 n_claims=5 n_unsupported=4
+2026-10-10 11:58:55 [info     ] grounding_verified             available=True latency_ms=343.9 n_claims=4 n_unsupported=2
+2026-10-10 11:58:55 [info     ] grounding_verified             available=True latency_ms=412.2 n_claims=5 n_unsupported=3
+2026-10-10 11:58:56 [info     ] grounding_verified             available=True latency_ms=335.3 n_claims=6 n_unsupported=3
+2026-10-10 11:58:56 [info     ] grounding_verified             available=True latency_ms=153.4 n_claims=6 n_unsupported=6
+2026-10-10 11:58:56 [info     ] grounding_verified             available=True latency_ms=191.0 n_claims=4 n_unsupported=4
+[calibrate] NLI theta=0.55 theta_c=0.95 (binary kappa 0.468, n=204 dev claims)
+[calibrate] V1 thresholds (injected by evaluation.run for V1):
+EVIDENCE_MIN_RERANK_ANSWER=2.072
+EVIDENCE_MIN_RERANK_ANY=-100
+EVIDENCE_MIN_ENTITY_COVERAGE=0
+[calibrate] V2 thresholds (injected by evaluation.run for V2):
+GROUNDING_ENTAILMENT_THRESHOLD=0.2
+GROUNDING_MAX_UNSUPPORTED_FRACTION=1
+[calibrate] wrote /Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/evaluation/results/calibration.json
+
+[2026-10-10 11:58:56] === All conditions on test (C0,C1,C2,C3,C4,C5,V1,V2) ===
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 24658.56it/s]
+2026-10-10 11:59:05 [info     ] grounding_model_loaded         device=mps model=cross-encoder/nli-MiniLM2-L6-H768
+[C0] 198 items to run (0 skipped, 0 re-runs of degraded attempts)
+2026-10-10 12:01:05 [error    ] llm_timeout                    attempt=1 call=context_extractor provider=ollama
+2026-10-10 12:01:05 [error    ] llm_timeout                    attempt=1 call=context_extractor provider=ollama
+2026-10-10 12:01:05 [error    ] llm_timeout                    attempt=1 call=context_extractor provider=ollama
+2026-10-10 12:01:05 [error    ] llm_timeout                    attempt=1 call=context_extractor provider=ollama
+2026-10-10 12:03:06 [error    ] llm_timeout                    attempt=2 call=context_extractor provider=ollama
+2026-10-10 12:03:06 [error    ] llm_timeout                    attempt=2 call=context_extractor provider=ollama
+2026-10-10 12:03:06 [error    ] llm_timeout                    attempt=2 call=context_extractor provider=ollama
+2026-10-10 12:03:06 [error    ] llm_timeout                    attempt=2 call=context_extractor provider=ollama
+2026-10-10 12:05:08 [error    ] llm_timeout                    attempt=3 call=context_extractor provider=ollama
+2026-10-10 12:05:08 [warning  ] llm_provider_exhausted         call=context_extractor provider=ollama
+2026-10-10 12:05:08 [info     ] llm_call                       attempts=3 cached=False call=context_extractor completion_tokens=0 latency_ms=363046.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:05:08 [error    ] llm_permanent_failure          attempts=3 call=context_extractor
+2026-10-10 12:05:08 [error    ] context_extractor_failed
+2026-10-10 12:05:08 [error    ] llm_timeout                    attempt=3 call=context_extractor provider=ollama
+2026-10-10 12:05:08 [warning  ] llm_provider_exhausted         call=context_extractor provider=ollama
+2026-10-10 12:05:08 [info     ] llm_call                       attempts=3 cached=False call=context_extractor completion_tokens=0 latency_ms=363048.6 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:05:08 [error    ] llm_permanent_failure          attempts=3 call=context_extractor
+2026-10-10 12:05:08 [error    ] context_extractor_failed
+2026-10-10 12:05:08 [error    ] llm_timeout                    attempt=3 call=context_extractor provider=ollama
+2026-10-10 12:05:08 [warning  ] llm_provider_exhausted         call=context_extractor provider=ollama
+2026-10-10 12:05:08 [info     ] llm_call                       attempts=3 cached=False call=context_extractor completion_tokens=0 latency_ms=363053.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:05:08 [error    ] llm_permanent_failure          attempts=3 call=context_extractor
+2026-10-10 12:05:08 [error    ] context_extractor_failed
+2026-10-10 12:05:08 [error    ] llm_timeout                    attempt=3 call=context_extractor provider=ollama
+2026-10-10 12:05:08 [warning  ] llm_provider_exhausted         call=context_extractor provider=ollama
+2026-10-10 12:05:08 [info     ] llm_call                       attempts=3 cached=False call=context_extractor completion_tokens=0 latency_ms=363054.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:05:08 [error    ] llm_permanent_failure          attempts=3 call=context_extractor
+2026-10-10 12:05:08 [error    ] context_extractor_failed
+2026-10-10 12:07:08 [error    ] llm_timeout                    attempt=1 call=response_generator provider=ollama
+2026-10-10 12:07:08 [error    ] llm_timeout                    attempt=1 call=response_generator provider=ollama
+2026-10-10 12:07:08 [error    ] llm_timeout                    attempt=1 call=response_generator provider=ollama
+2026-10-10 12:07:08 [error    ] llm_timeout                    attempt=1 call=response_generator provider=ollama
+2026-10-10 12:09:09 [error    ] llm_timeout                    attempt=2 call=response_generator provider=ollama
+2026-10-10 12:09:09 [error    ] llm_timeout                    attempt=2 call=response_generator provider=ollama
+2026-10-10 12:09:09 [error    ] llm_timeout                    attempt=2 call=response_generator provider=ollama
+2026-10-10 12:09:09 [error    ] llm_timeout                    attempt=2 call=response_generator provider=ollama
+2026-10-10 12:11:11 [error    ] llm_timeout                    attempt=3 call=response_generator provider=ollama
+2026-10-10 12:11:11 [warning  ] llm_provider_exhausted         call=response_generator provider=ollama
+2026-10-10 12:11:11 [info     ] llm_call                       attempts=3 cached=False call=response_generator completion_tokens=0 latency_ms=363042.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:11:11 [error    ] llm_permanent_failure          attempts=3 call=response_generator
+2026-10-10 12:11:11 [error    ] response_generator_failed      action=ANSWER mode=direct
+2026-10-10 12:11:11 [error    ] llm_timeout                    attempt=3 call=response_generator provider=ollama
+2026-10-10 12:11:11 [warning  ] llm_provider_exhausted         call=response_generator provider=ollama
+2026-10-10 12:11:11 [info     ] llm_call                       attempts=3 cached=False call=response_generator completion_tokens=0 latency_ms=363042.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:11:11 [error    ] llm_permanent_failure          attempts=3 call=response_generator
+2026-10-10 12:11:11 [error    ] response_generator_failed      action=ANSWER mode=direct
+2026-10-10 12:11:11 [error    ] llm_timeout                    attempt=3 call=response_generator provider=ollama
+2026-10-10 12:11:11 [warning  ] llm_provider_exhausted         call=response_generator provider=ollama
+2026-10-10 12:11:11 [info     ] llm_call                       attempts=3 cached=False call=response_generator completion_tokens=0 latency_ms=363040.7 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:11:11 [error    ] llm_permanent_failure          attempts=3 call=response_generator
+2026-10-10 12:11:11 [error    ] response_generator_failed      action=ANSWER mode=direct
+2026-10-10 12:11:11 [error    ] llm_timeout                    attempt=3 call=response_generator provider=ollama
+2026-10-10 12:11:11 [warning  ] llm_provider_exhausted         call=response_generator provider=ollama
+2026-10-10 12:11:11 [info     ] llm_call                       attempts=3 cached=False call=response_generator completion_tokens=0 latency_ms=363039.4 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:11:11 [error    ] llm_permanent_failure          attempts=3 call=response_generator
+2026-10-10 12:11:11 [error    ] response_generator_failed      action=ANSWER mode=direct
+2026-10-10 12:11:11 [info     ] turn_complete                  ablation=C0 action=GENERALIZE citations=0 latency_ms=726132 session_id=32b3f9f7-4446-4567-901e-0b18695d6e08
+2026-10-10 12:11:11 [info     ] turn_complete                  ablation=C0 action=GENERALIZE citations=0 latency_ms=726125 session_id=2c5a501c-2960-4355-b549-c687537a6742
+2026-10-10 12:11:11 [info     ] turn_complete                  ablation=C0 action=GENERALIZE citations=0 latency_ms=726132 session_id=805b5c29-e3e3-4133-93f3-dae170992e1a
+2026-10-10 12:11:11 [info     ] turn_complete                  ablation=C0 action=GENERALIZE citations=0 latency_ms=726130 session_id=5275fde3-c3f2-405e-9de2-0baed3f6b50e
+[C0] 1/198 items (HB-0001 DEGRADED) | errors 0 | degraded 1 | elapsed 12m06s | ETA 39h44m24s
+[C0] 2/198 items (HB-0002 DEGRADED) | errors 0 | degraded 2 | elapsed 12m06s | ETA 19h46m09s
+[C0] 3/198 items (HB-0004 DEGRADED) | errors 0 | degraded 3 | elapsed 12m06s | ETA 13h06m43s
+[C0] 4/198 items (HB-0003 DEGRADED) | errors 0 | degraded 4 | elapsed 12m06s | ETA 9h47m01s
+2026-10-10 12:13:12 [error    ] llm_timeout                    attempt=1 call=context_extractor provider=ollama
+2026-10-10 12:13:12 [error    ] llm_timeout                    attempt=1 call=context_extractor provider=ollama
+2026-10-10 12:13:12 [error    ] llm_timeout                    attempt=1 call=context_extractor provider=ollama
+2026-10-10 12:13:12 [error    ] llm_timeout                    attempt=1 call=context_extractor provider=ollama
+2026-10-10 12:15:13 [error    ] llm_timeout                    attempt=2 call=context_extractor provider=ollama
+2026-10-10 12:15:13 [error    ] llm_timeout                    attempt=2 call=context_extractor provider=ollama
+2026-10-10 12:15:13 [error    ] llm_timeout                    attempt=2 call=context_extractor provider=ollama
+2026-10-10 12:15:13 [error    ] llm_timeout                    attempt=2 call=context_extractor provider=ollama
+2026-10-10 12:17:15 [error    ] llm_timeout                    attempt=3 call=context_extractor provider=ollama
+2026-10-10 12:17:15 [warning  ] llm_provider_exhausted         call=context_extractor provider=ollama
+2026-10-10 12:17:15 [info     ] llm_call                       attempts=3 cached=False call=context_extractor completion_tokens=0 latency_ms=363027.0 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:17:15 [error    ] llm_permanent_failure          attempts=3 call=context_extractor
+2026-10-10 12:17:15 [error    ] context_extractor_failed
+2026-10-10 12:17:15 [error    ] llm_timeout                    attempt=3 call=context_extractor provider=ollama
+2026-10-10 12:17:15 [warning  ] llm_provider_exhausted         call=context_extractor provider=ollama
+2026-10-10 12:17:15 [info     ] llm_call                       attempts=3 cached=False call=context_extractor completion_tokens=0 latency_ms=363029.0 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:17:15 [error    ] llm_permanent_failure          attempts=3 call=context_extractor
+2026-10-10 12:17:15 [error    ] context_extractor_failed
+2026-10-10 12:17:15 [error    ] llm_timeout                    attempt=3 call=context_extractor provider=ollama
+2026-10-10 12:17:15 [warning  ] llm_provider_exhausted         call=context_extractor provider=ollama
+2026-10-10 12:17:15 [info     ] llm_call                       attempts=3 cached=False call=context_extractor completion_tokens=0 latency_ms=363032.0 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:17:15 [error    ] llm_permanent_failure          attempts=3 call=context_extractor
+2026-10-10 12:17:15 [error    ] context_extractor_failed
+2026-10-10 12:17:15 [error    ] llm_timeout                    attempt=3 call=context_extractor provider=ollama
+2026-10-10 12:17:15 [warning  ] llm_provider_exhausted         call=context_extractor provider=ollama
+2026-10-10 12:17:15 [info     ] llm_call                       attempts=3 cached=False call=context_extractor completion_tokens=0 latency_ms=363036.2 model=qwen3.5:4b prompt_tokens=0 provider=ollama success=False truncated=False
+2026-10-10 12:17:15 [error    ] llm_permanent_failure          attempts=3 call=context_extractor
+2026-10-10 12:17:15 [error    ] context_extractor_failed
+2026-10-10 12:19:15 [error    ] llm_timeout                    attempt=1 call=response_generator provider=ollama
+2026-10-10 12:19:15 [error    ] llm_timeout                    attempt=1 call=response_generator provider=ollama
+2026-10-10 12:19:15 [error    ] llm_timeout                    attempt=1 call=response_generator provider=ollama
+2026-10-10 12:19:15 [error    ] llm_timeout                    attempt=1 call=response_generator provider=ollama
+2026-10-10 12:21:16 [error    ] llm_timeout                    attempt=2 call=response_generator provider=ollama
+2026-10-10 12:21:16 [error    ] llm_timeout                    attempt=2 call=response_generator provider=ollama
+2026-10-10 12:21:16 [error    ] llm_timeout                    attempt=2 call=response_generator provider=ollama
+2026-10-10 12:21:16 [error    ] llm_timeout                    attempt=2 call=response_generator provider=ollama
+2026-10-10 12:22:17 [info     ] llm_call                       attempts=3 cached=False call=response_generator completion_tokens=121 latency_ms=302602.5 model=qwen3.5:4b prompt_tokens=151 provider=ollama success=True truncated=False
+2026-10-10 12:22:17 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=665645 session_id=e43eb755-628f-4367-8ffb-e9431ac78b75
+[C0] 5/198 items (HB-0006 DEGRADED) | errors 0 | degraded 5 | elapsed 23m11s | ETA 14h55m26s
+2026-10-10 12:22:24 [info     ] llm_call                       attempts=3 cached=False call=response_generator completion_tokens=255 latency_ms=309066.5 model=qwen3.5:4b prompt_tokens=159 provider=ollama success=True truncated=False
+2026-10-10 12:22:24 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=672106 session_id=30de4403-0875-4cc1-ac16-f6dd8cebc4e9
+[C0] 6/198 items (HB-0007 DEGRADED) | errors 0 | degraded 6 | elapsed 23m18s | ETA 12h25m47s
+2026-10-10 12:22:40 [info     ] llm_call                       attempts=3 cached=False call=response_generator completion_tokens=674 latency_ms=325937.1 model=qwen3.5:4b prompt_tokens=166 provider=ollama success=True truncated=False
+2026-10-10 12:22:40 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=688982 session_id=9700d9da-fc9b-4486-bf98-d589e2838992
+[C0] 7/198 items (HB-0009 DEGRADED) | errors 0 | degraded 7 | elapsed 23m35s | ETA 10h43m35s
+2026-10-10 12:22:45 [info     ] llm_call                       attempts=3 cached=False call=response_generator completion_tokens=191 latency_ms=330813.2 model=qwen3.5:4b prompt_tokens=155 provider=ollama success=True truncated=False
+2026-10-10 12:22:45 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=693863 session_id=f6815bc0-64f3-4450-959f-865ce7272fa0
+[C0] 8/198 items (HB-0005 DEGRADED) | errors 0 | degraded 8 | elapsed 23m40s | ETA 9h22m07s
+2026-10-10 12:22:56 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=111 latency_ms=38371.7 model=qwen3.5:4b prompt_tokens=1358 provider=ollama success=True truncated=False
+2026-10-10 12:23:00 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=138 latency_ms=36442.8 model=qwen3.5:4b prompt_tokens=1369 provider=ollama success=True truncated=False
+2026-10-10 12:23:07 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=229 latency_ms=26398.0 model=qwen3.5:4b prompt_tokens=1381 provider=ollama success=True truncated=False
+2026-10-10 12:23:09 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=52 latency_ms=23888.2 model=qwen3.5:4b prompt_tokens=1349 provider=ollama success=True truncated=False
+2026-10-10 12:23:26 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=336 latency_ms=30236.5 model=qwen3.5:4b prompt_tokens=201 provider=ollama success=True truncated=False
+2026-10-10 12:23:26 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=68613 session_id=40b9cb66-7dbe-489d-8ebe-a48430844924
+[C0] 9/198 items (HB-0011) | errors 0 | degraded 8 | elapsed 24m20s | ETA 8h31m11s
+2026-10-10 12:23:32 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=234 latency_ms=31855.5 model=qwen3.5:4b prompt_tokens=228 provider=ollama success=True truncated=False
+2026-10-10 12:23:32 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=68303 session_id=460402d2-223a-4b1c-bc4f-12474a2fe0b4
+[C0] 10/198 items (HB-0012) | errors 0 | degraded 8 | elapsed 24m26s | ETA 7h39m33s
+2026-10-10 12:23:40 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=308 latency_ms=33153.2 model=qwen3.5:4b prompt_tokens=326 provider=ollama success=True truncated=False
+2026-10-10 12:23:40 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=59556 session_id=fa94f1c3-a06b-4986-8eb5-ec01c0e707a4
+[C0] 11/198 items (HB-0013) | errors 0 | degraded 8 | elapsed 24m34s | ETA 6h57m51s
+2026-10-10 12:23:49 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=339 latency_ms=39520.1 model=qwen3.5:4b prompt_tokens=148 provider=ollama success=True truncated=False
+2026-10-10 12:23:49 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=63413 session_id=141bde82-e5d1-4634-a785-210c255d1182
+[C0] 12/198 items (HB-0014) | errors 0 | degraded 8 | elapsed 24m43s | ETA 6h23m14s
+2026-10-10 12:24:04 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=73 latency_ms=38215.3 model=qwen3.5:4b prompt_tokens=1354 provider=ollama success=True truncated=False
+2026-10-10 12:24:06 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=49 latency_ms=34396.3 model=qwen3.5:4b prompt_tokens=1351 provider=ollama success=True truncated=False
+2026-10-10 12:24:10 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=112 latency_ms=30159.3 model=qwen3.5:4b prompt_tokens=1354 provider=ollama success=True truncated=False
+2026-10-10 12:24:12 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=42 latency_ms=23609.2 model=qwen3.5:4b prompt_tokens=1344 provider=ollama success=True truncated=False
+2026-10-10 12:24:37 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=468 latency_ms=32980.4 model=qwen3.5:4b prompt_tokens=153 provider=ollama success=True truncated=False
+2026-10-10 12:24:37 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=71200 session_id=b2ea6744-a4b0-406a-ae8a-0f9205e87b42
+[C0] 13/198 items (HB-0015) | errors 0 | degraded 8 | elapsed 25m31s | ETA 6h03m17s
+2026-10-10 12:24:44 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=249 latency_ms=37271.3 model=qwen3.5:4b prompt_tokens=150 provider=ollama success=True truncated=False
+2026-10-10 12:24:44 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=71672 session_id=da4ed6d7-a15b-4b67-8c02-cc3c86e4fd6f
+[C0] 14/198 items (HB-0016) | errors 0 | degraded 8 | elapsed 25m38s | ETA 5h36m58s
+2026-10-10 12:24:51 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=301 latency_ms=41157.1 model=qwen3.5:4b prompt_tokens=198 provider=ollama success=True truncated=False
+2026-10-10 12:24:51 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=71321 session_id=1fe92c71-5caa-45b9-bb8f-99fa5cc1dc2f
+[C0] 15/198 items (HB-0017) | errors 0 | degraded 8 | elapsed 25m46s | ETA 5h14m22s
+2026-10-10 12:24:57 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=229 latency_ms=44923.3 model=qwen3.5:4b prompt_tokens=143 provider=ollama success=True truncated=False
+2026-10-10 12:24:57 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=68537 session_id=8ef9927e-8f6e-4994-80a1-2a9200b2e174
+[C0] 16/198 items (HB-0018) | errors 0 | degraded 8 | elapsed 25m52s | ETA 4h54m14s
+2026-10-10 12:25:05 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=43 latency_ms=28388.9 model=qwen3.5:4b prompt_tokens=1346 provider=ollama success=True truncated=False
+2026-10-10 12:25:10 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=145 latency_ms=26473.4 model=qwen3.5:4b prompt_tokens=1366 provider=ollama success=True truncated=False
+2026-10-10 12:25:14 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=132 latency_ms=23050.7 model=qwen3.5:4b prompt_tokens=1366 provider=ollama success=True truncated=False
+2026-10-10 12:25:17 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=41 latency_ms=19215.4 model=qwen3.5:4b prompt_tokens=1337 provider=ollama success=True truncated=False
+2026-10-10 12:25:29 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=170 latency_ms=23463.2 model=qwen3.5:4b prompt_tokens=145 provider=ollama success=True truncated=False
+2026-10-10 12:25:29 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=51857 session_id=e928cd23-fba5-4ec9-a2b9-1759aae6b1dd
+[C0] 17/198 items (HB-0021) | errors 0 | degraded 8 | elapsed 26m23s | ETA 4h41m00s
+2026-10-10 12:25:39 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=363 latency_ms=28536.9 model=qwen3.5:4b prompt_tokens=237 provider=ollama success=True truncated=False
+2026-10-10 12:25:39 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=55016 session_id=2a6972a0-1500-4d90-b09c-45e66694f121
+[C0] 18/198 items (HB-0022) | errors 0 | degraded 8 | elapsed 26m33s | ETA 4h25m33s
+2026-10-10 12:25:49 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=384 latency_ms=34058.5 model=qwen3.5:4b prompt_tokens=225 provider=ollama success=True truncated=False
+2026-10-10 12:25:49 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=57114 session_id=477daa21-9087-4514-b200-bcd83069c1f5
+[C0] 19/198 items (HB-0025) | errors 0 | degraded 8 | elapsed 26m43s | ETA 4h11m44s
+2026-10-10 12:25:54 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=195 latency_ms=37007.3 model=qwen3.5:4b prompt_tokens=136 provider=ollama success=True truncated=False
+2026-10-10 12:25:54 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=56227 session_id=91845a3e-98f1-4422-ace2-49234a80df5b
+[C0] 20/198 items (HB-0027) | errors 0 | degraded 8 | elapsed 26m48s | ETA 3h58m34s
+2026-10-10 12:26:07 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=40 latency_ms=37658.1 model=qwen3.5:4b prompt_tokens=1342 provider=ollama success=True truncated=False
+2026-10-10 12:26:09 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=68 latency_ms=30665.1 model=qwen3.5:4b prompt_tokens=1362 provider=ollama success=True truncated=False
+2026-10-10 12:26:12 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=51 latency_ms=23150.9 model=qwen3.5:4b prompt_tokens=1342 provider=ollama success=True truncated=False
+2026-10-10 12:26:16 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=134 latency_ms=22526.2 model=qwen3.5:4b prompt_tokens=1363 provider=ollama success=True truncated=False
+2026-10-10 12:26:32 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=135 latency_ms=25562.0 model=qwen3.5:4b prompt_tokens=141 provider=ollama success=True truncated=False
+2026-10-10 12:26:32 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=63225 session_id=245e8e87-dac0-48b4-9b28-5266386eeaaf
+[C0] 21/198 items (HB-0028) | errors 0 | degraded 8 | elapsed 27m26s | ETA 3h51m20s
+2026-10-10 12:26:41 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=332 latency_ms=31399.8 model=qwen3.5:4b prompt_tokens=161 provider=ollama success=True truncated=False
+2026-10-10 12:26:41 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=62069 session_id=1b5c6ad8-e0d7-4098-9e0a-a6ba174696e2
+[C0] 22/198 items (HB-0029) | errors 0 | degraded 8 | elapsed 27m35s | ETA 3h40m43s
+2026-10-10 12:26:49 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=340 latency_ms=37716.8 model=qwen3.5:4b prompt_tokens=141 provider=ollama success=True truncated=False
+2026-10-10 12:26:49 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=60873 session_id=d69aaaef-93bd-4a64-bb18-4293c1c27658
+[C0] 23/198 items (HB-0030) | errors 0 | degraded 8 | elapsed 27m44s | ETA 3h31m02s
+2026-10-10 12:26:58 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=326 latency_ms=41690.4 model=qwen3.5:4b prompt_tokens=233 provider=ollama success=True truncated=False
+2026-10-10 12:26:58 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=64221 session_id=c779cee5-bbef-4394-98c2-05d06869ce27
+[C0] 24/198 items (HB-0031) | errors 0 | degraded 8 | elapsed 27m52s | ETA 3h22m06s
+2026-10-10 12:27:04 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=45 latency_ms=32251.2 model=qwen3.5:4b prompt_tokens=1340 provider=ollama success=True truncated=False
+2026-10-10 12:27:07 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=49 latency_ms=25781.2 model=qwen3.5:4b prompt_tokens=1343 provider=ollama success=True truncated=False
+2026-10-10 12:27:09 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=49 latency_ms=19238.7 model=qwen3.5:4b prompt_tokens=1348 provider=ollama success=True truncated=False
+2026-10-10 12:27:11 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=37 latency_ms=12668.4 model=qwen3.5:4b prompt_tokens=1348 provider=ollama success=True truncated=False
+2026-10-10 12:27:24 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=202 latency_ms=19941.0 model=qwen3.5:4b prompt_tokens=139 provider=ollama success=True truncated=False
+2026-10-10 12:27:24 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=52199 session_id=9ee69d0b-dec0-4e3a-a7ad-f900938a011d
+[C0] 25/198 items (HB-0032) | errors 0 | degraded 8 | elapsed 28m19s | ETA 3h15m57s
+2026-10-10 12:27:29 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=184 latency_ms=22590.9 model=qwen3.5:4b prompt_tokens=142 provider=ollama success=True truncated=False
+2026-10-10 12:27:29 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=48377 session_id=c9abbbe1-e898-4de9-a359-36f8519cd82c
+[C0] 26/198 items (HB-0033) | errors 0 | degraded 8 | elapsed 28m23s | ETA 3h07m51s
+2026-10-10 12:27:37 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=293 latency_ms=27911.1 model=qwen3.5:4b prompt_tokens=147 provider=ollama success=True truncated=False
+2026-10-10 12:27:37 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=47155 session_id=29d7444a-2d25-4fe2-8422-0c45630372b6
+[C0] 27/198 items (HB-0035) | errors 0 | degraded 8 | elapsed 28m31s | ETA 3h00m38s
+2026-10-10 12:27:46 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=352 latency_ms=35192.6 model=qwen3.5:4b prompt_tokens=147 provider=ollama success=True truncated=False
+2026-10-10 12:27:46 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=47866 session_id=2c5d5915-80d9-43a8-8dee-65c7f4177090
+[C0] 28/198 items (HB-0036) | errors 0 | degraded 8 | elapsed 28m40s | ETA 2h54m05s
+2026-10-10 12:28:02 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=144 latency_ms=37182.3 model=qwen3.5:4b prompt_tokens=1365 provider=ollama success=True truncated=False
+2026-10-10 12:28:04 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=72 latency_ms=35088.0 model=qwen3.5:4b prompt_tokens=1351 provider=ollama success=True truncated=False
+2026-10-10 12:28:06 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=48 latency_ms=29742.1 model=qwen3.5:4b prompt_tokens=1346 provider=ollama success=True truncated=False
+2026-10-10 12:28:09 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=53 latency_ms=23117.0 model=qwen3.5:4b prompt_tokens=1356 provider=ollama success=True truncated=False
+2026-10-10 12:28:21 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=239 latency_ms=19962.2 model=qwen3.5:4b prompt_tokens=224 provider=ollama success=True truncated=False
+2026-10-10 12:28:21 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=57150 session_id=acfb9d94-ab6d-4919-adb0-c9f118090471
+[C0] 29/198 items (HB-0037) | errors 0 | degraded 8 | elapsed 29m16s | ETA 2h50m34s
+2026-10-10 12:28:29 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=298 latency_ms=24888.3 model=qwen3.5:4b prompt_tokens=150 provider=ollama success=True truncated=False
+2026-10-10 12:28:29 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=59982 session_id=10fa6fe4-b042-4477-bee9-b29347618b1b
+[C0] 30/198 items (HB-0038) | errors 0 | degraded 8 | elapsed 29m23s | ETA 2h44m37s
+2026-10-10 12:28:36 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=259 latency_ms=29422.0 model=qwen3.5:4b prompt_tokens=145 provider=ollama success=True truncated=False
+2026-10-10 12:28:36 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=59168 session_id=2bf4f5b8-622a-430a-9051-fe04bdcaa21c
+[C0] 31/198 items (HB-0039) | errors 0 | degraded 8 | elapsed 29m30s | ETA 2h38m57s
+2026-10-10 12:28:47 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=431 latency_ms=37826.7 model=qwen3.5:4b prompt_tokens=155 provider=ollama success=True truncated=False
+2026-10-10 12:28:47 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=60950 session_id=28c0b301-a405-465d-bcfb-e34a001368b2
+[C0] 32/198 items (HB-0040) | errors 0 | degraded 8 | elapsed 29m41s | ETA 2h34m01s
+2026-10-10 12:28:54 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=67 latency_ms=32133.5 model=qwen3.5:4b prompt_tokens=1366 provider=ollama success=True truncated=False
+2026-10-10 12:28:56 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=61 latency_ms=26969.9 model=qwen3.5:4b prompt_tokens=1353 provider=ollama success=True truncated=False
+2026-10-10 12:28:59 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=72 latency_ms=23291.5 model=qwen3.5:4b prompt_tokens=1360 provider=ollama success=True truncated=False
+2026-10-10 12:29:03 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=108 latency_ms=16278.0 model=qwen3.5:4b prompt_tokens=1366 provider=ollama success=True truncated=False
+2026-10-10 12:29:24 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=416 latency_ms=30544.6 model=qwen3.5:4b prompt_tokens=176 provider=ollama success=True truncated=False
+2026-10-10 12:29:24 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=62682 session_id=f2c053eb-7b37-4e81-b15b-4f473796c99d
+[C0] 33/198 items (HB-0042) | errors 0 | degraded 8 | elapsed 30m18s | ETA 2h31m34s
+2026-10-10 12:29:33 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=339 latency_ms=36690.8 model=qwen3.5:4b prompt_tokens=152 provider=ollama success=True truncated=False
+2026-10-10 12:29:33 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=63665 session_id=c5ef659f-66f8-4db4-bd48-d5d7fa9bb947
+[C0] 34/198 items (HB-0044) | errors 0 | degraded 8 | elapsed 30m27s | ETA 2h26m55s
+2026-10-10 12:29:44 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=448 latency_ms=45016.3 model=qwen3.5:4b prompt_tokens=159 provider=ollama success=True truncated=False
+2026-10-10 12:29:44 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=68313 session_id=a24a87f2-f3d9-4b97-99d7-db939d761b54
+[C0] 35/198 items (HB-0045) | errors 0 | degraded 8 | elapsed 30m38s | ETA 2h22m43s
+2026-10-10 12:29:50 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=226 latency_ms=46903.5 model=qwen3.5:4b prompt_tokens=191 provider=ollama success=True truncated=False
+2026-10-10 12:29:50 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=63187 session_id=96ad55f0-c783-4739-8f3b-7a1649d16ead
+[C0] 36/198 items (HB-0048) | errors 0 | degraded 8 | elapsed 30m44s | ETA 2h18m20s
+2026-10-10 12:30:02 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=76 latency_ms=37720.7 model=qwen3.5:4b prompt_tokens=1360 provider=ollama success=True truncated=False
+2026-10-10 12:30:04 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=45 latency_ms=31159.5 model=qwen3.5:4b prompt_tokens=1340 provider=ollama success=True truncated=False
+2026-10-10 12:30:06 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=48 latency_ms=22211.4 model=qwen3.5:4b prompt_tokens=1358 provider=ollama success=True truncated=False
+2026-10-10 12:30:08 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=37 latency_ms=18254.3 model=qwen3.5:4b prompt_tokens=1337 provider=ollama success=True truncated=False
+2026-10-10 12:30:24 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=431 latency_ms=21662.8 model=qwen3.5:4b prompt_tokens=159 provider=ollama success=True truncated=False
+2026-10-10 12:30:24 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=59389 session_id=fafba4ec-eb20-4d08-a5e4-35e3bd672066
+[C0] 37/198 items (HB-0049) | errors 0 | degraded 8 | elapsed 31m18s | ETA 2h16m13s
+2026-10-10 12:30:34 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=424 latency_ms=30337.1 model=qwen3.5:4b prompt_tokens=139 provider=ollama success=True truncated=False
+2026-10-10 12:30:34 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=61503 session_id=c3f169dc-09db-48dd-b748-402b12d4c9a2
+[C0] 38/198 items (HB-0050) | errors 0 | degraded 8 | elapsed 31m29s | ETA 2h12m33s
+2026-10-10 12:30:41 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=248 latency_ms=34314.8 model=qwen3.5:4b prompt_tokens=157 provider=ollama success=True truncated=False
+2026-10-10 12:30:41 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=56531 session_id=f3fd2da8-af99-45be-9f8c-449299b838f7
+[C0] 39/198 items (HB-0051) | errors 0 | degraded 8 | elapsed 31m35s | ETA 2h08m47s
+2026-10-10 12:30:51 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=417 latency_ms=42942.0 model=qwen3.5:4b prompt_tokens=136 provider=ollama success=True truncated=False
+2026-10-10 12:30:51 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=61202 session_id=dabe2d9c-c175-4e49-bc96-1190bed12836
+[C0] 40/198 items (HB-0052) | errors 0 | degraded 8 | elapsed 31m45s | ETA 2h05m28s
+2026-10-10 12:31:00 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=90 latency_ms=35902.0 model=qwen3.5:4b prompt_tokens=1351 provider=ollama success=True truncated=False
+2026-10-10 12:31:02 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=46 latency_ms=27228.4 model=qwen3.5:4b prompt_tokens=1341 provider=ollama success=True truncated=False
+2026-10-10 12:31:04 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=47 latency_ms=22978.8 model=qwen3.5:4b prompt_tokens=1348 provider=ollama success=True truncated=False
+2026-10-10 12:31:08 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=132 latency_ms=16983.9 model=qwen3.5:4b prompt_tokens=1359 provider=ollama success=True truncated=False
+2026-10-10 12:31:23 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=280 latency_ms=23422.6 model=qwen3.5:4b prompt_tokens=186 provider=ollama success=True truncated=False
+2026-10-10 12:31:23 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=59329 session_id=dfb5c124-319b-4eaf-a88a-3acdfb52d9ab
+[C0] 41/198 items (HB-0053) | errors 0 | degraded 8 | elapsed 32m17s | ETA 2h03m39s
+2026-10-10 12:31:26 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=123 latency_ms=24611.9 model=qwen3.5:4b prompt_tokens=140 provider=ollama success=True truncated=False
+2026-10-10 12:31:26 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=51844 session_id=28090873-0a95-4e6b-9d47-79ae3f9a9190
+[C0] 42/198 items (HB-0054) | errors 0 | degraded 8 | elapsed 32m20s | ETA 2h00m09s
+2026-10-10 12:31:34 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=311 latency_ms=30433.9 model=qwen3.5:4b prompt_tokens=147 provider=ollama success=True truncated=False
+2026-10-10 12:31:34 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=53419 session_id=952a0431-32df-47f5-985e-4cfbb1387209
+[C0] 43/198 items (HB-0055) | errors 0 | degraded 8 | elapsed 32m28s | ETA 1h57m04s
+2026-10-10 12:31:38 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=142 latency_ms=29752.2 model=qwen3.5:4b prompt_tokens=204 provider=ollama success=True truncated=False
+2026-10-10 12:31:38 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=46743 session_id=9468a009-54b2-4e30-8777-fcd2f53becd0
+[C0] 44/198 items (HB-0056) | errors 0 | degraded 8 | elapsed 32m32s | ETA 1h53m54s
+2026-10-10 12:31:51 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=61 latency_ms=27818.5 model=qwen3.5:4b prompt_tokens=1345 provider=ollama success=True truncated=False
+2026-10-10 12:31:55 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=121 latency_ms=28768.0 model=qwen3.5:4b prompt_tokens=1358 provider=ollama success=True truncated=False
+2026-10-10 12:31:58 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=66 latency_ms=23692.2 model=qwen3.5:4b prompt_tokens=1357 provider=ollama success=True truncated=False
+2026-10-10 12:32:00 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=54 latency_ms=22162.3 model=qwen3.5:4b prompt_tokens=1344 provider=ollama success=True truncated=False
+2026-10-10 12:32:18 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=192 latency_ms=27436.9 model=qwen3.5:4b prompt_tokens=156 provider=ollama success=True truncated=False
+2026-10-10 12:32:18 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=55260 session_id=b2b93968-5754-4297-9b7d-1bf018ba6b0d
+[C0] 45/198 items (HB-0057) | errors 0 | degraded 8 | elapsed 33m12s | ETA 1h52m56s
+2026-10-10 12:32:23 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=200 latency_ms=28424.4 model=qwen3.5:4b prompt_tokens=184 provider=ollama success=True truncated=False
+2026-10-10 12:32:23 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=57197 session_id=e02f8193-7518-401b-8572-4de172b7283f
+[C0] 46/198 items (HB-0058) | errors 0 | degraded 8 | elapsed 33m18s | ETA 1h50m02s
+2026-10-10 12:32:30 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=263 latency_ms=32289.1 model=qwen3.5:4b prompt_tokens=156 provider=ollama success=True truncated=False
+2026-10-10 12:32:30 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=55987 session_id=c307ab97-0530-4f8c-9d8c-05b9c05e6123
+[C0] 47/198 items (HB-0059) | errors 0 | degraded 8 | elapsed 33m24s | ETA 1h47m21s
+2026-10-10 12:32:34 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=142 latency_ms=33702.0 model=qwen3.5:4b prompt_tokens=143 provider=ollama success=True truncated=False
+2026-10-10 12:32:34 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=55869 session_id=bf15c063-acae-4266-b549-c3cad1d631f6
+[C0] 48/198 items (HB-0061) | errors 0 | degraded 8 | elapsed 33m28s | ETA 1h44m36s
+2026-10-10 12:32:41 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=99 latency_ms=23121.3 model=qwen3.5:4b prompt_tokens=1350 provider=ollama success=True truncated=False
+2026-10-10 12:32:45 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=82 latency_ms=21141.7 model=qwen3.5:4b prompt_tokens=1354 provider=ollama success=True truncated=False
+2026-10-10 12:32:47 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=67 latency_ms=17072.3 model=qwen3.5:4b prompt_tokens=1351 provider=ollama success=True truncated=False
+2026-10-10 12:32:49 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=35 latency_ms=15202.3 model=qwen3.5:4b prompt_tokens=1343 provider=ollama success=True truncated=False
+2026-10-10 12:33:07 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=385 latency_ms=25686.9 model=qwen3.5:4b prompt_tokens=200 provider=ollama success=True truncated=False
+2026-10-10 12:33:07 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=48813 session_id=83f43cc0-a6af-4264-b495-4a688df64a26
+[C0] 49/198 items (HB-0062) | errors 0 | degraded 8 | elapsed 34m01s | ETA 1h43m28s
+2026-10-10 12:33:15 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=309 latency_ms=30333.0 model=qwen3.5:4b prompt_tokens=167 provider=ollama success=True truncated=False
+2026-10-10 12:33:15 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=51479 session_id=60ad0951-662b-4e87-a158-143ff3eadf60
+[C0] 50/198 items (HB-0063) | errors 0 | degraded 8 | elapsed 34m09s | ETA 1h41m06s
+2026-10-10 12:33:20 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=211 latency_ms=33100.3 model=qwen3.5:4b prompt_tokens=163 provider=ollama success=True truncated=False
+2026-10-10 12:33:20 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=50177 session_id=99d8ae34-8e6c-4278-8d78-3b88d281a53c
+[C0] 51/198 items (HB-0064) | errors 0 | degraded 8 | elapsed 34m15s | ETA 1h38m43s
+2026-10-10 12:33:26 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=221 latency_ms=36948.3 model=qwen3.5:4b prompt_tokens=142 provider=ollama success=True truncated=False
+2026-10-10 12:33:26 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=52155 session_id=2d477093-4bd7-4888-8f9c-06f16d011572
+2026-10-10 12:33:38 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=40 latency_ms=30923.4 model=qwen3.5:4b prompt_tokens=1334 provider=ollama success=True truncated=False
+2026-10-10 12:33:40 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=35 latency_ms=24875.8 model=qwen3.5:4b prompt_tokens=1334 provider=ollama success=True truncated=False
+2026-10-10 12:33:42 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=39 latency_ms=21363.6 model=qwen3.5:4b prompt_tokens=1341 provider=ollama success=True truncated=False
+2026-10-10 12:33:45 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=78 latency_ms=18690.4 model=qwen3.5:4b prompt_tokens=1459 provider=ollama success=True truncated=False
+2026-10-10 12:33:53 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=127 latency_ms=14736.9 model=qwen3.5:4b prompt_tokens=133 provider=ollama success=True truncated=False
+2026-10-10 12:33:53 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=45665 session_id=02bbb9b2-5749-44f5-8fef-39f733e94ab8
+2026-10-10 12:33:58 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=221 latency_ms=18607.2 model=qwen3.5:4b prompt_tokens=133 provider=ollama success=True truncated=False
+2026-10-10 12:33:58 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=43487 session_id=066c3606-b5a0-4409-ac9c-edc71abf0001
+2026-10-10 12:34:09 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=427 latency_ms=27496.5 model=qwen3.5:4b prompt_tokens=140 provider=ollama success=True truncated=False
+2026-10-10 12:34:09 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=48864 session_id=67a5ca58-60e9-402e-b832-2fb4ee928a61
+2026-10-10 12:34:17 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=287 latency_ms=31973.9 model=qwen3.5:4b prompt_tokens=283 provider=ollama success=True truncated=False
+2026-10-10 12:34:17 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=50669 session_id=2d477093-4bd7-4888-8f9c-06f16d011572
+[C0] 52/198 items (HB-0065) | errors 0 | degraded 8 | elapsed 35m11s | ETA 1h38m48s
+2026-10-10 12:34:24 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=73 latency_ms=30798.1 model=qwen3.5:4b prompt_tokens=1454 provider=ollama success=True truncated=False
+2026-10-10 12:34:27 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=97 latency_ms=28623.7 model=qwen3.5:4b prompt_tokens=1493 provider=ollama success=True truncated=False
+2026-10-10 12:34:31 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=113 latency_ms=21729.0 model=qwen3.5:4b prompt_tokens=1460 provider=ollama success=True truncated=False
+2026-10-10 12:34:34 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=76 latency_ms=17069.8 model=qwen3.5:4b prompt_tokens=1352 provider=ollama success=True truncated=False
+2026-10-10 12:34:51 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=289 latency_ms=27412.8 model=qwen3.5:4b prompt_tokens=269 provider=ollama success=True truncated=False
+2026-10-10 12:34:51 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=58216 session_id=02bbb9b2-5749-44f5-8fef-39f733e94ab8
+[C0] 53/198 items (HB-0067) | errors 0 | degraded 8 | elapsed 35m45s | ETA 1h37m50s
+2026-10-10 12:34:57 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=221 latency_ms=29769.5 model=qwen3.5:4b prompt_tokens=311 provider=ollama success=True truncated=False
+2026-10-10 12:34:57 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=58401 session_id=066c3606-b5a0-4409-ac9c-edc71abf0001
+[C0] 54/198 items (HB-0068) | errors 0 | degraded 8 | elapsed 35m51s | ETA 1h35m37s
+2026-10-10 12:35:04 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=284 latency_ms=33239.9 model=qwen3.5:4b prompt_tokens=311 provider=ollama success=True truncated=False
+2026-10-10 12:35:04 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=54973 session_id=67a5ca58-60e9-402e-b832-2fb4ee928a61
+[C0] 55/198 items (HB-0070) | errors 0 | degraded 8 | elapsed 35m58s | ETA 1h33m33s
+2026-10-10 12:35:12 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=315 latency_ms=38396.1 model=qwen3.5:4b prompt_tokens=161 provider=ollama success=True truncated=False
+2026-10-10 12:35:12 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=55470 session_id=884ef89a-dddd-4567-8314-30ca9e56049d
+2026-10-10 12:35:21 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=43 latency_ms=30156.1 model=qwen3.5:4b prompt_tokens=1340 provider=ollama success=True truncated=False
+2026-10-10 12:35:23 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=35 latency_ms=26099.9 model=qwen3.5:4b prompt_tokens=1333 provider=ollama success=True truncated=False
+2026-10-10 12:35:25 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=44 latency_ms=20776.6 model=qwen3.5:4b prompt_tokens=1340 provider=ollama success=True truncated=False
+2026-10-10 12:35:28 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=92 latency_ms=16208.2 model=qwen3.5:4b prompt_tokens=1499 provider=ollama success=True truncated=False
+2026-10-10 12:35:38 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=252 latency_ms=16517.7 model=qwen3.5:4b prompt_tokens=139 provider=ollama success=True truncated=False
+2026-10-10 12:35:38 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=46678 session_id=09a76bd2-30b3-4750-9fe6-da87f28043d1
+2026-10-10 12:35:43 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=194 latency_ms=19678.8 model=qwen3.5:4b prompt_tokens=132 provider=ollama success=True truncated=False
+2026-10-10 12:35:43 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=45782 session_id=b4f12466-b728-4448-9144-4cbce0b88f1b
+2026-10-10 12:35:50 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=275 latency_ms=24632.9 model=qwen3.5:4b prompt_tokens=139 provider=ollama success=True truncated=False
+2026-10-10 12:35:50 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=45413 session_id=d79039cd-4c9c-4995-a2fd-9a3b08b1e511
+2026-10-10 12:35:58 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=301 latency_ms=29215.6 model=qwen3.5:4b prompt_tokens=340 provider=ollama success=True truncated=False
+2026-10-10 12:35:58 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=45428 session_id=884ef89a-dddd-4567-8314-30ca9e56049d
+[C0] 56/198 items (HB-0071) | errors 0 | degraded 8 | elapsed 36m52s | ETA 1h33m29s
+2026-10-10 12:36:06 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=170 latency_ms=28108.3 model=qwen3.5:4b prompt_tokens=1469 provider=ollama success=True truncated=False
+2026-10-10 12:36:10 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=138 latency_ms=27688.9 model=qwen3.5:4b prompt_tokens=1454 provider=ollama success=True truncated=False
+2026-10-10 12:36:15 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=131 latency_ms=25022.2 model=qwen3.5:4b prompt_tokens=1469 provider=ollama success=True truncated=False
+2026-10-10 12:36:20 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=54 latency_ms=22327.9 model=qwen3.5:4b prompt_tokens=1338 provider=ollama success=True truncated=False
+2026-10-10 12:36:40 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=520 latency_ms=34518.6 model=qwen3.5:4b prompt_tokens=293 provider=ollama success=True truncated=False
+2026-10-10 12:36:40 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=62631 session_id=09a76bd2-30b3-4750-9fe6-da87f28043d1
+[C0] 57/198 items (HB-0072) | errors 0 | degraded 8 | elapsed 37m35s | ETA 1h32m58s
+2026-10-10 12:36:46 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=203 latency_ms=35329.7 model=qwen3.5:4b prompt_tokens=303 provider=ollama success=True truncated=False
+2026-10-10 12:36:46 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=63023 session_id=b4f12466-b728-4448-9144-4cbce0b88f1b
+[C0] 58/198 items (HB-0073) | errors 0 | degraded 8 | elapsed 37m40s | ETA 1h30m56s
+2026-10-10 12:36:55 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=351 latency_ms=40004.1 model=qwen3.5:4b prompt_tokens=331 provider=ollama success=True truncated=False
+2026-10-10 12:36:55 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=65031 session_id=d79039cd-4c9c-4995-a2fd-9a3b08b1e511
+[C0] 59/198 items (HB-0075) | errors 0 | degraded 8 | elapsed 37m49s | ETA 1h29m06s
+2026-10-10 12:37:05 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=343 latency_ms=45491.6 model=qwen3.5:4b prompt_tokens=137 provider=ollama success=True truncated=False
+2026-10-10 12:37:05 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=67824 session_id=2f141102-2afe-45e5-afc7-4fe9a5d61570
+2026-10-10 12:37:15 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=34 latency_ms=35004.9 model=qwen3.5:4b prompt_tokens=1333 provider=ollama success=True truncated=False
+2026-10-10 12:37:17 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=31 latency_ms=31349.6 model=qwen3.5:4b prompt_tokens=1341 provider=ollama success=True truncated=False
+2026-10-10 12:37:19 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=34 latency_ms=24126.8 model=qwen3.5:4b prompt_tokens=1334 provider=ollama success=True truncated=False
+2026-10-10 12:37:28 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=128 latency_ms=22371.5 model=qwen3.5:4b prompt_tokens=1460 provider=ollama success=True truncated=False
+2026-10-10 12:37:35 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=148 latency_ms=19668.7 model=qwen3.5:4b prompt_tokens=132 provider=ollama success=True truncated=False
+2026-10-10 12:37:35 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=54677 session_id=b58683e6-e22c-43b9-9965-509a8577619a
+2026-10-10 12:37:41 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=241 latency_ms=24112.9 model=qwen3.5:4b prompt_tokens=140 provider=ollama success=True truncated=False
+2026-10-10 12:37:41 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=55467 session_id=e48c15c4-b8ab-4143-b2ac-a4aed3890937
+2026-10-10 12:37:47 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=250 latency_ms=28686.5 model=qwen3.5:4b prompt_tokens=133 provider=ollama success=True truncated=False
+2026-10-10 12:37:47 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=52817 session_id=8019b329-d443-448c-9b89-2011b68f60b8
+2026-10-10 12:38:04 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=349 latency_ms=36315.4 model=qwen3.5:4b prompt_tokens=334 provider=ollama success=True truncated=False
+2026-10-10 12:38:04 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=58692 session_id=2f141102-2afe-45e5-afc7-4fe9a5d61570
+[C0] 60/198 items (HB-0076) | errors 0 | degraded 8 | elapsed 38m58s | ETA 1h29m39s
+2026-10-10 12:38:10 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=84 latency_ms=34563.5 model=qwen3.5:4b prompt_tokens=1465 provider=ollama success=True truncated=False
+2026-10-10 12:38:15 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=185 latency_ms=34073.9 model=qwen3.5:4b prompt_tokens=1481 provider=ollama success=True truncated=False
+2026-10-10 12:38:18 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=66 latency_ms=30488.1 model=qwen3.5:4b prompt_tokens=1446 provider=ollama success=True truncated=False
+2026-10-10 12:38:22 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=29 latency_ms=17443.4 model=qwen3.5:4b prompt_tokens=1333 provider=ollama success=True truncated=False
+2026-10-10 12:38:33 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=232 latency_ms=23783.3 model=qwen3.5:4b prompt_tokens=284 provider=ollama success=True truncated=False
+2026-10-10 12:38:33 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=58354 session_id=b58683e6-e22c-43b9-9965-509a8577619a
+[C0] 61/198 items (HB-0077) | errors 0 | degraded 8 | elapsed 39m28s | ETA 1h28m38s
+2026-10-10 12:38:44 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=402 latency_ms=28548.8 model=qwen3.5:4b prompt_tokens=365 provider=ollama success=True truncated=False
+2026-10-10 12:38:44 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=62626 session_id=e48c15c4-b8ab-4143-b2ac-a4aed3890937
+[C0] 62/198 items (HB-0079) | errors 0 | degraded 8 | elapsed 39m38s | ETA 1h26m57s
+2026-10-10 12:38:53 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=384 latency_ms=35534.5 model=qwen3.5:4b prompt_tokens=256 provider=ollama success=True truncated=False
+2026-10-10 12:38:53 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=66027 session_id=8019b329-d443-448c-9b89-2011b68f60b8
+[C0] 63/198 items (HB-0080) | errors 0 | degraded 8 | elapsed 39m48s | ETA 1h25m17s
+2026-10-10 12:38:59 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=116 latency_ms=37921.6 model=qwen3.5:4b prompt_tokens=132 provider=ollama success=True truncated=False
+2026-10-10 12:38:59 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=55369 session_id=5133e79d-cfba-430d-8042-855b09028d2d
+2026-10-10 12:39:08 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=55 latency_ms=34744.5 model=qwen3.5:4b prompt_tokens=1333 provider=ollama success=True truncated=False
+2026-10-10 12:39:10 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=37 latency_ms=26180.4 model=qwen3.5:4b prompt_tokens=1336 provider=ollama success=True truncated=False
+2026-10-10 12:39:12 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=44 latency_ms=18451.5 model=qwen3.5:4b prompt_tokens=1341 provider=ollama success=True truncated=False
+2026-10-10 12:39:19 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=143 latency_ms=19626.9 model=qwen3.5:4b prompt_tokens=1462 provider=ollama success=True truncated=False
+2026-10-10 12:39:28 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=251 latency_ms=20022.3 model=qwen3.5:4b prompt_tokens=132 provider=ollama success=True truncated=False
+2026-10-10 12:39:28 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=54771 session_id=13b4e493-bb6e-470f-9bfa-fe9de9cb09dc
+2026-10-10 12:39:35 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=270 latency_ms=25045.0 model=qwen3.5:4b prompt_tokens=135 provider=ollama success=True truncated=False
+2026-10-10 12:39:35 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=51229 session_id=4e85f248-02a1-4cde-9c2e-4a22e6cca36c
+2026-10-10 12:39:39 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=145 latency_ms=26837.8 model=qwen3.5:4b prompt_tokens=140 provider=ollama success=True truncated=False
+2026-10-10 12:39:39 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=45294 session_id=fb20826c-e105-4372-a02d-ea6c26b81543
+2026-10-10 12:39:46 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=181 latency_ms=26496.8 model=qwen3.5:4b prompt_tokens=281 provider=ollama success=True truncated=False
+2026-10-10 12:39:46 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=46131 session_id=5133e79d-cfba-430d-8042-855b09028d2d
+[C0] 64/198 items (HB-0082) | errors 0 | degraded 8 | elapsed 40m40s | ETA 1h25m09s
+2026-10-10 12:39:51 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=79 latency_ms=22975.4 model=qwen3.5:4b prompt_tokens=1452 provider=ollama success=True truncated=False
+2026-10-10 12:39:55 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=103 latency_ms=19747.2 model=qwen3.5:4b prompt_tokens=1459 provider=ollama success=True truncated=False
+2026-10-10 12:39:58 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=87 latency_ms=19179.3 model=qwen3.5:4b prompt_tokens=1462 provider=ollama success=True truncated=False
+2026-10-10 12:40:02 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=50 latency_ms=16367.1 model=qwen3.5:4b prompt_tokens=1337 provider=ollama success=True truncated=False
+2026-10-10 12:40:15 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=280 latency_ms=23684.0 model=qwen3.5:4b prompt_tokens=264 provider=ollama success=True truncated=False
+2026-10-10 12:40:15 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=46663 session_id=13b4e493-bb6e-470f-9bfa-fe9de9cb09dc
+[C0] 65/198 items (HB-0083) | errors 0 | degraded 8 | elapsed 41m09s | ETA 1h24m13s
+2026-10-10 12:40:23 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=304 latency_ms=27843.9 model=qwen3.5:4b prompt_tokens=271 provider=ollama success=True truncated=False
+2026-10-10 12:40:23 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=47596 session_id=4e85f248-02a1-4cde-9c2e-4a22e6cca36c
+[C0] 66/198 items (HB-0084) | errors 0 | degraded 8 | elapsed 41m17s | ETA 1h22m34s
+2026-10-10 12:40:27 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=144 latency_ms=28658.6 model=qwen3.5:4b prompt_tokens=296 provider=ollama success=True truncated=False
+2026-10-10 12:40:27 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=47842 session_id=fb20826c-e105-4372-a02d-ea6c26b81543
+[C0] 67/198 items (HB-0085) | errors 0 | degraded 8 | elapsed 41m21s | ETA 1h20m51s
+2026-10-10 12:40:35 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=164 latency_ms=33254.4 model=qwen3.5:4b prompt_tokens=136 provider=ollama success=True truncated=False
+2026-10-10 12:40:35 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=49628 session_id=7e4aeb40-ae4f-4621-946a-606f2756333e
+2026-10-10 12:40:44 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=44 latency_ms=28881.9 model=qwen3.5:4b prompt_tokens=1338 provider=ollama success=True truncated=False
+2026-10-10 12:40:46 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=39 latency_ms=22977.4 model=qwen3.5:4b prompt_tokens=1335 provider=ollama success=True truncated=False
+2026-10-10 12:40:47 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=39 latency_ms=20814.0 model=qwen3.5:4b prompt_tokens=1339 provider=ollama success=True truncated=False
+2026-10-10 12:40:52 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=153 latency_ms=17090.9 model=qwen3.5:4b prompt_tokens=1468 provider=ollama success=True truncated=False
+2026-10-10 12:41:04 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=278 latency_ms=19896.0 model=qwen3.5:4b prompt_tokens=137 provider=ollama success=True truncated=False
+2026-10-10 12:41:04 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=48782 session_id=b71f187c-2d5c-4be1-94de-fc3dff2bca1c
+2026-10-10 12:41:14 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=407 latency_ms=28238.0 model=qwen3.5:4b prompt_tokens=134 provider=ollama success=True truncated=False
+2026-10-10 12:41:14 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=51219 session_id=3b7b6b44-f4dc-49a5-9078-9dc5db18bd46
+2026-10-10 12:41:21 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=290 latency_ms=33687.5 model=qwen3.5:4b prompt_tokens=138 provider=ollama success=True truncated=False
+2026-10-10 12:41:21 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=54506 session_id=d6dec4f4-555f-4018-96ee-c871e4949285
+2026-10-10 12:41:24 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=112 latency_ms=31913.8 model=qwen3.5:4b prompt_tokens=320 provider=ollama success=True truncated=False
+2026-10-10 12:41:24 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=49008 session_id=7e4aeb40-ae4f-4621-946a-606f2756333e
+[C0] 68/198 items (HB-0086) | errors 0 | degraded 8 | elapsed 42m19s | ETA 1h20m54s
+2026-10-10 12:41:30 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=79 latency_ms=25865.8 model=qwen3.5:4b prompt_tokens=1454 provider=ollama success=True truncated=False
+2026-10-10 12:41:34 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=127 latency_ms=19969.6 model=qwen3.5:4b prompt_tokens=1465 provider=ollama success=True truncated=False
+2026-10-10 12:41:42 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=287 latency_ms=20846.1 model=qwen3.5:4b prompt_tokens=1493 provider=ollama success=True truncated=False
+2026-10-10 12:41:44 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=27 latency_ms=19341.6 model=qwen3.5:4b prompt_tokens=1331 provider=ollama success=True truncated=False
+2026-10-10 12:41:57 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=305 latency_ms=27363.3 model=qwen3.5:4b prompt_tokens=263 provider=ollama success=True truncated=False
+2026-10-10 12:41:57 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=53234 session_id=b71f187c-2d5c-4be1-94de-fc3dff2bca1c
+[C0] 69/198 items (HB-0087) | errors 0 | degraded 8 | elapsed 42m51s | ETA 1h20m07s
+2026-10-10 12:42:03 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=234 latency_ms=29375.2 model=qwen3.5:4b prompt_tokens=324 provider=ollama success=True truncated=False
+2026-10-10 12:42:03 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=49349 session_id=3b7b6b44-f4dc-49a5-9078-9dc5db18bd46
+[C0] 70/198 items (HB-0088) | errors 0 | degraded 8 | elapsed 42m57s | ETA 1h18m34s
+2026-10-10 12:42:10 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=244 latency_ms=27702.7 model=qwen3.5:4b prompt_tokens=469 provider=ollama success=True truncated=False
+2026-10-10 12:42:10 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=48553 session_id=d6dec4f4-555f-4018-96ee-c871e4949285
+[C0] 71/198 items (HB-0089) | errors 0 | degraded 8 | elapsed 43m04s | ETA 1h17m02s
+2026-10-10 12:42:18 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=307 latency_ms=34004.6 model=qwen3.5:4b prompt_tokens=130 provider=ollama success=True truncated=False
+2026-10-10 12:42:18 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=53350 session_id=046020a1-1242-43d1-984b-ecdd86191916
+2026-10-10 12:42:28 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=44 latency_ms=30741.1 model=qwen3.5:4b prompt_tokens=1340 provider=ollama success=True truncated=False
+2026-10-10 12:42:33 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=42 latency_ms=29381.8 model=qwen3.5:4b prompt_tokens=1335 provider=ollama success=True truncated=False
+2026-10-10 12:42:35 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=39 latency_ms=24744.7 model=qwen3.5:4b prompt_tokens=1333 provider=ollama success=True truncated=False
+2026-10-10 12:42:38 [info     ] llm_call                       attempts=1 cached=False call=context_extractor completion_tokens=115 latency_ms=20787.9 model=qwen3.5:4b prompt_tokens=1451 provider=ollama success=True truncated=False
+2026-10-10 12:42:53 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=428 latency_ms=25655.5 model=qwen3.5:4b prompt_tokens=139 provider=ollama success=True truncated=False
+2026-10-10 12:42:53 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=56401 session_id=3c430554-1041-402a-af52-2f85ff7c4768
+2026-10-10 12:43:05 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=369 latency_ms=32155.4 model=qwen3.5:4b prompt_tokens=134 provider=ollama success=True truncated=False
+2026-10-10 12:43:05 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=61541 session_id=0191660f-c147-4ff5-ae53-9c7feb510f07
+2026-10-10 12:43:10 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=190 latency_ms=35149.3 model=qwen3.5:4b prompt_tokens=132 provider=ollama success=True truncated=False
+2026-10-10 12:43:10 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=59898 session_id=a780887b-bd2c-42fb-960c-cd4b8ec22e74
+2026-10-10 12:43:19 [info     ] llm_call                       attempts=1 cached=False call=response_generator completion_tokens=353 latency_ms=40237.6 model=qwen3.5:4b prompt_tokens=294 provider=ollama success=True truncated=False
+2026-10-10 12:43:19 [info     ] turn_complete                  ablation=C0 action=ANSWER citations=0 latency_ms=61030 session_id=046020a1-1242-43d1-984b-ecdd86191916
+[C0] 72/198 items (HB-0090) | errors 0 | degraded 8 | elapsed 44m13s | ETA 1h17m23s
+/Users/yahmad/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

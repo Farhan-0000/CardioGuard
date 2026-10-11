@@ -1,0 +1,155 @@
+{
+  "split": "dev",
+  "updated_at": "2026-10-10T06:28:42+00:00",
+  "nli": {
+    "theta": 0.55,
+    "theta_c": 0.95,
+    "kappa_binary": 0.46769383697813127,
+    "kappa_3class": 0.23514269725797435,
+    "n_claims": 204,
+    "grid": [
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.35,
+      0.4,
+      0.45,
+      0.5,
+      0.55,
+      0.6,
+      0.65,
+      0.7,
+      0.75,
+      0.8,
+      0.85,
+      0.9,
+      0.95
+    ],
+    "objective": "theta: max binary Cohen's kappa vs LLM judge; theta_c: max 3-class kappa given theta"
+  },
+  "v1": {
+    "thresholds": {
+      "EVIDENCE_MIN_RERANK_ANSWER": 2.072,
+      "EVIDENCE_MIN_RERANK_ANY": -100.0,
+      "EVIDENCE_MIN_ENTITY_COVERAGE": 0.0
+    },
+    "env_lines": [
+      "EVIDENCE_MIN_RERANK_ANSWER=2.072",
+      "EVIDENCE_MIN_RERANK_ANY=-100",
+      "EVIDENCE_MIN_ENTITY_COVERAGE=0"
+    ],
+    "dev_result": {
+      "false_answer_rate": 0.0,
+      "coverage": 0.7037037037037037,
+      "routing_strict": 0.711864406779661,
+      "n_unanswerable": 16,
+      "n_answerable": 27,
+      "n_turns": 59
+    },
+    "c5_dev_baseline": {
+      "false_answer_rate": 0.0,
+      "coverage": 0.7037037037037037,
+      "routing_strict": 0.6949152542372882,
+      "n_unanswerable": 16,
+      "n_answerable": 27,
+      "n_turns": 59
+    },
+    "coverage_floor": 0.6537037037037037,
+    "n_traces": 59,
+    "n_gate2_decisions": 38,
+    "objective": "minimise false-ANSWER rate on unanswerable dev turns s.t. coverage on answerable dev turns >= C5 coverage - 0.05; ties: coverage, routing accuracy, least intrusive thresholds",
+    "disabled_value": -100.0,
+    "inputs": {
+      "c5_dev_turns": 59,
+      "c5_dev_degraded_excluded": 0,
+      "run_ids": [
+        "20261010T053418Z-ccd4b5"
+      ]
+    }
+  },
+  "v2": {
+    "thresholds": {
+      "GROUNDING_ENTAILMENT_THRESHOLD": 0.2,
+      "GROUNDING_MAX_UNSUPPORTED_FRACTION": 1.0
+    },
+    "env_lines": [
+      "GROUNDING_ENTAILMENT_THRESHOLD=0.2",
+      "GROUNDING_MAX_UNSUPPORTED_FRACTION=1"
+    ],
+    "kappa_sentence": 0.24783861671469748,
+    "n_sentences": 87,
+    "n_responses": 59,
+    "dev_result": {
+      "hallucination_rate": 0.11864406779661017,
+      "coverage": 0.5925925925925926,
+      "n_turns": 59,
+      "n_answerable": 27,
+      "n_verified": 20
+    },
+    "c5_dev_baseline": {
+      "hallucination_rate": 0.2542372881355932,
+      "coverage": 0.7037037037037037
+    },
+    "coverage_floor": 0.5981481481481481,
+    "grid": {
+      "theta": [
+        0.05,
+        0.1,
+        0.15,
+        0.2,
+        0.25,
+        0.3,
+        0.35,
+        0.4,
+        0.45,
+        0.5,
+        0.55,
+        0.6,
+        0.65,
+        0.7,
+        0.75,
+        0.8,
+        0.85,
+        0.9,
+        0.95
+      ],
+      "tau": [
+        0.0,
+        0.05,
+        0.1,
+        0.15,
+        0.2,
+        0.25,
+        0.3,
+        0.35,
+        0.4,
+        0.45,
+        0.5,
+        0.55,
+        0.6,
+        0.65,
+        0.7,
+        0.75,
+        0.8,
+        0.85,
+        0.9,
+        0.95,
+        1.0
+      ]
+    },
+    "objective": "theta: max Cohen's kappa between verifier entailment >= theta and the LLM judge's sentence verdict (all linked claims SUPPORTED) on C5 dev sentences; tau: minimise the dev hallucination rate (LLM judge) s.t. coverage >= 0.85 x C5 dev coverage; ties: closest theta to 0.5, larger tau",
+    "assumptions": "kept responses lose their unsupported sentences (and the judge claims linked to them); over-threshold responses are withdrawn (ABSTAIN) — the GENERALIZE regeneration of an ANSWER is not replayed (conservative for coverage)",
+    "verifier_model": "cross-encoder/nli-MiniLM2-L6-H768",
+    "inputs": {
+      "c5_dev_turns": 59,
+      "c5_dev_degraded_excluded": 0,
+      "run_ids": [
+        "20261010T053418Z-ccd4b5"
+      ]
+    }
+  },
+  "protocol": "1) run C5 on dev; 2) judge dev (LLM judge, then NLI); 3) calibrate on dev; 4) run all conditions on test — V1/V2/V12 read their thresholds from this file"
+}
