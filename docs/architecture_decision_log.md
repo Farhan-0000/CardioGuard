@@ -1,11 +1,11 @@
 # MedBridge — Architecture Decision Log
 
-> **Review Date:** 2026-08-15 (ADL-001 – ADL-026, design review) · 2026-10-10 (ADL-027 – ADL-058, implementation review) · 2026-10-11 (study results in ADL-051, ADL-052, ADL-056 and ADL-057; new entries ADL-059 and ADL-060, post-study review; post-study re-runs and measurements in ADL-049, ADL-052 and ADL-059, new entry ADL-061)
+> **Review Date:** 2026-08-15 (ADL-001 – ADL-026, design review) · 2026-10-10 (ADL-027 – ADL-058, implementation review) · 2026-10-11 (study results in ADL-051, ADL-052, ADL-056 and ADL-057; new entries ADL-059 and ADL-060, post-study review; post-study re-runs and measurements in ADL-049, ADL-052 and ADL-059, new entry ADL-061) · 2026-10-12 (AI annotator, ADL-062)
 > **Reviewer Role:** Principal Systems Architect
 > **Artifacts Reviewed:** Requirements Document, High-Level Architecture, System Architecture, AI & Retrieval Pipeline, Data Flow / Sequence Diagram, Deployment Diagram; for ADL-027 onward also the implemented codebase, the work-stream reports of the 2026-10 finalization, the adversarial code review of 2026-10-09 and the measurement files under `evaluation/results/` and `reports/`; for the post-study review also the study's run and judge manifests, logs and `evaluation/results/summary.json`, and the post-study measurement files (`reports/rabbits_benchmark_report.json`, `reports/rabbits_before_fix/`, `reports/adversarial_live_report.json`, `reports/adversarial_before_fix/`, `reports/performance/`, `reports/smoke_test_latest.json`) with the log `evaluation/results/logs/post_study_20261011T160919.log`
-> **Total Entries:** 61
+> **Total Entries:** 62
 
-> **How to read ADL-027 – ADL-061.** These entries record the decisions taken while finishing the system for Reviews 4 and 5. Their scope was approved beforehand in `docs/finalization_plan.md` and the project brief; each entry states the problem, the decision, how it was implemented (repo-relative file paths) and why the architecture of ADL-001 – ADL-026 is preserved. Measured values are quoted only together with their source (a results or measurement file, a review presentation, or a reproducible check described in the entry); configuration values are the defaults in the code. The hallucination study finished on 2026-10-11; its results are recorded in ADL-056 (with the decisions they caused in ADL-051, ADL-052 and ADL-057), and every study number there is copied from `evaluation/results/summary.json` or the files named next to it. The study and the live MedBridge-AQ run evaluated the code **before** the post-study changes of ADL-059, ADL-061 and the Gate 3 default (ADL-052); RABBITS and the adversarial suite were re-run live after the brand-name fix (ADL-059), and the after-optimisation latency probe, the burst load test and the smoke test were recorded after the study (ADL-049). Still *pending*: the labels of the exported human annotation sheet (`evaluation/annotation/human_annotation_sheet.xlsx`, a team task) and any re-run of HalluBench on the post-study code. Some source docstrings cite provisional ADL numbers that differ from the final numbering; see [Numbering Reconciliation](#numbering-reconciliation-provisional-references-in-code).
+> **How to read ADL-027 – ADL-062.** These entries record the decisions taken while finishing the system for Reviews 4 and 5. Their scope was approved beforehand in `docs/finalization_plan.md` and the project brief; each entry states the problem, the decision, how it was implemented (repo-relative file paths) and why the architecture of ADL-001 – ADL-026 is preserved. Measured values are quoted only together with their source (a results or measurement file, a review presentation, or a reproducible check described in the entry); configuration values are the defaults in the code. The hallucination study finished on 2026-10-11; its results are recorded in ADL-056 (with the decisions they caused in ADL-051, ADL-052 and ADL-057), and every study number there is copied from `evaluation/results/summary.json` or the files named next to it. The study and the live MedBridge-AQ run evaluated the code **before** the post-study changes of ADL-059, ADL-061 and the Gate 3 default (ADL-052); RABBITS and the adversarial suite were re-run live after the brand-name fix (ADL-059), and the after-optimisation latency probe, the burst load test and the smoke test were recorded after the study (ADL-049). No human labels were collected: by the team's decision an AI annotator labelled the exported claim sheet instead (ADL-062). Still *pending*: any re-run of HalluBench on the post-study code. Some source docstrings cite provisional ADL numbers that differ from the final numbering; see [Numbering Reconciliation](#numbering-reconciliation-provisional-references-in-code).
 
 ---
 
@@ -1022,7 +1022,7 @@ All four reductions are significant, so the §6.7 fallback is not triggered; the
 
 *Latency.* Cache-imputed p50 / p95 per turn: C1 51.8 / 58.0 s, C5 78.0 / 106.2 s, V1 125.7 / 168.9 s, V2 77.8 / 108.0 s, V12 150.2 / 180.5 s (`tables/latency.md`). They were measured with parallel workers on one shared local GPU, with request memoisation (raw C5 p50 0.22 s) and imputation, so they compare conditions and are not user-facing latencies; single-user latencies of the post-study code are in the after-optimisation probe (ADL-049).
 
-*Limitations.* One run per condition on a synthetic, single-author benchmark without clinician review; 66 unanswerable turns give wide intervals (C5 unsafe [8.4, 25.7]); the dev C5 hallucination rate (25.4%, `calibration.json`) is well below the test rate, which shows sampling variance; the 50-item human annotation sheet has not been labelled, so no human–judge κ exists; the study ran on the Apple M5, not on the Windows RTX 4050 target; and the code evaluated precedes the brand-name fix (ADL-059), the Gate 3 default (ADL-052) and the withdrawal of fully unsupported drafts (ADL-061).
+*Limitations.* One run per condition on a synthetic, single-author benchmark without clinician review; 66 unanswerable turns give wide intervals (C5 unsafe [8.4, 25.7]); the dev C5 hallucination rate (25.4%, `calibration.json`) is well below the test rate, which shows sampling variance; no human labels were collected, so no human–judge κ exists (an AI annotator labelled the 50-item sheet instead, ADL-062); the study ran on the Apple M5, not on the Windows RTX 4050 target; and the code evaluated precedes the brand-name fix (ADL-059), the Gate 3 default (ADL-052) and the withdrawal of fully unsupported drafts (ADL-061).
 
 *Decisions taken from these results.* Gate 3 (V2) is enabled by default with its dev-calibrated thresholds (ADL-052, commit `7a3bc67`); the calibrated Evidence Gate (V1) stays disabled (ADL-051).
 
@@ -1145,6 +1145,24 @@ A draft in which every checked claim is unsupported must not be delivered. Treat
 
 ---
 
+### ADL-062 · AI Annotator Instead of Human Claim Labels 🟡 MEDIUM
+
+**Issue:**
+The study protocol exports a blinded 50-item claim sheet (`evaluation/annotation/human_annotation_sheet.xlsx`, 872 claims of 96 C5 and C1 responses) for two human annotators, so that the LLM judge can be checked against people. On 2026-10-12 the team decided not to label it themselves and asked for the labelling to be done instead. Labels written by an AI model are not human labels, and reporting them as human agreement would misrepresent the evaluation.
+
+**Decision (team, 2026-10-12):** Use an AI model as a third, explicitly non-human annotator, report it under that name everywhere, and keep the human columns empty and blind.
+
+**Resolution:**
+Claude Opus 5.5 (`claude-opus-5-5`, Anthropic) labelled every claim with the sheet's rubric in ten blinded batches that held only the question, the response, the claims and the evidence each claim was judged against: no condition, category, answer key (`annotation_key.csv`) or judge label. Each batch instructed the model to use only the evidence and, in doubt between SUPPORTED and UNSUPPORTED, to choose UNSUPPORTED, and required a short note for every UNSUPPORTED or CONTRADICTED label. `python -m evaluation.human_annotation --import-ai` merges the batch files into `evaluation/annotation/ai_annotation_labels.csv` and a separate copy of the sheet, `ai_annotation_sheet.xlsx` (columns `AI_label`, `AI_notes`); the human sheet is left byte-identical, so future human annotators stay blind. `--score-ai` writes `evaluation/results/ai_annotation_agreement.json`, which the report's judge-agreement table, Section 4.11 and the README read. Tests: `tests/evaluation/test_annotation_perf_models.py`.
+
+**Outcome:** 488 claims SUPPORTED, 368 UNSUPPORTED, 16 CONTRADICTED. Three-class agreement with the LLM judge κ = 0.50 [0.45, 0.56] (75.8 % identical labels, n = 872); the AI annotator was stricter (148 claims supported by the judge but not by the AI annotator, 46 the reverse), so the judge's absolute rates are, if anything, too low. Agreement with the NLI judge was weak (κ = 0.17, C1 only, n = 559), like the judges' agreement with each other. In the sample, the AI annotator rated 43.5 % of C5 claims and 44.4 % of C1 claims unsupported; on the 34 items where both conditions answered with claims, 97.1 % of responses in each contained at least one (exact McNemar p = 1.0; LLM judge 94.1 % against 76.5 %, p = 0.11). This supports the reading of ADL-056: the dual gate lowers hallucination by answering less, not by grounding its answers better.
+
+**Limits:** One model, from the same family as the AI assistant used to develop much of the code and evaluation, so it may share their blind spots; no person checked its labels; the sample covers only C5 and C1 responses with claims. It is not a substitute for clinician annotation, which remains future work.
+
+**Why the architecture is preserved:** Evaluation only; no change to the pipeline, the gates or the study's headline numbers.
+
+---
+
 ## Summary Cross-Reference
 
 The fourth column names the diagrams affected (ADL-001 – ADL-026) or the implementation modules affected (ADL-027 onward; module IDs as in `docs/module_map.md`). The last column lists later entries that implement or extend an earlier finding, or the status of a new decision.
@@ -1212,6 +1230,7 @@ The fourth column names the diagrams affected (ADL-001 – ADL-026) or the imple
 | 059 | Brand-name robustness fix after live RABBITS: lexicon notes, medication backstop, query drug filter | 🟠 | M-11, M-12, M-13, M-14, M-23 | Implemented (`02d9774`, after the study); live RABBITS action consistency 48.33% → 80.0%, stored-generic consistency 3.33% → 100.0% (Indian brands 45.0% → 80.0%); adversarial 19/19 before and after; AQ and HalluBench not re-run |
 | 060 | Process-wide PyTorch inference lock (MPS segfault with Gate 3 and reranker) | 🟠 | M-17, M-26 | Implemented (`3f58b59`) |
 | 061 | Gate 3 withdraws fully unsupported drafts (ANSWER → GENERALIZE → ABSTAIN) instead of delivering them | 🟠 | M-08, M-26 | Implemented (`16e594b`, after the study); affected 16 of 239 V2 test turns (13 judged hallucinated); effect on the benchmark **not re-measured** |
+| 062 | AI annotator (Claude Opus 5.5, labelled as non-human) instead of human claim labels | 🟡 | evaluation | Done (team decision 2026-10-12); κ = 0.50 with the LLM judge; human columns left empty |
 
 ---
 

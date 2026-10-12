@@ -1,0 +1,192 @@
+{
+  "generated_at": "2026-10-12T07:39:36+00:00",
+  "annotator": "Claude Opus 5.5 (claude-opus-5-5, Anthropic), an AI model used as a third annotator; not a human",
+  "labels_file": "evaluation/annotation/ai_annotation_labels.csv",
+  "n_claims": 872,
+  "label_counts": {
+    "SUPPORTED": 488,
+    "UNSUPPORTED": 368,
+    "CONTRADICTED": 16
+  },
+  "ai_vs_llm": {
+    "n": 872,
+    "kappa_3class": {
+      "kappa": 0.500618825317555,
+      "low": 0.4451403644734463,
+      "high": 0.5560972861616637,
+      "se": 0.028305857292131746,
+      "n": 872,
+      "observed_agreement": 0.7580275229357798,
+      "expected_agreement": 0.5154553488763572
+    },
+    "kappa_binary": {
+      "kappa": 0.5180280264865699,
+      "low": 0.4618211114289138,
+      "high": 0.5742349415442259,
+      "se": 0.0286775244346371,
+      "n": 872,
+      "observed_agreement": 0.7694954128440368,
+      "expected_agreement": 0.5217469068260248
+    },
+    "raw_agreement": 0.7580275229357798,
+    "confusion_ai_rows_judge_cols": [
+      [
+        441,
+        46,
+        1
+      ],
+      [
+        148,
+        220,
+        0
+      ],
+      [
+        6,
+        10,
+        0
+      ]
+    ],
+    "conditions": [
+      "C1",
+      "C5"
+    ]
+  },
+  "ai_vs_nli": {
+    "n": 559,
+    "kappa_3class": {
+      "kappa": 0.1654331183888694,
+      "low": 0.11449986030158744,
+      "high": 0.21636637647615137,
+      "se": 0.025986833681147715,
+      "n": 559,
+      "observed_agreement": 0.4955277280858676,
+      "expected_agreement": 0.3955280481053248
+    },
+    "kappa_binary": {
+      "kappa": 0.29791325963236737,
+      "low": 0.2183553145651493,
+      "high": 0.3774712046995854,
+      "se": 0.04059153417856705,
+      "n": 559,
+      "observed_agreement": 0.6565295169946332,
+      "expected_agreement": 0.5107862558043529
+    },
+    "raw_agreement": 0.49552772808586765,
+    "confusion_ai_rows_judge_cols": [
+      [
+        226,
+        32,
+        53
+      ],
+      [
+        100,
+        45,
+        90
+      ],
+      [
+        7,
+        0,
+        6
+      ]
+    ],
+    "conditions": [
+      "C1"
+    ]
+  },
+  "per_condition": {
+    "C1": {
+      "n_claims": 559,
+      "unsupported_claims_ai": {
+        "k": 248,
+        "n": 559,
+        "rate": 0.44364937388193204,
+        "low": 0.40298820949316416,
+        "high": 0.4850797375056194
+      },
+      "unsupported_claims_llm": {
+        "k": 173,
+        "n": 559,
+        "rate": 0.3094812164579606,
+        "low": 0.27256849476859735,
+        "high": 0.3489945641320513
+      },
+      "n_responses": 62,
+      "hallucination_ai": {
+        "k": 60,
+        "n": 62,
+        "rate": 0.967741935483871,
+        "low": 0.8897953040501456,
+        "high": 0.9911086285001833
+      },
+      "hallucination_llm": {
+        "k": 52,
+        "n": 62,
+        "rate": 0.8387096774193549,
+        "low": 0.7279366398602256,
+        "high": 0.9099593112969091
+      }
+    },
+    "C5": {
+      "n_claims": 313,
+      "unsupported_claims_ai": {
+        "k": 136,
+        "n": 313,
+        "rate": 0.43450479233226835,
+        "low": 0.38071242819183215,
+        "high": 0.489885314437542
+      },
+      "unsupported_claims_llm": {
+        "k": 104,
+        "n": 313,
+        "rate": 0.33226837060702874,
+        "low": 0.282397350921522,
+        "high": 0.38620662410492407
+      },
+      "n_responses": 34,
+      "hallucination_ai": {
+        "k": 33,
+        "n": 34,
+        "rate": 0.9705882352941176,
+        "low": 0.8508442670731406,
+        "high": 0.9947890937237309
+      },
+      "hallucination_llm": {
+        "k": 32,
+        "n": 34,
+        "rate": 0.9411764705882353,
+        "low": 0.80906393095719,
+        "high": 0.9837173447898772
+      }
+    }
+  },
+  "response_level": {
+    "n": 96,
+    "kappa": {
+      "kappa": 0.3684210526315789,
+      "low": 0.06387375011364,
+      "high": 0.6729683551495178,
+      "se": 0.15538413201475598,
+      "n": 96,
+      "observed_agreement": 0.90625,
+      "expected_agreement": 0.8515625
+    },
+    "raw_agreement": 0.90625
+  },
+  "paired_c5_vs_c1": {
+    "n_pairs": 34,
+    "ai": {
+      "p_c5": 0.9705882352941176,
+      "p_c1": 0.9705882352941176,
+      "b_c5_only": 1,
+      "c_c1_only": 1,
+      "pvalue": 1.0
+    },
+    "llm": {
+      "p_c5": 0.9411764705882353,
+      "p_c1": 0.7647058823529411,
+      "b_c5_only": 8,
+      "c_c1_only": 2,
+      "pvalue": 0.109375
+    }
+  }
+}

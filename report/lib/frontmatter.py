@@ -1,23 +1,13 @@
 """
 Default preliminary pages, used only when ``report/content/`` has no file for a slot.
 
-Everything the team must fill by hand is a yellow ``[TO BE FILLED: ...]``
-placeholder. The defaults are deliberately short; the content stream normally
-provides the real pages (``00_title.md``, ``01_bonafide.md``, ...).
+The cover, title, declaration, certificate and acknowledgement pages follow the VIT
+template and are written by ``lib/vit_front.py`` from ``report/team.json``. This module
+only holds the fallbacks for the abstract and the list of symbols and abbreviations, and
+the placeholder text for a missing chapter.
 """
 
 from __future__ import annotations
-
-REPORT_TITLE = (
-    "CardioGuard: An Evidence-Grounded Clinical Decision Support & Patient Consultation "
-    "System for Hypertension and Cardiovascular Care"
-)
-SYSTEM_NAME = "MedBridge"
-STUDENTS: tuple[tuple[str, str], ...] = (
-    ("Vijay Aravindh S.", "23BAI1160"),
-    ("Mohammad Farhan Rashid", "23BAI1529"),
-)
-GUIDE = "Dr. Maheswari S."
 
 #: Canonical chapter titles, used for placeholder chapters when a file is missing.
 CHAPTER_TITLES: dict[int, str] = {
@@ -27,79 +17,6 @@ CHAPTER_TITLES: dict[int, str] = {
     4: "Implementation and Results",
     5: "Conclusion and Future Work",
 }
-
-_students_md = "\n\n".join(f"**{name.upper()} ({reg})**" for name, reg in STUDENTS)
-_students_inline = " and ".join(f"**{name} ({reg})**" for name, reg in STUDENTS)
-
-TITLE_PAGE = f"""**{REPORT_TITLE.upper()}**
-
-*System name: {SYSTEM_NAME}*
-
-A PROJECT REPORT
-
-Submitted by
-
-{_students_md}
-
-in partial fulfilment of the requirements for the award of the degree of
-
-**[TO BE FILLED: degree]**
-
-Under the guidance of
-
-**{GUIDE}**
-
-[TO BE FILLED: guide designation], [TO BE FILLED: department]
-
-[TO BE FILLED: university logo]
-
-**[TO BE FILLED: department / school name]**
-
-**[TO BE FILLED: university name]**
-
-Year 4, Semester VII
-
-**[TO BE FILLED: month and year of submission]**
-"""
-
-BONAFIDE = f"""#* Bonafide Certificate
-
-Certified that this project report titled **"{REPORT_TITLE}"** is the bonafide work of \
-{_students_inline}, who carried out the project work under my supervision during \
-[TO BE FILLED: academic year], Semester VII.
-
-**Signature of the Guide**
-
-{GUIDE}, [TO BE FILLED: guide designation]
-
-**Signature of the Head of the Department**
-
-[TO BE FILLED: name and designation of the Head of the Department]
-
-Submitted for the viva-voce examination held on [TO BE FILLED: date].
-
-**Internal Examiner** [TO BE FILLED: signature]
-
-**External Examiner** [TO BE FILLED: signature]
-"""
-
-DECLARATION = f"""#* Declaration
-
-We declare that the project report titled **"{REPORT_TITLE}"** is a record of original work \
-carried out by us under the supervision of **{GUIDE}**, and that it has not been submitted \
-for the award of any other degree or diploma. All data used in this work are synthetic.
-
-Place: [TO BE FILLED: place]
-
-Date: [TO BE FILLED: date]
-
-{_students_md}
-"""
-
-ACKNOWLEDGEMENT = """#* Acknowledgement
-
-[TO BE FILLED: acknowledgement]
-"""
 
 ABSTRACT = """#* Abstract
 
@@ -129,15 +46,11 @@ ABBREVIATIONS: tuple[tuple[str, str], ...] = (
 )
 
 ABBREVIATIONS_MD = (
-    "#* List of Abbreviations\n\n| Abbreviation | Expansion |\n|---|---|\n"
+    "#* List of Symbols and Abbreviations\n\n| Abbreviation | Expansion |\n|---|---|\n"
     + "\n".join(f"| {a} | {b} |" for a, b in ABBREVIATIONS)
 )
 
 DEFAULTS: dict[str, str] = {
-    "title": TITLE_PAGE,
-    "bonafide": BONAFIDE,
-    "declaration": DECLARATION,
-    "acknowledgement": ACKNOWLEDGEMENT,
     "abstract": ABSTRACT,
     "abbreviations": ABBREVIATIONS_MD,
 }

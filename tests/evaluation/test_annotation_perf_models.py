@@ -5,6 +5,7 @@ import json
 import re
 from collections import Counter
 
+import pytest
 from openpyxl import load_workbook
 
 from evaluation import human_annotation as ha
@@ -88,6 +89,70 @@ def test_export_and_score(tmp_path):
     assert result["human_human"]["n"] == len(rows)
     assert result["human_human"]["raw_agreement"] == (len(rows) - 1) / len(rows)
     assert result["consensus_vs_llm"]["n"] == len(rows) - 1
+
+
+def test_ai_annotator_import_and_score(tmp_path):
+    """AI labels go to separate files; the human sheet is untouched and stays blind."""
+    paths = write_study(tmp_path, conditions=("C1", "C5"))
+    out_dir = tmp_path / "annotation"
+    common = ["--runs-dir", str(paths["runs"]), "--judgments-dir", str(paths["judgments"])]
+    common += ["--out-dir", str(out_dir), "--calibration", str(tmp_path / "none")]
+    assert ha.main(["--export", "--n-items", "10", *common]) == 0
+    with (out_dir / "human_annotation_sheet.csv").open() as fh:
+        rows = list(csv.DictReader(fh))
+    with (out_dir / "annotation_key.csv").open() as fh:
+        keys = {k["row_id"]: k for k in csv.DictReader(fh)}
+    human_before = (out_dir / "human_annotation_sheet.xlsx").read_bytes()
+
+    # the AI agrees with the LLM judge except on the first row, which it calls CONTRADICTED
+    labels = [
+        {
+            "row_id": r["row_id"],
+            "label": "CONTRADICTED" if i == 0 else keys[r["row_id"]]["llm_label"],
+            "note": "conflicts with E1" if i == 0 else "",
+        }
+        for i, r in enumerate(rows)
+    ]
+    half = len(labels) // 2
+    batches = [tmp_path / "labels_00.json", tmp_path / "labels_01.json"]
+    batches[0].write_text(json.dumps(labels[:half]))
+    batches[1].write_text(json.dumps(labels[half:]))
+    assert ha.main(["--import-ai", *map(str, batches), "--out-dir", str(out_dir)]) == 0
+    assert (out_dir / "human_annotation_sheet.xlsx").read_bytes() == human_before
+    wb = load_workbook(out_dir / "ai_annotation_sheet.xlsx")
+    header = [c.value for c in wb["Claims"][1]]
+    assert header[-2:] == ["AI_label", "AI_notes"] and header[: len(ha.COLUMNS)] == list(ha.COLUMNS)
+    assert "not a human" in wb["Instructions"]["A1"].value
+
+    out = tmp_path / "ai.json"
+    assert ha.main(["--score-ai", "--out-dir", str(out_dir), "--output", str(out)]) == 0
+    result = json.loads(out.read_text())
+    assert "not a human" in result["annotator"]
+    assert result["n_claims"] == len(rows) and result["label_counts"]["CONTRADICTED"] >= 1
+    assert result["ai_vs_llm"]["n"] == len(rows)
+    assert result["ai_vs_llm"]["raw_agreement"] == (len(rows) - 1) / len(rows)
+    assert set(result["per_condition"]) <= {"C1", "C5"}
+    assert result["paired_c5_vs_c1"]["n_pairs"] >= 0
+    assert result["labels_file"] == "evaluation/annotation/ai_annotation_labels.csv"
+
+
+def test_ai_annotator_rejects_incomplete_or_invalid_labels(tmp_path):
+    paths = write_study(tmp_path, conditions=("C1", "C5"))
+    out_dir = tmp_path / "annotation"
+    common = ["--runs-dir", str(paths["runs"]), "--judgments-dir", str(paths["judgments"])]
+    common += ["--out-dir", str(out_dir), "--calibration", str(tmp_path / "none")]
+    assert ha.main(["--export", "--n-items", "10", *common]) == 0
+    sheet = out_dir / "human_annotation_sheet.xlsx"
+    with (out_dir / "human_annotation_sheet.csv").open() as fh:
+        ids = [r["row_id"] for r in csv.DictReader(fh)]
+    partial = tmp_path / "partial.json"
+    partial.write_text(json.dumps([{"row_id": ids[0], "label": "SUPPORTED"}]))
+    with pytest.raises(ValueError, match="missing"):
+        ha.import_ai_labels([partial], sheet, out_dir)
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps([{"row_id": i, "label": "MAYBE"} for i in ids]))
+    with pytest.raises(ValueError, match="invalid label"):
+        ha.import_ai_labels([bad], sheet, out_dir)
 
 
 def _probe(label, p50s, actions):

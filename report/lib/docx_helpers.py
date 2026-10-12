@@ -236,9 +236,10 @@ def _format_style(
 
 
 def setup_styles(doc: DocumentObject) -> None:
-    """Institutional template: TNR 12 pt, 1.5 spacing, justified; headings 16/14/12 pt."""
+    """VIT BCSE497J template: TNR 12 pt, 1.5 spacing, justified; chapter titles 16 pt bold,
+    sections 14 pt and subsections 12 pt in capitals; captions at least 10 pt."""
     normal = doc.styles["Normal"]
-    _format_style(normal, size=12, align=WD_ALIGN_PARAGRAPH.JUSTIFY, before=0, after=6, spacing=1.5)
+    _format_style(normal, size=12, align=WD_ALIGN_PARAGRAPH.JUSTIFY, before=0, after=4, spacing=1.5)
     normal.paragraph_format.widow_control = True
 
     h1 = doc.styles["Heading 1"]
@@ -258,7 +259,7 @@ def setup_styles(doc: DocumentObject) -> None:
     _format_style(
         h2,
         size=14,
-        bold=True,
+        bold=False,
         italic=False,
         align=WD_ALIGN_PARAGRAPH.LEFT,
         before=18,
@@ -271,7 +272,7 @@ def setup_styles(doc: DocumentObject) -> None:
     _format_style(
         h3,
         size=12,
-        bold=True,
+        bold=False,
         italic=False,
         align=WD_ALIGN_PARAGRAPH.LEFT,
         before=12,
@@ -300,7 +301,7 @@ def setup_styles(doc: DocumentObject) -> None:
     front.base_style = normal
     _format_style(
         front,
-        size=16,
+        size=14,
         bold=True,
         align=WD_ALIGN_PARAGRAPH.CENTER,
         before=0,
@@ -335,7 +336,7 @@ def setup_styles(doc: DocumentObject) -> None:
     note = _style(doc, "Table Note")
     note.base_style = normal
     _format_style(
-        note, size=9, italic=True, align=WD_ALIGN_PARAGRAPH.LEFT, before=2, after=12, spacing=1.0
+        note, size=10, italic=True, align=WD_ALIGN_PARAGRAPH.LEFT, before=2, after=12, spacing=1.0
     )
 
     code = _style(doc, "Code Text")
@@ -359,7 +360,7 @@ def setup_styles(doc: DocumentObject) -> None:
 
     ref = _style(doc, "Reference Entry")
     ref.base_style = normal
-    _format_style(ref, size=11, align=WD_ALIGN_PARAGRAPH.LEFT, before=0, after=6, spacing=1.15)
+    _format_style(ref, size=12, align=WD_ALIGN_PARAGRAPH.LEFT, before=0, after=4, spacing=1.0)
     ref.paragraph_format.left_indent = Inches(0.5)
     ref.paragraph_format.first_line_indent = Inches(-0.5)
     ref.paragraph_format.tab_stops.add_tab_stop(Inches(0.5))
@@ -386,7 +387,7 @@ def setup_styles(doc: DocumentObject) -> None:
             align=WD_ALIGN_PARAGRAPH.LEFT,
             before=0,
             after=2 if level > 1 else 4,
-            spacing=1.15,
+            spacing=1.0,  # the template allows single spacing in the contents and lists
         )
         st.paragraph_format.left_indent = Inches(0.3 * (level - 1))
         st.paragraph_format.tab_stops.add_tab_stop(
@@ -394,13 +395,13 @@ def setup_styles(doc: DocumentObject) -> None:
         )
     tof = _style(doc, "table of figures")
     tof.base_style = normal
-    _format_style(tof, size=12, align=WD_ALIGN_PARAGRAPH.LEFT, before=0, after=2, spacing=1.15)
+    _format_style(tof, size=12, align=WD_ALIGN_PARAGRAPH.LEFT, before=0, after=2, spacing=1.0)
     tof.paragraph_format.tab_stops.add_tab_stop(
         Inches(TEXT_WIDTH_IN), WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS
     )
 
     footer = doc.styles["Footer"]
-    _format_style(footer, size=11, align=WD_ALIGN_PARAGRAPH.CENTER, before=0, after=0, spacing=1.0)
+    _format_style(footer, size=12, align=WD_ALIGN_PARAGRAPH.CENTER, before=0, after=0, spacing=1.0)
 
 
 # ----------------------------------------------------------------------
@@ -443,8 +444,20 @@ def new_section(doc: DocumentObject) -> Any:
     return section
 
 
-def add_page_number_footer(section: Any, *, blank_first_page: bool = False) -> None:
-    """Centered PAGE field in the section's own (unlinked) footer."""
+def clear_footer(section: Any) -> None:
+    """Empty, unlinked footer (pages without a printed number)."""
+    section.different_first_page_header_footer = False
+    footer = section.footer
+    footer.is_linked_to_previous = False
+    for p in footer.paragraphs:
+        for run in list(p.runs):
+            run._element.getparent().remove(run._element)
+
+
+def add_page_number_footer(
+    section: Any, *, blank_first_page: bool = False, italic: bool = False
+) -> None:
+    """Centered PAGE field at the bottom of the page, in the section's own footer."""
     section.different_first_page_header_footer = blank_first_page
     footer = section.footer
     footer.is_linked_to_previous = False
@@ -455,7 +468,7 @@ def add_page_number_footer(section: Any, *, blank_first_page: bool = False) -> N
     para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     for run in list(para.runs):
         run._element.getparent().remove(run._element)
-    add_field(para, "PAGE", "1")
+    add_field(para, "PAGE", "1", italic=italic or None)
     if blank_first_page:
         first = section.first_page_footer
         first.is_linked_to_previous = False

@@ -14,9 +14,15 @@ Usage::
     python report/build_report.py --out /tmp/r.docx --content-dir path/to/content
     python report/build_report.py --strict             # exit 1 on unknown citation keys
 
-Assembly order: title page, bonafide certificate, declaration, acknowledgement,
-abstract, table of contents, list of figures, list of tables, list of
-abbreviations | chapters 1-5 | references (IEEE) | appendices.
+The layout follows the VIT Chennai BCSE497J template
+(``report/templates/BCSE497J_report_template.docx``). Assembly order: cover page, title
+page, declaration, certificate (no page numbers) | abstract, acknowledgement, contents,
+list of tables, list of figures, list of symbols and abbreviations (i, ii, ...) |
+chapters 1-5, references (numbered, APA style), appendices 1, 2, ... (1, 2, ...).
+
+The template asks each student to submit a copy whose declaration, certificate and
+acknowledgement carry only that student's name: ``--member REG`` builds one such copy and
+``--all-members`` builds one per student in ``report/team.json``.
 """
 
 from __future__ import annotations
@@ -41,7 +47,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_COLOR_INDEX, WD_LINE_SPACING  
 from docx.shared import Inches, Pt  # noqa: E402
 from lib import docx_helpers as dh  # noqa: E402
 from lib import frontmatter as fm  # noqa: E402
-from lib import libreoffice  # noqa: E402
+from lib import libreoffice, vit_front  # noqa: E402
 from lib.content import (  # noqa: E402
     Algorithm,
     Block,
@@ -61,7 +67,7 @@ from lib.content import (  # noqa: E402
     parse_markup,
     tokenize,
 )
-from lib.references import CitationRegistry, format_entry, load_references  # noqa: E402
+from lib.references import CitationRegistry, format_entry_apa, load_references  # noqa: E402
 from lib.results_context import ResultsContext  # noqa: E402
 from lib.tables import DEFAULT_CAPTIONS, generate  # noqa: E402
 
@@ -69,34 +75,23 @@ DEFAULT_OUT = REPORT_DIR / "MedBridge_Final_Report.docx"
 DEFAULT_CONTENT = REPORT_DIR / "content"
 DEFAULT_LOG = REPORT_DIR / "build" / "report_build_log.json"
 
-FRONT_ORDER: tuple[str, ...] = (
-    "title",
-    "bonafide",
-    "declaration",
-    "acknowledgement",
-    "abstract",
-    "abbreviations",
-)
+#: Front-matter pages taken from content files. The cover, title, declaration, certificate
+#: and acknowledgement pages come from the template (lib/vit_front.py, report/team.json).
+FRONT_ORDER: tuple[str, ...] = ("abstract", "abbreviations")
 #: Front-matter pages whose heading is listed in the table of contents.
-FRONT_IN_TOC = frozenset({"acknowledgement", "abstract", "abbreviations", "action_taken"})
-APPENDIX_HEADING = re.compile(r"^appendix\s+([A-Za-z])\b\s*[:.\-–—]?\s*(.*)$", re.IGNORECASE)
+FRONT_IN_TOC = frozenset({"abbreviations", "action_taken"})
+#: Legacy content files whose pages the template now provides.
+TEMPLATE_PAGES = frozenset({"title", "bonafide", "declaration", "acknowledgement"})
+APPENDIX_HEADING = re.compile(r"^appendix\s+([A-Za-z]|\d+)\b\s*[:.\-–—]?\s*(.*)$", re.IGNORECASE)
 CHAPTER_PREFIX = re.compile(r"^chapter\s+\d+\s*[:.\-–—]\s*", re.IGNORECASE)
 #: Static pages placed after the list of abbreviations when no content file references them.
 AUTO_FRONT_PAGES: tuple[tuple[str, str], ...] = (("action_taken", "action_taken.md"),)
 
 #: Line spacing for preliminary pages that should fit on a single page.
-COMPACT_FRONT: dict[str, float] = {
-    "bonafide": 1.15,
-    "declaration": 1.15,
-    "acknowledgement": 1.15,
-    "abstract": 1.15,
-}
+COMPACT_FRONT: dict[str, float] = {"abstract": 1.0}  # single-spaced, as in the template sample
 FRONT_TITLES: dict[str, str] = {
-    "bonafide": "Bonafide Certificate",
-    "declaration": "Declaration",
-    "acknowledgement": "Acknowledgement",
     "abstract": "Abstract",
-    "abbreviations": "List of Abbreviations",
+    "abbreviations": "List of Symbols and Abbreviations",
     "action_taken": "Action Taken on Previous Review Comments",
 }
 FRONT_KEYWORDS: tuple[tuple[str, str], ...] = (
@@ -123,6 +118,8 @@ FRONT_EXACT = {
     "list_of_abbreviations",
 }
 EXPECTED_CHAPTERS = (1, 2, 3, 4, 5)
+#: Body paragraphs open with this indent, as in the template's sample chapter page.
+FIRST_LINE_INDENT_IN = 0.5
 SEQ_KINDS = ("Figure", "Table", "Algorithm")
 
 
@@ -153,6 +150,8 @@ def classify(stem: str) -> tuple[str, Any]:
             if re.search(pattern, name):
                 if slot == "abstract" and re.search(r"result|summary_", name):
                     break
+                if slot in TEMPLATE_PAGES:
+                    return "skip", "page generated from the VIT template and report/team.json"
                 return "front", slot
     m = re.match(r"^(?:ch|chap|chapter)[_\-\s]?(\d+)", s)
     if m:
@@ -442,11 +441,11 @@ class Renderer:
         text = h.text.strip()
         if self.part == "front":
             if h.level == 1:
-                in_toc = self.front_slot in FRONT_IN_TOC
-                para = self._heading_para("Heading 1" if in_toc else "Front Title")
-                self.inline(para, text, upper=True)
-                if in_toc:
-                    self.headings.append(text.upper())
+                self.front_heading(
+                    text,
+                    in_toc=self.front_slot in FRONT_IN_TOC,
+                    underline=self.front_slot == "abstract",
+                )
             else:
                 para = self.doc.add_paragraph()
                 dh.keep_with_next(para)
@@ -459,47 +458,63 @@ class Renderer:
             if h.numbered and self.part == "main":
                 self.chapter_no += 1
                 self._reset_chapter(str(self.chapter_no))
-                prefix = f"CHAPTER {self.chapter_no}"
+                prefix = f"Chapter {self.chapter_no}"
             elif self.part == "appendix" and (h.numbered or explicit_app):
                 self.appendix_no += 1
-                letter = chr(ord("A") + self.appendix_no - 1)
-                if explicit_app:  # "#* Appendix C: Test Cases" keeps the author's letter
-                    letter = explicit_app.group(1).upper()
+                number = str(self.appendix_no)
+                if explicit_app:  # "#* Appendix 3: Test Cases" keeps the author's number
+                    given = explicit_app.group(1)
+                    number = given if given.isdigit() else str(ord(given.upper()) - ord("A") + 1)
                     text = explicit_app.group(2).strip() or text
-                self._reset_chapter(letter)
-                prefix = f"APPENDIX {letter}"
+                self._reset_chapter(f"A{number}")
+                prefix = f"Appendix {number}"
             else:
                 self._reset_chapter(None)
                 prefix = ""
+            # template: "Chapter n" in 12 pt bold above the title in 16 pt bold
             para = self._heading_para("Heading 1")
             if prefix:
-                para.add_run(prefix)
+                r = para.add_run(prefix)
+                r.font.size = Pt(12)
                 para.add_run().add_break()
-            self.inline(para, text, upper=True)
-            self.headings.append(f"{prefix} {text.upper()}".strip())
+            self.inline(para, text, upper=not prefix)
+            self.headings.append(f"{prefix} {text}".strip() if prefix else text.upper())
             self.stats["chapters" if self.part == "main" else "appendices"] += 1
             return
-        if h.level == 2:
+        if h.level == 2:  # section: 14 pt, capitals
             number = ""
             if h.numbered and self.label:
                 self.h2 += 1
                 self.h3 = 0
-                number = f"{self.label}.{self.h2} "
+                number = f"{self.label}.{self.h2}  "
             para = self._heading_para("Heading 2")
-            self.inline(para, number + text)
-            self.headings.append(number + text)
+            self.inline(para, number + text, upper=True)
+            self.headings.append(number + text.upper())
             return
-        if h.level == 3:
+        if h.level == 3:  # subsection: 12 pt, capitals
             number = ""
             if h.numbered and self.label and self.h2:
                 self.h3 += 1
-                number = f"{self.label}.{self.h2}.{self.h3} "
+                number = f"{self.label}.{self.h2}.{self.h3}  "
             para = self._heading_para("Heading 3")
-            self.inline(para, number + text)
-            self.headings.append(number + text)
+            self.inline(para, number + text, upper=True)
+            self.headings.append(number + text.upper())
             return
         para = self._heading_para("Heading 4")
         self.inline(para, text)
+
+    def front_heading(self, text: str, *, in_toc: bool, underline: bool = False) -> Any:
+        """Heading of a preliminary page: centred (abstract, acknowledgement) or, for the
+        contents and the lists, left-aligned as in the template, and then listed in the TOC."""
+        para = self._heading_para("Heading 1" if in_toc else "Front Title")
+        if in_toc:
+            para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            self.headings.append(text.upper())
+        r = para.add_run(text.upper())
+        r.font.size = Pt(14)
+        if underline:
+            r.underline = True
+        return para
 
     # -- captions ------------------------------------------------------------
 
@@ -535,6 +550,8 @@ class Renderer:
             para.paragraph_format.space_after = Pt(6)
         if p.style == "center":
             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        elif p.style != "quote" and self.part != "front":
+            para.paragraph_format.first_line_indent = Inches(FIRST_LINE_INDENT_IN)
         self.inline(para, p.text)
 
     def list_block(self, lb: ListBlock) -> None:
@@ -728,25 +745,6 @@ class Renderer:
 
     # -- special pages -----------------------------------------------------------
 
-    def title_page(self, blocks: list[Block]) -> None:
-        first = True
-        for block in blocks:
-            if isinstance(block, Heading | Paragraph):
-                para = self.doc.add_paragraph(style="Report Title")
-                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                if first:
-                    para.paragraph_format.space_before = Pt(24)
-                    para.paragraph_format.space_after = Pt(24)
-                    self.inline(para, block.text, size=16, bold=True)
-                    first = False
-                else:
-                    para.paragraph_format.space_after = Pt(8)
-                    self.inline(para, block.text, bold=isinstance(block, Heading))
-            elif isinstance(block, Figure):
-                self.figure(block)
-            elif isinstance(block, Pending):
-                self.pending_para(block.text)
-
     def front_page(self, slot: str, blocks: list[Block]) -> None:
         self.front_slot = slot
         if not any(isinstance(b, Heading) and b.level == 1 for b in blocks[:1]):
@@ -755,10 +753,7 @@ class Renderer:
         self.render(blocks)
 
     def index_page(self, title: str, instr: str, placeholder: str, *, in_toc: bool) -> None:
-        para = self.doc.add_paragraph(style="Heading 1" if in_toc else "Front Title")
-        para.add_run(title)
-        if in_toc:
-            self.headings.append(title)
+        self.front_heading(title, in_toc=in_toc)
         field = self.doc.add_paragraph()
         field.alignment = WD_ALIGN_PARAGRAPH.LEFT
         dh.add_index_field(field, instr, placeholder)
@@ -772,10 +767,10 @@ class Renderer:
         if not bib:
             self.pending_para("[PENDING: no citations in the content yet]")
             return
-        for number, entry in bib:
+        for number, entry in bib:  # numbered list, each entry in APA style (template sample)
             p = self.doc.add_paragraph(style="Reference Entry")
-            p.add_run(f"[{number}]\t")
-            for seg in format_entry(entry):
+            p.add_run(f"[{number}].\t")
+            for seg in format_entry_apa(entry):
                 r = p.add_run(seg.text)
                 if seg.italic:
                     r.italic = True
@@ -805,9 +800,16 @@ def build(
     pdf: bool = False,
     log_path: Path | None = None,
     quiet: bool = False,
+    member: str | None = None,
+    team_file: Path | None = None,
 ) -> BuildResult:
+    """Build one report. ``member`` (a register number from report/team.json) names the
+    student on the declaration, certificate and acknowledgement; without it those pages
+    keep a highlighted placeholder."""
     content_dir = content_dir.resolve()
     repo_root = repo_root.resolve()
+    team = vit_front.load_team(repo_root, team_file)
+    student = team.member(member) if member else None
     ctx = ResultsContext.load(repo_root)
     ctx.data["_content_dir"] = str(content_dir)  # static tables (action_taken) live here
     refs = load_references(repo_root)
@@ -834,43 +836,53 @@ def build(
     dh.setup_styles(doc)
     r = Renderer(doc, ctx, registry, content_dir, repo_root)
 
-    # --- preliminary pages (lower-roman) --------------------------------
+    def count_fill(_text: str) -> None:
+        r.stats["to_be_filled"] += 1
+        r.stats["highlights"] += 1
+
+    # --- template pages without page numbers -------------------------------
     r.part = "front"
-    r.front_slot = "title"
-    r.title_page(front["title"])
-    for slot in ("bonafide", "declaration", "acknowledgement", "abstract"):
-        r.front_page(slot, front[slot])
+    writer = vit_front.FrontWriter(doc, repo_root, count_fill)
+    writer.cover_page(team)
+    writer.title_page(team)
+    writer.declaration(team, student)
+    writer.certificate(team, student)
+
+    # --- preliminary pages (lower-roman from the abstract) --------------------
+    roman_section = dh.new_section(doc)
+    r.suppress_break = True
+    r.front_page("abstract", front["abstract"])
+    r.front_slot = "acknowledgement"
+    r.front_heading("Acknowledgement", in_toc=False)
+    writer.acknowledgement(team, student)
     r.front_slot = "toc"
     r.index_page(
-        "TABLE OF CONTENTS",
-        'TOC \\o "1-3" \\h \\z \\u',
+        "Contents",
+        'TOC \\o "1-2" \\h \\z \\u',  # chapters and sections, as in the template sample
         "Right-click and choose Update Field (or press F9) to build the table of "
         "contents. Word refreshes it automatically when the document is opened.",
-        in_toc=False,
-    )
-    r.index_page(
-        "LIST OF FIGURES",
-        'TOC \\h \\z \\c "Figure"',
-        "Right-click and choose Update Field to build the list of figures.",
         in_toc=True,
     )
     r.index_page(
-        "LIST OF TABLES",
+        "List of Tables",
         'TOC \\h \\z \\c "Table"',
         "Right-click and choose Update Field to build the list of tables.",
+        in_toc=True,
+    )
+    r.index_page(
+        "List of Figures",
+        'TOC \\h \\z \\c "Figure"',
+        "Right-click and choose Update Field to build the list of figures.",
         in_toc=True,
     )
     r.front_page("abbreviations", front["abbreviations"])
     for slot in plan.auto_pages:
         r.front_page(slot, front[slot])
-    front_section = doc.sections[0]
-    dh.set_page_numbering(front_section, "lowerRoman", 1)
-    front_section.different_first_page_header_footer = True
+    dh.set_page_numbering(roman_section, "lowerRoman", 1)
 
     # --- main matter (arabic, restarting at 1) ------------------------------
     main_section = dh.new_section(doc)
     dh.set_page_numbering(main_section, "decimal", 1)
-    main_section.different_first_page_header_footer = False
     r.part = "main"
     r.suppress_break = True
     for _name, blocks in chapters:
@@ -881,14 +893,15 @@ def build(
         for _name, blocks in appendices:
             r.render(blocks)
 
-    dh.add_page_number_footer(doc.sections[0], blank_first_page=True)
-    dh.add_page_number_footer(doc.sections[1], blank_first_page=False)
+    dh.clear_footer(doc.sections[0])  # cover, title, declaration and certificate
+    dh.add_page_number_footer(doc.sections[1], italic=True)  # i, ii, ... as in the template
+    dh.add_page_number_footer(doc.sections[2])
     dh.enable_update_fields(doc)
     dh.set_document_properties(
         doc,
-        title=fm.REPORT_TITLE,
-        subject=f"{fm.SYSTEM_NAME} B.Tech final-year project report",
-        author="; ".join(name for name, _ in fm.STUDENTS),
+        title=team.title,
+        subject="MedBridge B.Tech project report (BCSE497J)",
+        author=student.label if student else "; ".join(m.label for m in team.members),
         keywords="MedBridge; CardioGuard; RAG; hallucination; answerability; hypertension",
         comments="Generated by report/build_report.py from report/content and results files.",
     )
@@ -984,6 +997,11 @@ def print_summary(result: BuildResult) -> None:
         )
 
 
+def member_out(out: Path, reg_no: str) -> Path:
+    """``MedBridge_Final_Report.docx`` -> ``MedBridge_Final_Report_23BAI1160.docx``."""
+    return out.with_name(f"{out.stem}_{reg_no}{out.suffix}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build the MedBridge final report (DOCX/PDF)")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="output .docx path")
@@ -1000,22 +1018,53 @@ def main(argv: list[str] | None = None) -> int:
         "--strict", action="store_true", help="exit 1 when unknown citation keys are used"
     )
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--team-file", type=Path, default=None, help="default: report/team.json")
+    who = parser.add_mutually_exclusive_group()
+    who.add_argument(
+        "--member",
+        metavar="REG_NO",
+        help="one student's copy (their name on the declaration, certificate and "
+        "acknowledgement), written next to --out with the register number appended",
+    )
+    who.add_argument(
+        "--all-members",
+        action="store_true",
+        help="the team copy plus one copy per student in report/team.json",
+    )
     args = parser.parse_args(argv)
     if not args.content_dir.is_dir():
         print(f"[report] content directory not found: {args.content_dir}", file=sys.stderr)
         return 2
-    result = build(
-        args.out,
-        args.content_dir,
-        pdf=args.pdf,
-        log_path=None if args.no_log else args.log,
-        quiet=args.quiet,
-    )
-    if args.strict and result.log["citation_keys_missing"]:
-        return 1
-    if args.pdf and result.pdf is None:
-        return 3
-    return 0
+    try:
+        team = vit_front.load_team(REPO_ROOT, args.team_file)
+        if args.member:
+            team.member(args.member)
+    except (OSError, ValueError, KeyError) as exc:
+        print(f"[report] team file problem: {exc}", file=sys.stderr)
+        return 2
+    jobs: list[tuple[Path, str | None]] = []
+    if args.member:
+        jobs.append((member_out(args.out, args.member), args.member))
+    else:
+        jobs.append((args.out, None))
+        if args.all_members:
+            jobs += [(member_out(args.out, m.reg_no), m.reg_no) for m in team.members]
+    code = 0
+    for i, (out, reg_no) in enumerate(jobs):
+        result = build(
+            out,
+            args.content_dir,
+            pdf=args.pdf,
+            log_path=None if args.no_log or i > 0 else args.log,
+            quiet=args.quiet,
+            member=reg_no,
+            team_file=args.team_file,
+        )
+        if args.strict and result.log["citation_keys_missing"]:
+            code = 1
+        if args.pdf and result.pdf is None:
+            code = code or 3
+    return code
 
 
 if __name__ == "__main__":

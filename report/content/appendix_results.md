@@ -1,4 +1,4 @@
-<!-- Included by appendices.md (Appendix A). All tables are generated from evaluation/results/
+<!-- Included by appendices.md (Appendix 1). All tables are generated from evaluation/results/
      (summary.json, calibration.json, runs/, judgments/) by report/lib/tables.py. Further
      generated views exist and can be added if the page budget allows: claim_profile,
      routing_per_class, category_tests, sensitivity_rates, judge_confusion,
@@ -20,7 +20,7 @@ The table lists the unadjusted and Holm-adjusted p-values of all 18 headline tes
 
 #### Degraded Turns, Failed Judgments and Provenance
 
-Three of the 2,390 test turns were degraded and excluded from the headline metrics: in C0, HB-0205 lost its generator call, and in V1 and V12 turn 1 of HB-0084 lost all of its Gate 2 votes. Re-runs with the failing stage's cache bypassed (the last in the retry run at `3f58b59`) stayed degraded, and including them changes no conclusion. The LLM judge failed on two non-medical C0 replies (HB-0207, HB-0213), so C0 is judged on {{study.per_condition.C0.llm.n_judged|int}} of {{study.per_condition.C0.n_valid|int}} valid turns. Study-time latencies (`evaluation/results/tables/latency.md`) came from four parallel workers on a shared GPU with memoised requests and are not user-facing.
+Three of the 2,390 test turns were degraded and excluded from the headline metrics: in C0, HB-0205 lost its generator call, and in V1 and V12 turn 1 of HB-0084 lost all of its Gate 2 votes. Re-runs with the failing stage's cache bypassed stayed degraded, and including them changes no conclusion. The LLM judge failed on two non-medical C0 replies (HB-0207, HB-0213), so C0 is judged on {{study.per_condition.C0.llm.n_judged|int}} of {{study.per_condition.C0.n_valid|int}} valid turns.
 
 [[table:judge_coverage|Provenance, judge coverage and failed judgments per condition]]
 

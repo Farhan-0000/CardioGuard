@@ -97,7 +97,8 @@ DEFAULT_CAPTIONS: dict[str, str] = {
     "routing_by_condition": "Routing accuracy and emergency handling by condition",
     "mcnemar": "Paired exact McNemar tests with Holm correction",
     "cochran_q": "Cochran's Q test across conditions C0 to C5",
-    "judge_agreement": "Agreement between the LLM judge and the NLI judge (Cohen's kappa)",
+    "judge_agreement": "Agreement between the two judges and between the AI annotator and each judge "
+    "(Cohen's kappa)",
     "calibration": "Thresholds calibrated on the dev split",
     "hallubench_composition": "Composition of MedBridge-HalluBench v1",
     "hallubench_actions": "Gold actions per turn in MedBridge-HalluBench v1",
@@ -1629,6 +1630,31 @@ def judge_agreement(ctx: ResultsContext) -> Table | None:
                         obs(v),
                     ]
                 )
+    ai = ctx.get("ai_annotation")
+    if isinstance(ai, dict):
+        for label, block, kappa in (
+            ("AI annotator vs LLM judge, 3 classes", ai.get("ai_vs_llm"), "kappa_3class"),
+            ("AI annotator vs NLI judge, 3 classes", ai.get("ai_vs_nli"), "kappa_3class"),
+        ):
+            if isinstance(block, dict) and block.get("n"):
+                rows.append(
+                    [
+                        label,
+                        integer(block.get("n")),
+                        interval(block.get(kappa)),
+                        obs(block.get(kappa)),
+                    ]
+                )
+        resp = ai.get("response_level")
+        if isinstance(resp, dict) and resp.get("n"):
+            rows.append(
+                [
+                    "AI annotator vs LLM judge, response level",
+                    integer(resp.get("n")),
+                    interval(resp.get("kappa")),
+                    obs(resp.get("kappa")),
+                ]
+            )
     conds = _study_conditions(ctx)
     paired = [
         f"{c} {integer(n)}" + (" (partial)" if status == "partial" else "")
@@ -1637,8 +1663,14 @@ def judge_agreement(ctx: ResultsContext) -> Table | None:
         if status != "none"
     ]
     extra = f"Paired responses (both judges): {', '.join(paired)}." if paired else ""
+    if isinstance(ai, dict):
+        extra += (
+            " AI annotator: Claude Opus 5.5, an AI model and not a human, on the "
+            f"{integer(ai.get('n_claims'))} claims of the annotation sample (C5 and C1; NLI labels "
+            "exist for C1 only); evaluation/results/ai_annotation_agreement.json."
+        )
     if not isinstance(human, dict):
-        extra += " No human annotation has been scored yet."
+        extra += " No human annotation has been scored."
     return _table(
         "judge_agreement",
         ["Level", "n", "Cohen's κ [95% CI]", "Observed agreement %"],

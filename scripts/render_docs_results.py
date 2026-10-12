@@ -36,6 +36,7 @@ Marker blocks it fills (HTML comments, invisible on GitHub):
       nli_coverage                     which conditions the NLI judge scored completely,
                                        partially or not at all on the reported split
       human:<status|human_human|A1_vs_llm|A2_vs_llm|A1_vs_nli|A2_vs_nli|consensus_vs_llm|...>
+      ai_annotation                    AI annotator (a model, not a human) against both judges
       split                            split / item / turn counts of the study
       models                           application and judge models of the study
       commits                          git commits recorded in the study's test-split run manifests
@@ -105,6 +106,7 @@ MANAGED_FILES: tuple[str, ...] = (
 P_SUMMARY = "evaluation/results/summary.json"
 P_CALIBRATION = "evaluation/results/calibration.json"
 P_HUMAN = "evaluation/results/human_agreement.json"
+P_AI_ANNOTATION = "evaluation/results/ai_annotation_agreement.json"
 P_JUDGE_MANIFESTS = "evaluation/results/judgments/manifest_judge_*.json"
 P_TABLES = "evaluation/results/tables/"
 P_ERRORS = "evaluation/results/error_analysis.md"
@@ -933,26 +935,42 @@ def annotation_sheet_text(ctx: Context) -> str | None:
     )
 
 
+def ai_annotation_sentence(ctx: Context) -> str:
+    """The AI annotator (a model, never reported as a human), or '' without results."""
+    ai = ctx.json(P_AI_ANNOTATION)
+    if not isinstance(ai, dict) or not ai.get("n_claims"):
+        return ""
+    llm, nli = as_dict(ai.get("ai_vs_llm")), as_dict(ai.get("ai_vs_nli"))
+    per = as_dict(ai.get("per_condition"))
+    shares = [
+        f"{c} {pct(dig(per, f'{c}.unsupported_claims_ai.rate'))}" for c in ("C5", "C1") if c in per
+    ]
+    parts = [f"LLM judge {kappa_text(llm.get('kappa_3class'))} (n = {llm.get('n')})"]
+    if nli.get("n"):
+        parts.append(f"NLI judge {kappa_text(nli.get('kappa_3class'))} (C1, n = {nli.get('n')})")
+    return (
+        f"AI annotator ({ai.get('annotator') or 'an AI model, not a human'}): labelled all "
+        f"{ai['n_claims']} claims of the sheet from blinded batches. Three-class agreement with the "
+        + "; ".join(parts)
+        + (f". Share of claims it rated unsupported: {', '.join(shares)}" if shares else "")
+        + f". {source(P_AI_ANNOTATION)}"
+    )
+
+
 def human_sentence(ctx: Context) -> str:
+    ai = ai_annotation_sentence(ctx)
+    ai = f" {ai}" if ai else ""
     human = ctx.json(P_HUMAN)
-    if not isinstance(human, dict):
+    if not isinstance(human, dict) or human.get("status") == "not_filled":
         sheet = annotation_sheet_text(ctx)
         if sheet:
             return (
-                f"Human annotation: {sheet}. Human–judge agreement is *pending* until the team "
-                f"fills the A1/A2 columns and runs `python -m evaluation.human_annotation --score` "
-                f"(writes `{P_HUMAN}`)."
+                f"Human annotation: {sheet}. No human labels were collected; "
+                f"`python -m evaluation.human_annotation --score` computes human agreement "
+                f"(`{P_HUMAN}`) if the A1/A2 columns are filled later.{ai}"
             )
-        return (
-            "Human annotation (50-item sheet): *pending* — "
-            f"`{P_HUMAN}` not generated yet (`python -m evaluation.human_annotation --score`)."
-        )
+        return f"Human annotation (50-item sheet): no human labels collected.{ai}"
     status = human.get("status", "unknown")
-    if status == "not_filled":
-        return (
-            "Human annotation (50-item sheet): *pending* — the sheet has not been labelled yet "
-            f"(`{P_HUMAN}` status `not_filled`)."
-        )
     parts = []
     for key in ("human_human", "A1_vs_llm", "A2_vs_llm", "consensus_vs_llm", "consensus_vs_nli"):
         block = human.get(key)
@@ -961,7 +979,7 @@ def human_sentence(ctx: Context) -> str:
                 f"{key.replace('_', ' ')} {kappa_text(block.get('kappa_3class'))} (n = {block['n']})"
             )
     joined = "; ".join(parts) if parts else "no agreement blocks"
-    return f"Human annotation (status `{status}`): {joined}. {source(P_HUMAN)}"
+    return f"Human annotation (status `{status}`): {joined}. {source(P_HUMAN)}{ai}"
 
 
 #: Figures that draw NLI-judge bars or panels next to the LLM judge.
@@ -2549,6 +2567,7 @@ SUMMARY_SPEC_KINDS: frozenset[str] = frozenset(
 KNOWN_SPEC_KINDS: frozenset[str] = SUMMARY_SPEC_KINDS | {
     "rabbits_before",
     "human",
+    "ai_annotation",
     "retrieval",
     "reranker",
     "model_selection",
@@ -2679,6 +2698,8 @@ def spec_value(ctx: Context, spec: str) -> str | None:
         return ", ".join(f"`{c}`" for c in commits) if commits else None
     if kind == "rabbits_before":
         return rabbits_before_text(ctx)
+    if kind == "ai_annotation":
+        return ai_annotation_sentence(ctx) or None
     if kind == "human" and len(parts) == 2:
         human = ctx.json(P_HUMAN)
         if not isinstance(human, dict):

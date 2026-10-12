@@ -20,6 +20,7 @@ CALIBRATION_PATH: Path = RESULTS_DIR / "calibration.json"
 SUMMARY_PATH: Path = RESULTS_DIR / "summary.json"
 ERROR_ANALYSIS_PATH: Path = RESULTS_DIR / "error_analysis.md"
 HUMAN_AGREEMENT_PATH: Path = RESULTS_DIR / "human_agreement.json"
+AI_AGREEMENT_PATH: Path = RESULTS_DIR / "ai_annotation_agreement.json"
 RETRIEVAL_RESULTS_DIR: Path = RESULTS_DIR / "retrieval"
 MODEL_SELECTION_DIR: Path = RESULTS_DIR / "model_selection"
 

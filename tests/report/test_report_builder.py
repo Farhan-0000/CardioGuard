@@ -4,7 +4,8 @@ Tests for the report builder (report/build_report.py + report/lib/**).
 A small report is built from a fixture content directory and a fixture repository
 root in ``tmp_path`` and read back with python-docx: headings and numbering,
 captions and SEQ fields, TOC / LoF / LoT fields, section page numbering,
-highlighted placeholders and pending markers, generated tables, IEEE references.
+highlighted placeholders and pending markers, generated tables, numbered APA references,
+the VIT BCSE497J template pages and the per-student copies.
 
 The hallucination-study tables are checked against a ``summary.json`` that is
 produced with the real ``evaluation/analyze.py`` functions from synthetic turn
@@ -244,6 +245,25 @@ def fixture_repo(tmp_path: Path) -> tuple[Path, Path]:
         json.dumps({"mode": "mock", "metrics": {"mode": "mock", "total_vignettes": 3}})
     )
     _write_png(root / "figs" / "arch.png")
+    (root / "report" / "templates").mkdir(parents=True)
+    shutil.copy(
+        REPORT_DIR / "templates" / "vit_chennai_logo.png",
+        root / "report" / "templates" / "vit_chennai_logo.png",
+    )
+    (root / "report" / "team.json").write_text(
+        json.dumps(
+            {
+                "title": "My Report Title",
+                "programme": "Computer Science and Engineering",
+                "month_year": "November, 2026",
+                "members": [
+                    {"name": "Asha Rao", "reg_no": "23BAI0001"},
+                    {"name": "Ravi Kumar", "reg_no": "23BAI0002"},
+                ],
+                "guide": {"name": "Dr. Guide Name", "designation": "Professor"},
+            }
+        )
+    )
 
     content = tmp_path / "content"
     content.mkdir()
@@ -299,19 +319,73 @@ def _xml(path: Path, member: str = "word/document.xml") -> str:
 def test_headings_numbered_and_chapter_labels(built):
     _, document, _ = built
     h1 = [p.text for p in _paras(document, "Heading 1")]
-    assert any(t.startswith("CHAPTER 1") and "INTRODUCTION" in t for t in h1)
-    assert any(t.startswith("CHAPTER 2") and "LITERATURE" in t for t in h1)
-    assert any(t.startswith("CHAPTER 3") and "METHODOLOGY" in t for t in h1)
-    assert any(t.startswith("CHAPTER 5") for t in h1)  # placeholder chapters 4 and 5
-    assert any(t.startswith("APPENDIX A") and "SCREENSHOTS" in t for t in h1)
+    assert any(t.startswith("Chapter 1") and t.endswith("Introduction") for t in h1)
+    assert any(t.startswith("Chapter 2") and "Literature" in t for t in h1)
+    assert any(t.startswith("Chapter 3") and "Methodology" in t for t in h1)
+    assert any(t.startswith("Chapter 5") for t in h1)  # placeholder chapters 4 and 5
+    assert any(t.startswith("Appendix 1") and "Screenshots" in t for t in h1)
     assert "REFERENCES" in h1
-    assert {"ABSTRACT", "LIST OF FIGURES", "LIST OF TABLES", "LIST OF ABBREVIATIONS"} <= set(h1)
+    lists = {"CONTENTS", "LIST OF TABLES", "LIST OF FIGURES", "LIST OF SYMBOLS AND ABBREVIATIONS"}
+    assert lists <= set(h1)
+    # template order: tables before figures
+    assert h1.index("LIST OF TABLES") < h1.index("LIST OF FIGURES")
     h2 = [p.text for p in _paras(document, "Heading 2")]
     h3 = [p.text for p in _paras(document, "Heading 3")]
-    assert "1.1 Background" in h2 and "1.2 Objectives" in h2 and "2.1 Prior work" in h2
-    assert "1.1.1 Burden" in h3
+    assert "1.1  BACKGROUND" in h2 and "1.2  OBJECTIVES" in h2 and "2.1  PRIOR WORK" in h2
+    assert "1.1.1  BURDEN" in h3
     front = [p.text for p in _paras(document, "Front Title")]
-    assert "BONAFIDE CERTIFICATE" in front and "TABLE OF CONTENTS" in front
+    assert front[:2] == ["ABSTRACT", "ACKNOWLEDGEMENT"]
+
+
+def test_template_pages_in_order_without_page_numbers(built):
+    result, document, _ = built
+    texts = [p.text for p in document.paragraphs]
+    first = {
+        name: next(i for i, t in enumerate(texts) if t == name)
+        for name in (
+            "A project report on",
+            "DECLARATION",
+            "CERTIFICATE",
+            "ABSTRACT",
+            "ACKNOWLEDGEMENT",
+        )
+    }
+    assert list(first) == sorted(first, key=first.get)  # cover, ..., acknowledgement
+    assert texts.count("MY REPORT TITLE") == 2  # cover and title page
+    assert texts.count("ASHA RAO (23BAI0001)") == 2 and texts.count("RAVI KUMAR (23BAI0002)") == 2
+    assert "Bachelor of Technology in Computer Science and Engineering" in texts
+    joined = "\n".join(texts)
+    # the team copy leaves the individual pages to each student
+    assert "submitted by [TO BE FILLED: your name (register number)]" in joined
+    assert "[TO BE FILLED: name of the student]" in joined
+    assert "[TO BE FILLED: name of the Head of the Department]" in joined
+    assert "under the supervision of Dr. Guide Name." in joined
+    assert len(document.inline_shapes) >= 4  # VIT logo on cover, title, declaration, certificate
+    cover_footer = document.sections[0].footer
+    assert not cover_footer.is_linked_to_previous
+    assert "PAGE" not in cover_footer._element.xml
+
+
+def test_member_copy_names_one_student(fixture_repo, tmp_path: Path):
+    root, content = fixture_repo
+    out = tmp_path / "m" / "r.docx"
+    build_report.build(out, content, repo_root=root, quiet=True, member="23bai0002")
+    joined = "\n".join(p.text for p in docx.Document(str(out)).paragraphs)
+    assert "submitted by Ravi Kumar (23BAI0002), for the award of the degree" in joined
+    assert "prepared and submitted by Ravi Kumar (23BAI0002) to Vellore Institute" in joined
+    assert "Asha Rao (23BAI0001), for the award" not in joined
+    assert "[TO BE FILLED: your name" not in joined
+    assert build_report.member_out(out, "23BAI0002").name == "r_23BAI0002.docx"
+    with pytest.raises(KeyError):
+        build_report.build(out, content, repo_root=root, quiet=True, member="99XYZ0000")
+
+
+def test_missing_team_file_falls_back_to_placeholders(tmp_path: Path):
+    from lib import vit_front
+
+    team = vit_front.load_team(tmp_path)
+    assert team.title.startswith("[TO BE FILLED") and team.members == []
+    assert team.programme.startswith("[TO BE FILLED")
 
 
 def test_captions_numbered_per_chapter_with_seq_fields(built):
@@ -321,7 +395,7 @@ def test_captions_numbered_per_chapter_with_seq_fields(built):
     assert "Figure 1.1: Architecture overview" in captions
     assert "Figure 1.2: A figure that does not exist yet" in captions
     assert "Figure 2.1: Second chapter figure" in captions
-    assert "Figure A.1: Welcome screen" in captions
+    assert "Figure A1.1: Welcome screen" in captions
     assert any(c.startswith("Algorithm 1.1: Dual gate routing") for c in captions)
     assert any(
         c.startswith("Table 2.1: Action taken on previous review comments") for c in captions
@@ -335,24 +409,28 @@ def test_captions_numbered_per_chapter_with_seq_fields(built):
 def test_index_fields_update_on_open_and_page_numbering(built):
     _, document, out = built
     xml = _xml(out)
-    assert 'TOC \\o "1-3" \\h \\z \\u' in xml
+    assert 'TOC \\o "1-2" \\h \\z \\u' in xml
     assert 'TOC \\h \\z \\c "Figure"' in xml
     assert 'TOC \\h \\z \\c "Table"' in xml
     assert 'w:updateFields w:val="true"' in _xml(out, "word/settings.xml")
-    assert len(document.sections) == 2
-    front, main = document.sections
+    # template pages (no number) | abstract onwards in roman numerals | chapters in arabic
+    assert len(document.sections) == 3
+    template, front, main = document.sections
     pg_front = front._sectPr.find(f"{W}pgNumType")
     pg_main = main._sectPr.find(f"{W}pgNumType")
     assert pg_front.get(f"{W}fmt") == "lowerRoman" and pg_front.get(f"{W}start") == "1"
     assert pg_main.get(f"{W}fmt") == "decimal" and pg_main.get(f"{W}start") == "1"
-    assert front.different_first_page_header_footer  # no number on the title page
-    for section in (front, main):
+    assert "PAGE" not in template.footer._element.xml
+    for section in (template, front, main):
         assert not section.footer.is_linked_to_previous
-        footer_xml = section.footer._element.xml
-        assert "PAGE" in footer_xml
+        # A4 with the template margins: left 3.81 cm, right, top and bottom 2.54 cm
         assert abs(section.page_width.inches - 8.27) < 0.01
-        assert abs(section.left_margin.inches - 1.5) < 0.01
-        assert abs(section.right_margin.inches - 1.0) < 0.01
+        assert abs(section.left_margin.cm - 3.81) < 0.01
+        assert abs(section.right_margin.cm - 2.54) < 0.01
+        assert abs(section.top_margin.cm - 2.54) < 0.01
+        assert abs(section.bottom_margin.cm - 2.54) < 0.01
+    for section in (front, main):
+        assert "PAGE" in section.footer._element.xml
 
 
 def test_highlights_placeholders_and_pending_markers(built):
@@ -368,7 +446,8 @@ def test_highlights_placeholders_and_pending_markers(built):
                 for para in cell.paragraphs:
                     highlighted += [r.text for r in para.runs if r.font.highlight_color is not None]
     joined = " | ".join(highlighted)
-    assert "[TO BE FILLED: university name]" in joined
+    assert "[TO BE FILLED: your name (register number)]" in joined  # team.json-driven pages
+    assert "[TO BE FILLED: guide's area of expertise]" in joined  # not set in the fixture
     assert "[TO BE FILLED: objective owner]" in joined
     assert "[FIGURE PENDING: figs/missing.png]" in joined
     assert "[TABLE PENDING: aq_benchmark]" in joined  # mock AQ report is not a result
@@ -378,8 +457,11 @@ def test_highlights_placeholders_and_pending_markers(built):
     log = result.log
     assert "no_such_key" in log["citation_keys_missing"]
     assert "aq" in log["results_skipped"]
-    assert log["front_matter_sources"]["title"] == "00_title.md"
-    assert log["front_matter_sources"]["declaration"] == "built-in default"
+    assert log["front_matter_sources"]["abstract"] == "04_abstract.md"
+    assert log["front_matter_sources"]["abbreviations"] == "built-in default"
+    # the old title and bonafide files are superseded by the template pages
+    assert any(s.startswith("00_title.md") for s in log["skipped_files"])
+    assert any(s.startswith("01_bonafide.md") for s in log["skipped_files"])
     assert "ch3_placeholder.md" in log["chapters"]
     assert any(name.startswith("abstract_results.md") for name in log["include_only_files"])
 
@@ -393,13 +475,14 @@ def test_inline_values_and_includes(built):
     assert "MY REPORT TITLE" in text
 
 
-def test_references_ieee_in_order_of_first_citation(built):
+def test_references_numbered_apa_in_order_of_first_citation(built):
     result, document, _ = built
     entries = [p.text for p in _paras(document, "Reference Entry")]
     assert len(entries) == 3  # lewis, ji, cormack (unknown key is not invented)
-    assert entries[0].startswith('[1]\tP. Lewis et al., "Retrieval-Augmented Generation')
-    assert entries[1].startswith("[2]\tZ. Ji et al.") and "doi: 10.1145/3571730" in entries[1]
-    assert entries[2].startswith("[3]\tG. V. Cormack, C. L. A. Clarke, and S. Buettcher")
+    assert entries[0].startswith("[1].\tLewis, P., Perez, E., Piktus, A.")
+    assert "et al. (2020). Retrieval-Augmented Generation" in entries[0]
+    assert entries[1].startswith("[2].\tJi, Z.") and "https://doi.org/10.1145/3571730" in entries[1]
+    assert entries[2].startswith("[3].\tCormack, G. V., Clarke, C. L. A., & Buettcher, S.")
     body = "\n".join(p.text for p in document.paragraphs)
     assert "generation [1] and a survey [1], [2]." in body
 
@@ -456,9 +539,10 @@ def test_numbered_lists_restart_and_styles(built):
     assert document.styles["Heading 3"].font.size.pt == 12
 
 
-def test_auto_action_taken_page_and_explicit_appendix_letters(fixture_repo, tmp_path: Path):
+def test_auto_action_taken_page_and_explicit_appendix_numbers(fixture_repo, tmp_path: Path):
     root, content = fixture_repo
-    # action_taken.md no longer referenced -> placed after the list of abbreviations
+    # action_taken.md no longer referenced -> placed after the list of abbreviations;
+    # an appendix lettered "C" in the content is printed as Appendix 3 (template: Arabic numbers)
     (content / "ch2_literature.md").write_text("# Chapter 2: Literature\n\nText.\n")
     (content / "appendix_a_screens.md").write_text(
         "#* Appendix C: Test Cases\n\n[[figure:figs/arch.png|Case figure]]\n"
@@ -468,10 +552,12 @@ def test_auto_action_taken_page_and_explicit_appendix_letters(fixture_repo, tmp_
     document = docx.Document(str(out))
     h1 = [p.text for p in _paras(document, "Heading 1")]
     assert "ACTION TAKEN ON PREVIOUS REVIEW COMMENTS" in h1
-    assert h1.index("LIST OF ABBREVIATIONS") < h1.index("ACTION TAKEN ON PREVIOUS REVIEW COMMENTS")
-    assert any(t.startswith("CHAPTER 2") and t.endswith("LITERATURE") for t in h1)
-    assert any(t.startswith("APPENDIX C") and t.endswith("TEST CASES") for t in h1)
-    assert "Figure C.1: Case figure" in [p.text for p in _paras(document, "Caption")]
+    assert h1.index("LIST OF SYMBOLS AND ABBREVIATIONS") < h1.index(
+        "ACTION TAKEN ON PREVIOUS REVIEW COMMENTS"
+    )
+    assert any(t.startswith("Chapter 2") and t.endswith("Literature") for t in h1)
+    assert any(t.startswith("Appendix 3") and t.endswith("Test Cases") for t in h1)
+    assert "Figure A3.1: Case figure" in [p.text for p in _paras(document, "Caption")]
     assert "auto" in result.log["front_matter_sources"]["action_taken"]
 
 
@@ -584,6 +670,49 @@ def test_every_reference_formats():
         text = refs.format_entry_text(entry)
         assert entry["title"].rstrip(".")[:30] in text
         assert str(entry["year"]) in text
+        apa = refs.format_entry_apa_text(entry)
+        assert entry["title"].rstrip(".")[:30] in apa
+        assert f"({entry['year']})." in apa  # APA: (Year). after the authors
+
+
+def test_apa_names_and_entries():
+    assert refs.format_person_apa("Daniel W. Jones") == "Jones, D. W."
+    assert refs.format_person_apa("Shi-Qi Yan") == "Yan, S.-Q."
+    assert refs.format_person_apa("World Health Organization") == "World Health Organization"
+    assert refs.format_person_apa("John P. Bufe, III") == "Bufe, J. P., III"
+    assert refs.format_authors_apa(["A B", "C D"]) == "B, A., & D, C."
+    assert refs.format_authors_apa(["A B", "C D", "E F"]) == "B, A., D, C., & F, E."
+    assert refs.format_authors_apa(["A B", "C D", "et al."]) == "B, A., D, C., et al."
+    many = [f"Given{i} Family{i}" for i in range(22)]
+    assert refs.format_authors_apa(many).endswith("Family18, G., ... Family21, G.")
+    article = {
+        "type": "article",
+        "authors": ["Ziwei Ji", "Nayeon Lee"],
+        "title": "Survey of Hallucination",
+        "venue": "ACM Computing Surveys",
+        "year": 2023,
+        "volume": "55",
+        "issue": "12",
+        "pages": "1-38",
+        "doi": "10.1145/3571730",
+    }
+    segs = refs.format_entry_apa(article)
+    assert "".join(s.text for s in segs) == (
+        "Ji, Z., & Lee, N. (2023). Survey of Hallucination. ACM Computing Surveys, 55(12), "
+        "1–38. https://doi.org/10.1145/3571730"
+    )
+    assert [s.text for s in segs if s.italic] == ["ACM Computing Surveys, 55"]
+    org = {
+        "type": "report",
+        "authors": ["World Health Organization"],
+        "title": "Global report",
+        "venue": "WHO, Geneva",
+        "year": 2023,
+        "url": "https://who.int/x",
+    }
+    assert refs.format_entry_apa_text(org) == (
+        "World Health Organization. (2023). Global report. WHO, Geneva. https://who.int/x"
+    )
 
 
 def test_results_context_resolution_and_filters():
@@ -616,8 +745,9 @@ def test_results_context_resolution_and_filters():
 
 
 def test_classify_content_files():
-    assert build_report.classify("00_title") == ("front", "title")
-    assert build_report.classify("01_bonafide") == ("front", "bonafide")
+    assert build_report.classify("00_title")[0] == "skip"  # the VIT template pages replace it
+    assert build_report.classify("01_bonafide")[0] == "skip"
+    assert build_report.classify("03_acknowledgement")[0] == "skip"
     assert build_report.classify("05_abbreviations") == ("front", "abbreviations")
     assert build_report.classify("abstract") == ("front", "abstract")
     assert build_report.classify("abstract_results")[0] == "include"
@@ -664,7 +794,7 @@ def test_included_chapter_file_is_rendered_once(tmp_path: Path, fixture_repo):
     build_report.build(out, content, repo_root=root, log_path=None, quiet=True)
     text = "\n".join(p.text for p in docx.Document(str(out)).paragraphs)
     assert text.count("Included once.") == 1
-    assert text.count("Study Results") == 1
+    assert text.count("STUDY RESULTS") == 1  # section headings are set in capitals
     assert text.count("Appendix body.") == 1
     # the parser itself still expands includes from a direct parse_markup call
     ctx = mk.ParseContext(content_dir=content)

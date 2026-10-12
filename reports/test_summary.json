@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-10-11T14:21:00+00:00",
+  "generated_at": "2026-10-12T07:59:05+00:00",
   "command": "pytest -q -p no:cacheprovider --junitxml=/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/reports/tests/junit.xml --cov=medbridge --cov=evaluation --cov-report=json:/Users/yahmad/Work/my-experiments/project farhan/PROJECT I/MedBridge/reports/tests/coverage.json --cov-report=term:skip-covered",
   "exit_code": 0,
-  "wall_time_s": 77.3,
+  "wall_time_s": 79.8,
   "python": "3.11.15",
   "platform": "Darwin arm64",
   "totals": {
-    "passed": 3474,
-    "collected": 3475,
+    "passed": 3480,
+    "collected": 3481,
     "skipped": 1
   },
   "suites": {
@@ -16,8 +16,8 @@
       "collected": 92
     },
     "evaluation": {
-      "passed": 276,
-      "collected": 276
+      "passed": 278,
+      "collected": 278
     },
     "integration": {
       "passed": 186,
@@ -28,8 +28,8 @@
       "collected": 228
     },
     "report": {
-      "passed": 70,
-      "collected": 71,
+      "passed": 74,
+      "collected": 75,
       "skipped": 1
     },
     "scripts": {
@@ -42,9 +42,9 @@
     }
   },
   "coverage": {
-    "overall_percent": 93.1,
-    "covered_lines": 13131,
-    "statements": 14101,
+    "overall_percent": 93.2,
+    "covered_lines": 13232,
+    "statements": 14203,
     "packages": {
       "medbridge/core": {
         "percent": 97.5,
@@ -92,9 +92,9 @@
         "statements": 220
       },
       "evaluation": {
-        "percent": 91.2,
-        "covered": 3856,
-        "statements": 4230
+        "percent": 91.3,
+        "covered": 3957,
+        "statements": 4332
       }
     }
   },

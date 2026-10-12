@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-11T14:21:28+00:00",
+  "generated_at": "2026-10-12T07:59:33+00:00",
   "slides": [
     {
       "index": 1,
@@ -168,13 +168,14 @@
       "sources": [
         "evaluation/datasets/hallubench_v1.json",
         "evaluation/results/summary.json",
+        "evaluation/results/ai_annotation_agreement.json",
         "medbridge/core/pipeline_types.py",
         "report/figures/evaluation_design.png"
       ],
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 2369
+      "notes_chars": 2418
     },
     {
       "index": 11,
@@ -328,12 +329,13 @@
       "pending": [],
       "sources": [
         "evaluation/results/summary.json",
+        "evaluation/results/ai_annotation_agreement.json",
         "reports/adversarial_live_report.json"
       ],
       "citations": [],
       "citations_missing": [],
       "images": {},
-      "notes_chars": 1839
+      "notes_chars": 2051
     }
   ],
   "slide_count": 19,
@@ -351,6 +353,7 @@
     "load": "reports/performance/load_test.json",
     "tests": "reports/test_summary.json",
     "calibration": "evaluation/results/calibration.json",
+    "ai_annotation": "evaluation/results/ai_annotation_agreement.json",
     "smoke": "reports/smoke_test_latest.json",
     "manifest": "data/corpus_manifest.json",
     "aq": "reports/medbridge_aq_benchmark_report.json",

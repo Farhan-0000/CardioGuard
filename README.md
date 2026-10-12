@@ -233,7 +233,7 @@ Cochran's Q across C0, C1, C2, C3, C4, C5: hallucination (llm) Q = 291.32, df = 
 
 Judge agreement (Cohen's κ, LLM judge vs NLI judge): κ = 0.17 [0.16, 0.19] three-class and κ = 0.36 [0.34, 0.38] binary over 8265 claims; κ = 0.68 [0.61, 0.75] on the response-level hallucination label over 790 responses, computed only on the responses both judges scored (C0, C1, C1G, C2 (partial subset)). Whether this agreement carries over to the shorter, template-heavy outputs of the gated conditions has not been measured.
 
-Human annotation: sheet exported (`evaluation/annotation/human_annotation_sheet.xlsx`): 50 HalluBench items, 96 blinded responses, 872 claim rows; 0 rows labelled by both annotators. Human–judge agreement is *pending* until the team fills the A1/A2 columns and runs `python -m evaluation.human_annotation --score` (writes `evaluation/results/human_agreement.json`).
+Human annotation: sheet exported (`evaluation/annotation/human_annotation_sheet.xlsx`): 50 HalluBench items, 96 blinded responses, 872 claim rows; 0 rows labelled by both annotators. No human labels were collected; `python -m evaluation.human_annotation --score` computes human agreement (`evaluation/results/human_agreement.json`) if the A1/A2 columns are filled later. AI annotator (Claude Opus 5.5 (claude-opus-5-5, Anthropic), an AI model used as a third annotator; not a human): labelled all 872 claims of the sheet from blinded batches. Three-class agreement with the LLM judge κ = 0.50 [0.45, 0.56] (n = 872); NLI judge κ = 0.17 [0.11, 0.22] (C1, n = 559). Share of claims it rated unsupported: C5 43.5%, C1 44.4%. Source: `evaluation/results/ai_annotation_agreement.json`.
 
 Degraded (excluded) turns: C0 1/239, C1 0/239, C1G 0/239, C2 0/239, C3 0/239, C4 0/239, C5 0/239, V1 1/239, V2 0/239, V12 1/239.
 
@@ -479,12 +479,12 @@ Source: `reports/performance/after_gemma3-4b.json`, `reports/performance/after_w
 
 ### Test suite
 
-- Current: 3474 passed, 0 failed, 1 skipped of 3475 collected, exit code 0 (run of 2026-10-11, `reports/test_summary.json`); line coverage 93.1% (`reports/tests/coverage.json`).
+- Current: 3480 passed, 0 failed, 1 skipped of 3481 collected, exit code 0 (run of 2026-10-12, `reports/test_summary.json`); line coverage 93.2% (`reports/tests/coverage.json`).
 - Received version (`fad6fea`): 5 failed, 480 passed, 12 warnings in 98.82s (0:01:38) (`reports/baseline/pytest_baseline.txt`).
 
 | Package | Line coverage |
 | --- | ---: |
-| evaluation | 91.2% |
+| evaluation | 91.3% |
 | medbridge | 92.0% |
 | medbridge/ai | 97.8% |
 | medbridge/api | 97.8% |
@@ -579,8 +579,9 @@ MedBridge/
 ├── data/                      corpus_manifest.json and README (documents are downloaded, not committed)
 ├── reports/                   measurement outputs: corpus stats, PII metrics, smoke test,
 │                              benchmarks, performance, figures/
-├── report/                    build_report.py and its sources: content/ (chapters), lib/,
-│                              diagrams/ (figure scripts), figures/, references/, paper/
+├── report/                    final report in the VIT BCSE497J template (one copy per student,
+│                              team.json, templates/), build_report.py and its sources:
+│                              content/ (chapters), lib/, diagrams/, figures/, references/, paper/
 ├── diagrams/                  original architecture drawings (Review 1–3)
 ├── docs/                      constitution, technical specification, architecture decision log,
 │                              module map, finalization plan, review checklist, demo script

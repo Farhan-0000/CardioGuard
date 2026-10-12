@@ -17,6 +17,14 @@ its evidence to:
 ``evaluation/results/human_agreement.json`` with human–human and human–judge
 Cohen's κ (3-class and binary). An unfilled sheet yields a ``not_filled``
 placeholder that the report shows as such.
+
+AI annotator (a separate, clearly labelled third annotator, never counted as human):
+``--import-ai labels_*.json`` merges label files written by an AI model from blinded
+batches (question, response, claims and evidence only; no condition, category, key or
+judge labels) into ``ai_annotation_labels.csv`` and ``ai_annotation_sheet.xlsx`` (a copy of
+the sheet with ``AI_label`` / ``AI_notes``). The human sheet is left untouched, so human
+annotators stay blind to these labels. ``--score-ai`` compares them with both judges and
+writes ``evaluation/results/ai_annotation_agreement.json``.
 """
 
 from __future__ import annotations
@@ -38,6 +46,7 @@ from evaluation.judges.nli_judge import load_thresholds
 from evaluation.manifest import utc_now
 from evaluation.outcomes import TurnOutcome, build_outcomes, exclude_degraded, filter_split
 from evaluation.paths import (
+    AI_AGREEMENT_PATH,
     ANNOTATION_DIR,
     CALIBRATION_PATH,
     HUMAN_AGREEMENT_PATH,
@@ -64,6 +73,13 @@ COLUMNS: tuple[str, ...] = (
     "A2_notes",
 )
 ANNOTATORS: tuple[str, ...] = ("A1", "A2")
+AI_LABELS_NAME = "ai_annotation_labels.csv"
+AI_SHEET_NAME = "ai_annotation_sheet"
+#: Who produced the AI labels. Reported verbatim: this is a model, not a human annotator.
+AI_ANNOTATOR = (
+    "Claude Opus 5.5 (claude-opus-5-5, Anthropic), an AI model used as a third annotator; "
+    "not a human"
+)
 EVIDENCE_CHARS = 1500
 
 INSTRUCTIONS: tuple[str, ...] = (
@@ -335,6 +351,158 @@ def score(sheet_path: Path, key_path: Path) -> dict[str, Any]:
     return result
 
 
+def import_ai_labels(sources: Sequence[Path], sheet_xlsx: Path, out_dir: Path) -> list[Path]:
+    """Merge AI label files into ``ai_annotation_labels.csv`` and ``ai_annotation_sheet.xlsx``.
+
+    Each source is a JSON list of ``{"row_id", "label", "note"}``. Every row of the sheet must
+    be labelled exactly once with a valid label.
+    """
+    import json
+
+    from openpyxl import load_workbook
+    from openpyxl.styles import Font, PatternFill
+
+    labels: dict[str, dict[str, str]] = {}
+    for src in sources:
+        for entry in json.loads(Path(src).read_text(encoding="utf-8")):
+            row_id = str(entry["row_id"])
+            label = _norm(entry.get("label"))
+            if label is None:
+                raise ValueError(f"{src}: invalid label for {row_id}: {entry.get('label')!r}")
+            if row_id in labels:
+                raise ValueError(f"{src}: {row_id} labelled twice")
+            labels[row_id] = {"label": label, "note": str(entry.get("note") or "").strip()}
+    rows = read_filled(sheet_xlsx)
+    ids = [str(r["row_id"]) for r in rows]
+    missing = [i for i in ids if i not in labels]
+    extra = sorted(set(labels) - set(ids))
+    if missing or extra:
+        raise ValueError(
+            f"AI labels do not match the sheet: {len(missing)} missing, {len(extra)} extra"
+        )
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = out_dir / AI_LABELS_NAME
+    with csv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["row_id", "ai_label", "ai_note", "annotator"])
+        for row_id in ids:
+            writer.writerow([row_id, labels[row_id]["label"], labels[row_id]["note"], AI_ANNOTATOR])
+
+    wb = load_workbook(sheet_xlsx)
+    ins = wb["Instructions"]
+    ins.insert_rows(1, amount=2)
+    ins.cell(
+        row=1,
+        column=1,
+        value=f"AI ANNOTATOR COPY: the AI_label column was filled by {AI_ANNOTATOR}.",
+    )
+    ins.cell(row=1, column=1).font = Font(bold=True, size=12, color="C00000")
+    sheet = wb["Claims"]
+    start_col = sheet.max_column + 1
+    for offset, name in enumerate(("AI_label", "AI_notes")):
+        cell = sheet.cell(row=1, column=start_col + offset, value=name)
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill("solid", fgColor="FCE4D6")
+    for r, row_id in enumerate(ids, start=2):
+        sheet.cell(row=r, column=start_col, value=labels[row_id]["label"])
+        sheet.cell(row=r, column=start_col + 1, value=labels[row_id]["note"])
+    sheet.column_dimensions[sheet.cell(row=1, column=start_col + 1).column_letter].width = 40
+    xlsx_path = out_dir / f"{AI_SHEET_NAME}.xlsx"
+    wb.save(xlsx_path)
+    return [csv_path, xlsx_path]
+
+
+def _bad(label: str | None) -> bool:
+    return label in ("UNSUPPORTED", "CONTRADICTED")
+
+
+def score_ai(ai_path: Path, key_path: Path) -> dict[str, Any]:
+    """AI annotator vs the LLM and NLI judges, claim- and response-level, per condition."""
+    with ai_path.open(encoding="utf-8") as fh:
+        ai = {r["row_id"]: _norm(r["ai_label"]) for r in csv.DictReader(fh)}
+    with key_path.open(encoding="utf-8") as fh:
+        keys = {k["row_id"]: k for k in csv.DictReader(fh)}
+    ai = {r: v for r, v in ai.items() if v and r in keys}
+    result: dict[str, Any] = {
+        "generated_at": utc_now(),
+        "annotator": AI_ANNOTATOR,
+        "labels_file": f"evaluation/annotation/{AI_LABELS_NAME}",
+        "n_claims": len(ai),
+        "label_counts": {lab: sum(1 for v in ai.values() if v == lab) for lab in CLAIM_LABELS},
+    }
+    for judge in ("llm", "nli"):
+        ids = [r for r in ai if _norm(keys[r].get(f"{judge}_label"))]
+        a = [ai[r] or "" for r in ids]
+        b = [_norm(keys[r][f"{judge}_label"]) or "" for r in ids]
+        block = _agreement(a, b)
+        if ids:
+            block["confusion_ai_rows_judge_cols"] = mx.confusion_matrix(a, b, list(CLAIM_LABELS))
+            block["conditions"] = sorted({keys[r]["condition"] for r in ids})
+        result[f"ai_vs_{judge}"] = block
+
+    responses: dict[tuple[str, str, str], list[str]] = defaultdict(list)
+    for r in ai:
+        k = keys[r]
+        responses[(k["condition"], k["item_id"], k["turn"])].append(r)
+    halluc = {
+        resp: {
+            "ai": int(any(_bad(ai[r]) for r in ids)),
+            "llm": int(any(_bad(_norm(keys[r]["llm_label"])) for r in ids)),
+        }
+        for resp, ids in responses.items()
+    }
+    per_condition: dict[str, Any] = {}
+    for cond in sorted({resp[0] for resp in responses}):
+        claim_ids = [r for r in ai if keys[r]["condition"] == cond]
+        resp = [v for k, v in halluc.items() if k[0] == cond]
+        per_condition[cond] = {
+            "n_claims": len(claim_ids),
+            "unsupported_claims_ai": mx.proportion(
+                sum(_bad(ai[r]) for r in claim_ids), len(claim_ids)
+            ).as_dict(),
+            "unsupported_claims_llm": mx.proportion(
+                sum(_bad(_norm(keys[r]["llm_label"])) for r in claim_ids), len(claim_ids)
+            ).as_dict(),
+            "n_responses": len(resp),
+            "hallucination_ai": mx.proportion(sum(v["ai"] for v in resp), len(resp)).as_dict(),
+            "hallucination_llm": mx.proportion(sum(v["llm"] for v in resp), len(resp)).as_dict(),
+        }
+    result["per_condition"] = per_condition
+    pairs = sorted(halluc)
+    result["response_level"] = {
+        "n": len(pairs),
+        "kappa": mx.cohen_kappa(
+            [str(halluc[p]["ai"]) for p in pairs],
+            [str(halluc[p]["llm"]) for p in pairs],
+            labels=["1", "0"],
+        ).as_dict(),
+        "raw_agreement": (
+            sum(halluc[p]["ai"] == halluc[p]["llm"] for p in pairs) / len(pairs) if pairs else None
+        ),
+    }
+    # paired C5 vs C1 on the sampled items where both answered with at least one claim
+    both = sorted(
+        (item, turn)
+        for (cond, item, turn) in responses
+        if cond == "C5" and ("C1", item, turn) in responses
+    )
+    paired: dict[str, Any] = {"n_pairs": len(both)}
+    for rater in ("ai", "llm"):
+        c5 = [halluc[("C5", i, t)][rater] for i, t in both]
+        c1 = [halluc[("C1", i, t)][rater] for i, t in both]
+        _a, b, c, _d = mx.paired_table(c5, c1)
+        paired[rater] = {
+            "p_c5": sum(c5) / len(c5) if c5 else None,
+            "p_c1": sum(c1) / len(c1) if c1 else None,
+            "b_c5_only": b,
+            "c_c1_only": c,
+            "pvalue": mx.mcnemar_exact(b, c).pvalue,
+        }
+    result["paired_c5_vs_c1"] = paired
+    return result
+
+
 def _evidence_lookup(runs: dict[str, list[dict[str, Any]]]) -> dict[str, dict[str, str]]:
     return {
         f"{c}|{r['item_id']}|{r['turn_index']}": {
@@ -350,6 +518,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--export", action="store_true")
     mode.add_argument("--score", action="store_true")
+    mode.add_argument(
+        "--import-ai",
+        nargs="+",
+        type=Path,
+        metavar="LABELS_JSON",
+        help="merge AI annotator label files (JSON lists of row_id/label/note)",
+    )
+    mode.add_argument(
+        "--score-ai", action="store_true", help="compare the AI annotator with both judges"
+    )
     parser.add_argument("--runs-dir", type=Path, default=RUNS_DIR)
     parser.add_argument("--judgments-dir", type=Path, default=JUDGMENTS_DIR)
     parser.add_argument("--calibration", type=Path, default=CALIBRATION_PATH)
@@ -382,6 +560,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             f"[human_annotation] {len(rows)} claims from {len({r['item_id'] for r in rows})} items"
         )
+        return 0
+    if args.import_ai:
+        sheet = args.sheet or args.out_dir / f"{SHEET_NAME}.xlsx"
+        for path in import_ai_labels(args.import_ai, sheet, args.out_dir):
+            print(f"[human_annotation] wrote {path}")
+        return 0
+    if args.score_ai:
+        output = AI_AGREEMENT_PATH if args.output == HUMAN_AGREEMENT_PATH else args.output
+        result = score_ai(args.out_dir / AI_LABELS_NAME, args.out_dir / KEY_NAME)
+        write_json(output, result)
+        print(f"[human_annotation] AI annotator: {result['n_claims']} claims → {output}")
         return 0
     sheet = args.sheet or args.out_dir / f"{SHEET_NAME}.xlsx"
     result = score(sheet, args.out_dir / KEY_NAME)

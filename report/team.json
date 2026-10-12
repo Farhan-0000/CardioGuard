@@ -1,0 +1,22 @@
+{
+  "_comment": "Front-matter details for the VIT Chennai BCSE497J report template (report/templates/BCSE497J_report_template.docx). Replace every [TO BE FILLED: ...] value; the builder highlights any that remain. Build one copy per student with: python report/build_report.py --all-members --pdf",
+  "title": "CardioGuard: An Evidence-Grounded Clinical Decision Support & Patient Consultation System for Hypertension and Cardiovascular Care",
+  "degree": "Bachelor of Technology",
+  "programme": "[TO BE FILLED: programme name with specialisation]",
+  "school": "School of Computer Science and Engineering",
+  "institute": "Vellore Institute of Technology, Chennai",
+  "place": "Chennai",
+  "month_year": "[TO BE FILLED: month, year of submission]",
+  "members": [
+    {"name": "Vijay Aravindh S.", "reg_no": "23BAI1160"},
+    {"name": "Mohammad Farhan Rashid", "reg_no": "23BAI1529"}
+  ],
+  "guide": {
+    "name": "Dr. Maheswari S.",
+    "designation": "[TO BE FILLED: guide's designation]",
+    "area": "[TO BE FILLED: guide's area of expertise]"
+  },
+  "hod": {
+    "name": "[TO BE FILLED: name of the Head of the Department]"
+  }
+}

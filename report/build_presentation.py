@@ -85,6 +85,7 @@ PENDING_LABELS: tuple[tuple[str, str], ...] = (
     ("load", "load test"),
     ("calibration", "dev-split calibration"),
     ("human_agreement", "human annotation"),
+    ("ai_annotation", "AI annotator (not a human)"),
 )
 #: Load-test request kinds that never call the LLM (fast-path and small-talk templates).
 FAST_KINDS = ("emergency", "small_talk")

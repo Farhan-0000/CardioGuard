@@ -2,8 +2,9 @@
 
 `report/build_report.py` generates the final project report
 (`report/MedBridge_Final_Report.docx`, and optionally a PDF) from the content files in
-`report/content/` and the real results files of the repository. The report is titled
-*CardioGuard*; the system is called MedBridge throughout.
+`report/content/` and the real results files of the repository, in the layout of the VIT
+Chennai BCSE497J project report template (`report/templates/BCSE497J_report_template.docx`).
+The report is titled *CardioGuard*; the system is called MedBridge throughout.
 
 Nothing in the report is typed in by hand if a script measured it. Inline values and data
 tables are read from `evaluation/results/` and `reports/` when the report is built. When a
@@ -17,10 +18,20 @@ results file does not exist yet, the report shows a yellow `[PENDING: ...]` or
 # macOS / Linux (from the repository root)
 .venv-mac/bin/python report/build_report.py          # DOCX only
 .venv-mac/bin/python report/build_report.py --pdf    # DOCX + PDF (needs LibreOffice)
+.venv-mac/bin/python report/build_report.py --all-members --pdf   # + one copy per student
 
 # Windows (PowerShell, from the repository root)
-.venv\Scripts\python report\build_report.py --pdf
+.venv\Scripts\python report\build_report.py --all-members --pdf
 ```
+
+The template asks **every student to submit their own copy**: the cover and title pages list
+the whole team, while the declaration, the certificate and the acknowledgement carry only that
+student's name. Fill in `report/team.json` once (programme, month and year, guide's
+designation and area, Head of the Department; names and register numbers are already there),
+then build with `--all-members`. You get the team copy `MedBridge_Final_Report.docx`, in which
+those three pages keep a highlighted placeholder for the name, and one copy per student,
+`MedBridge_Final_Report_<register number>.docx` (and `.pdf`). Any value in `team.json` still
+reading `[TO BE FILLED: ...]` is highlighted in the document.
 
 | Option | Meaning |
 |---|---|
@@ -30,9 +41,13 @@ results file does not exist yet, the report shows a yellow `[PENDING: ...]` or
 | `--log PATH` / `--no-log` | JSON build log (default `report/build/report_build_log.json`) |
 | `--strict` | exit code 1 if an unknown citation key is used |
 | `--quiet` | no console summary |
+| `--member REG_NO` | build only that student's copy (`..._REG_NO.docx`) |
+| `--all-members` | build the team copy and one copy per student in `report/team.json` |
+| `--team-file PATH` | another team file (default `report/team.json`) |
 
 Exit codes: 0 = success, 1 = unknown citation keys with `--strict`, 2 = content directory
-missing, 3 = `--pdf` requested but no PDF could be produced.
+missing or a problem with the team file (for example an unknown `--member`), 3 = `--pdf`
+requested but no PDF could be produced.
 
 Requirements: `python-docx` (pinned in `requirements.txt`). `Pillow` is optional: it caps very
 tall figures and comes installed with matplotlib. `PyMuPDF` reports the PDF page count.
@@ -43,25 +58,34 @@ the `PATH` or in the usual install folders.
 
 ## What gets built
 
-Assembly order:
+Assembly order, as the template prescribes:
 
-1. Preliminary pages, numbered i, ii, iii (no number is printed on the title page): title page,
-   bonafide certificate, declaration, acknowledgement, abstract, table of contents, list of
-   figures, list of tables, list of abbreviations, and the *Action Taken on Previous Review
-   Comments* page if no content file already places `action_taken.md` (see below).
-2. Chapters 1 to 5. Page numbering restarts at 1 with Chapter 1, and every chapter starts on
-   a new page.
-3. References in IEEE style, numbered in the order they are first cited.
-4. Appendices (Appendix A, B, ...), numbered A.1, Figure A.1, Table A.1.
+1. Template pages without a page number, written from `report/team.json` by
+   `report/lib/vit_front.py` with the template's own wording: cover page ("A project report
+   on"), title page, declaration by the candidate and the certificate (guide, two examiners,
+   Head of the Department, seal), with the VIT Chennai logo
+   (`report/templates/vit_chennai_logo.png`). The template's "Certificate by External Guide"
+   applies only to PAT-discontinued students and is not included.
+2. Preliminary pages numbered i, ii, iii (italic, bottom centre): abstract, acknowledgement
+   (the template text, worded without assuming the guide's pronouns), contents, list of
+   tables, list of figures and list of symbols and abbreviations.
+3. Chapters 1 to 5, the last being "Conclusion and Future Work". Page numbering restarts at 1
+   with Chapter 1, and every chapter starts on a new page.
+4. References: numbered `[n].` in the order of first citation, each entry in APA 7 style
+   (Author, A. A. (Year). Title. *Source*, *volume*(issue), pages. DOI), as in the template's
+   sample list. The IEEE paper keeps IEEE references.
+5. Appendices numbered Appendix 1, 2, ... (captions Figure A1.1, Table A1.1). The *Action
+   Taken on Previous Review Comments* page is Appendix 7.
 
-Formatting follows the institutional template. Pages are A4 with 1 inch margins and a
-1.5 inch left (binding) margin. Body text is Times New Roman 12 pt, 1.5 line spacing,
-justified. Headings are 16 pt (chapter titles, "CHAPTER n" plus the title), 14 pt (sections
-n.m) and 12 pt bold (subsections n.m.k). Captions read "Figure 3.2: ..." and
-"Table 4.1: ...". Tables have a shaded header row that repeats on every page and borders.
-Figures are scaled to the text width. Pseudocode goes in bordered boxes. Placeholders and
-pending markers have a yellow highlight. The certificate-style preliminary pages (bonafide,
-declaration, acknowledgement, abstract) use 1.15 line spacing so that each fits on one page.
+Formatting follows the template's page specifications: A4, margins 3.81 cm left and 2.54 cm
+right, top and bottom; Times New Roman 12 pt with 1.5 line spacing, justified, and a 0.5 inch
+first-line indent; chapter heading "Chapter n" (12 pt bold) above the chapter title (16 pt
+bold); section headings 14 pt and subsection headings 12 pt, both in capitals; captions 11 pt
+(the template's minimum is 10 pt); page numbers at the bottom centre. The contents and the
+lists list two heading levels and are single spaced, as the template allows. Tables have a
+shaded header row that repeats on every page. Placeholders and pending markers have a yellow
+highlight. The template limits the report to 60 to 100 pages in all; the current build has
+100, so keep additions short (the build log records the page count).
 
 ### Fields: table of contents, lists, captions, page numbers
 
@@ -90,8 +114,8 @@ The builder works out each file's role from its name:
 
 | Role | File name pattern (examples) |
 |---|---|
-| Title page | `00_title.md`, `front_title.md`, `title.md`. The page has no heading: its first paragraph is the title (16 pt bold), and every paragraph is centred. |
-| Bonafide / declaration / acknowledgement / abstract / abbreviations | `01_bonafide.md`, `02_declaration.md`, `03_acknowledgement.md`, `04_abstract.md`, `05_abbreviations.md`. Any `0N_` or `front_` prefix works, and so do the plain names. |
+| Abstract / list of symbols and abbreviations | `04_abstract.md`, `05_abbreviations.md`. Any `0N_` or `front_` prefix works, and so do the plain names. |
+| (superseded) title, bonafide, declaration, acknowledgement | files such as `00_title.md` are skipped: those pages come from the template and `report/team.json`. |
 | Chapter *n* | `ch1_introduction.md`, `chapter3_design.md`, ... Several files with the same number are joined in name order. |
 | Appendices | `appendices.md`, `appendix_a_screens.md`, ... |
 | Include-only | any other file, for example `abstract_results.md`, `ch4_study_results.md` or `action_taken.md`. These are only used through `[[include:...]]`. |
@@ -101,23 +125,23 @@ A front-matter or chapter slot with no file gets a built-in default
 structure is always complete. A file whose first line is `<!-- placeholder -->` is used
 only when no real file fills the same slot.
 
-`action_taken.md` is shown as its own preliminary page, after the list of abbreviations,
-**only** when no content file references it through `[[include:action_taken.md]]` or
-`[[table:action_taken]]`.
+`action_taken.md` is included at the end of `appendices.md` as Appendix 7. It would be shown
+as its own preliminary page, after the list of abbreviations, only if no content file
+referenced it through `[[include:action_taken.md]]` or `[[table:action_taken]]`.
 
 ### Markup
 
 | Markup | Result |
 |---|---|
-| `# Title` | chapter: "CHAPTER n" plus the title on a new page. In the appendices it becomes "APPENDIX X". A leading "Chapter 3:" is dropped. |
+| `# Title` | chapter: "Chapter n" plus the title on a new page. In the appendices it becomes "Appendix n". A leading "Chapter 3:" is dropped. |
 | `## Title` / `### Title` | numbered section n.m / subsection n.m.k |
-| `#* Title` (also `##*`) | unnumbered heading, used for front matter. In the appendices, `#* Appendix C: Test Cases` keeps the letter C. |
+| `#* Title` (also `##*`) | unnumbered heading, used for front matter. In the appendices, `#* Appendix 3: Test Cases` keeps the number 3 (a letter is converted: C becomes 3). |
 | `#### Title` | unnumbered minor heading |
 | `**bold**`, `*italic*`, `` `code` `` | inline styles. Long code paths are allowed to wrap. |
 | `- item`, `1. item` | bullet / numbered list. Indent by 2 spaces to nest. Every numbered list starts again at 1. |
 | `> text` | indented quotation |
 | `[text](https://...)` | hyperlink |
-| `[@key]`, `[@a; @b]` | IEEE citation such as `[3]` or `[1], [4]–[6]`. Keys must exist in `report/references/*.json`; an unknown key shows a highlighted `[CITATION NOT FOUND: key]` and is listed in the build log. |
+| `[@key]`, `[@a; @b]` | numbered citation such as `[3]` or `[1], [4]–[6]`. Keys must exist in `report/references/*.json`; an unknown key shows a highlighted `[CITATION NOT FOUND: key]` and is listed in the build log. |
 | `{{path}}`, `{{path\|filter}}` | value from a results file (see below). A missing value shows `[PENDING: path]`. |
 | `[TO BE FILLED: ...]` | yellow placeholder for the team. `[PENDING ...]`, `[TODO ...]` and `[TBD ...]` are highlighted too. |
 | `Table: Caption` followed by a pipe table | "Table c.n: Caption" above a formatted table. An alignment row such as `\|:--:\|--:\|` sets column alignment. |
@@ -230,7 +254,8 @@ hand.
 The tests build a small report from a fixture content directory in a temporary folder. They
 read it back with python-docx and check the headings and numbering, the captions and SEQ
 fields, the TOC/LoF/LoT fields and `updateFields`, the section page numbering, the
-highlights, the generated tables, the IEEE references and the citation order. The study
+highlights, the generated tables, the template pages, the per-student copies, the numbered
+APA references and the citation order. The study
 tables are checked against a `summary.json` built in the temporary folder from synthetic
 outcomes with the real `evaluation/analyze.py` functions. One slow test converts the
 fixture to PDF when LibreOffice is installed.
@@ -243,7 +268,9 @@ fixture to PDF when LibreOffice is installed.
 | `report/lib/content.py` | markup parser (blocks and inline tokens) |
 | `report/lib/results_context.py` | loads results files, path resolution, value filters |
 | `report/lib/tables.py` | `[[table:KEY]]` generators |
-| `report/lib/references.py` | IEEE formatting and citation numbering |
+| `report/lib/references.py` | APA (report) and IEEE (paper) formatting and citation numbering |
+| `report/lib/vit_front.py` | VIT template pages from `report/team.json` |
+| `report/team.json` | names, register numbers, guide, Head of the Department, programme, date |
 | `report/lib/docx_helpers.py` | styles, fields, footers, table formatting, lists |
-| `report/lib/frontmatter.py` | default preliminary pages and placeholder chapters |
+| `report/lib/frontmatter.py` | fallback abstract and abbreviations pages, placeholder chapters |
 | `report/lib/libreoffice.py` | headless LibreOffice PDF export with index refresh |

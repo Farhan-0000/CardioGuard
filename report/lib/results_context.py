@@ -36,6 +36,7 @@ corpus_orgs            issuing organisations of the corpus with joint labels ("A
 tests                  reports/test_summary.json (or JUnit XML in reports/tests/)
 calibration            evaluation/results/calibration.json
 human_agreement        evaluation/results/human_agreement.json
+ai_annotation          evaluation/results/ai_annotation_agreement.json (AI annotator, not human)
 smoke                  reports/smoke_test_latest.json
 hallubench             statistics computed from evaluation/datasets/hallubench_v1.json
 manifest               data/corpus_manifest.json
@@ -73,6 +74,7 @@ SINGLE_SOURCES: dict[str, str] = {
     "tests": "reports/test_summary.json",
     "calibration": "evaluation/results/calibration.json",
     "human_agreement": "evaluation/results/human_agreement.json",
+    "ai_annotation": "evaluation/results/ai_annotation_agreement.json",
     "smoke": "reports/smoke_test_latest.json",
     "manifest": "data/corpus_manifest.json",
 }

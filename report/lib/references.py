@@ -284,6 +284,176 @@ def format_entry_text(entry: dict[str, Any]) -> str:
 
 
 # ----------------------------------------------------------------------
+# APA 7 entries (the final report; the IEEE paper keeps format_entry)
+# ----------------------------------------------------------------------
+
+
+def format_person_apa(name: str) -> str:
+    """``Daniel W. Jones`` -> ``Jones, D. W.``; ``Shi-Qi Yan`` -> ``Yan, S.-Q.``."""
+    name = name.strip()
+    if is_organisation(name):
+        return name
+    suffix = ""
+    m = _SUFFIX.search(name)
+    if m:
+        suffix = (
+            ", " + m.group(1).rstrip(".") + ("." if m.group(1).startswith(("Jr", "Sr")) else "")
+        )
+        name = name[: m.start()].strip()
+    tokens = name.split()
+    surname = [tokens.pop()]
+    while tokens and tokens[-1].lower() in _PARTICLES:
+        surname.insert(0, tokens.pop())
+    initials = " ".join(_initial(t) for t in tokens)
+    return f"{' '.join(surname)}, {initials}{suffix}" if initials else " ".join(surname) + suffix
+
+
+def format_authors_apa(authors: list[str]) -> str:
+    """APA author list: ``A, & B``; up to 20 names, then the first 19, ``...`` and the last.
+
+    When the data itself stops with ``et al.`` (the full list was not recorded), the
+    recorded names are kept and followed by ``et al.``.
+    """
+    names = [a for a in (authors or []) if a and a.strip()]
+    et_al = any(a.strip().lower().rstrip(".") == "et al" for a in names)
+    names = [a for a in names if a.strip().lower().rstrip(".") != "et al"]
+    if not names:
+        return ""
+    formatted = [format_person_apa(a) for a in names]
+    if et_al:
+        return ", ".join(formatted) + ", et al."
+    if len(formatted) > 20:
+        return ", ".join(formatted[:19]) + ", ... " + formatted[-1]
+    if len(formatted) == 1:
+        return formatted[0]
+    if len(formatted) == 2:
+        return f"{formatted[0]}, & {formatted[1]}"
+    return ", ".join(formatted[:-1]) + ", & " + formatted[-1]
+
+
+def _doi_url(entry: dict[str, Any]) -> str:
+    doi = _clean(entry.get("doi"))
+    if not doi:
+        return ""
+    return doi if doi.lower().startswith("http") else f"https://doi.org/{doi}"
+
+
+def _link(entry: dict[str, Any], *, prefer_doi: bool = True) -> str:
+    """DOI as a URL when there is one, else the URL."""
+    doi = _doi_url(entry)
+    url = _clean(entry.get("url"))
+    return doi if (doi and prefer_doi) or not url else url
+
+
+def _sentence_end(text: str) -> str:
+    text = text.rstrip()
+    return text if text.endswith((".", "?", "!")) else text + "."
+
+
+def _apa_pages(pages: str) -> str:
+    return re.sub(r"\s*[-–]+\s*", "–", _clean(pages))
+
+
+def format_entry_apa(entry: dict[str, Any]) -> list[Segment]:
+    """One APA 7 reference (without the ``[n].`` label) as text segments."""
+    kind = str(entry.get("type", "misc")).lower()
+    authors = format_authors_apa(entry.get("authors") or [])
+    title = _clean(entry.get("title")).rstrip(".")
+    venue = _venue_short(entry.get("venue", ""))
+    year = _clean(entry.get("year")) or "n.d."
+    ident = _clean(entry.get("identifier"))
+    segs: list[Segment] = []
+
+    def add(text: str, italic: bool = False) -> None:
+        if text:
+            segs.append(Segment(text, italic))
+
+    italic_title = kind not in {"article", "inproceedings", "conference"} or not (
+        entry.get("volume") or entry.get("pages") or kind != "article"
+    )
+    if kind == "guideline" and (entry.get("volume") or entry.get("pages")):
+        italic_title = False  # a guideline published in a journal is cited as an article
+    if authors:
+        add(f"{_sentence_end(authors)} ({year}). ")
+    else:  # no author: the title moves to the author position
+        add(_sentence_end(title), italic_title)
+        add(f" ({year}). ")
+        title = ""
+
+    def add_title(suffix: str = ". ") -> None:
+        if title:
+            add(title, italic_title)
+            add(suffix)
+
+    if kind in {"article", "guideline"} and (entry.get("volume") or entry.get("pages")):
+        add_title()
+        volume = _clean(entry.get("volume"))
+        add(venue + (f", {volume}" if volume else ""), True)
+        if _clean(entry.get("issue")):
+            add(f"({_clean(entry['issue'])})")
+        if _clean(entry.get("pages")):
+            add(f", {_apa_pages(entry['pages'])}")
+        add(". ")
+        add(_link(entry))
+    elif kind in {"inproceedings", "conference"}:
+        add_title(". In ")
+        add(venue, True)
+        if _clean(entry.get("pages")):
+            add(f" (pp. {_apa_pages(entry['pages'])})")
+        add(". ")
+        add(_link(entry))
+    elif kind == "preprint":
+        arx = re.search(r"arXiv:\s*\d{4}\.\d{4,5}(v\d+)?", ident)
+        add(title, True)
+        add(f" ({arx.group(0).replace(' ', '')}). arXiv. " if arx else f". {_sentence_end(venue)} ")
+        add(_link(entry))
+    elif kind == "book":
+        add(_sentence_end(title), True)
+        add(" " + _sentence_end(venue) + " " if venue else " ")
+        add(_link(entry))
+    elif kind == "patent":
+        num = re.search(r"(US)\s*([\d,]+)\s*(B\d|A\d)", ident)
+        add(title, True)
+        add(f" (U.S. Patent No. {num.group(2)} {num.group(3)}). " if num else ". ")
+        add("U.S. Patent and Trademark Office. ")
+        add(_clean(entry.get("url")))
+    elif kind == "software":
+        add(title, True)
+        add(" [Computer software]. ")
+        add(_sentence_end(re.sub(r"\s*\(.*\)$", "", venue)) + " " if venue else "")
+        add(_clean(entry.get("url")))
+    elif kind == "web":
+        add(_sentence_end(title), True)
+        add(" " + _sentence_end(venue) + " " if venue else " ")
+        accessed = re.search(r"accessed\s+(\d{4})-(\d{2})-(\d{2})", ident, re.IGNORECASE)
+        if accessed:
+            month = (
+                "January February March April May June July August September October "
+                "November December"
+            ).split()[int(accessed.group(2)) - 1]
+            add(f"Retrieved {month} {int(accessed.group(3))}, {accessed.group(1)}, from ")
+        add(_clean(entry.get("url")))
+    else:  # report, guideline without volume, law, misc
+        add(_sentence_end(title), True)
+        add(" " + _sentence_end(venue) + " " if venue else " ")
+        add(_link(entry))
+    out: list[Segment] = []
+    for seg in segs:
+        text = re.sub(r"\s+", " ", seg.text)
+        if out and out[-1].text.endswith(" ") and text.startswith(" "):
+            text = text.lstrip()
+        out.append(Segment(text, seg.italic))
+    if out:
+        out[-1].text = out[-1].text.rstrip()
+        out[0].text = out[0].text.lstrip()
+    return [s for s in out if s.text]
+
+
+def format_entry_apa_text(entry: dict[str, Any]) -> str:
+    return "".join(s.text for s in format_entry_apa(entry))
+
+
+# ----------------------------------------------------------------------
 # Citation registry
 # ----------------------------------------------------------------------
 

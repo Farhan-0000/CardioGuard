@@ -301,7 +301,7 @@ conditions = [
 judges = [
   "**LLM judge** ({{deck.judges.llm_judge_model}}, another family than the app model) on every condition: atomic claims labelled SUPPORTED, UNSUPPORTED or CONTRADICTED",
   "**NLI judge** ({{deck.judges.nli_model}}) re-labels them; concluded early, it scored only {{deck.stats.nli_reported}} completely, so it serves agreement only",
-  "Cohen's κ {{study.judge_agreement.kappa_response_hallucination|cif:3}} on {{study.judge_agreement.n_responses|int}} paired responses; 50-item human sheet exported, labels pending",
+  "Cohen's κ {{study.judge_agreement.kappa_response_hallucination|cif:3}} on {{study.judge_agreement.n_responses|int}} paired responses; AI annotator (not human) vs LLM judge κ {{ai_annotation.ai_vs_llm.kappa_3class.kappa|f2}}",
 ]
 stats = [
   "Hallucination rate, unsafe-answer rate on unanswerable items, coverage, routing macro-F1, emergency recall",
@@ -544,7 +544,7 @@ kicker = "Limitations and future work"
 title = "Limitations and future work"
 limitations = [
   "**Synthetic benchmarks:** HalluBench and MedBridge-AQ were written by one author with AI help; no clinician has checked the gold labels",
-  "**One complete judge:** every rate and test uses the LLM judge; the NLI judge stopped early ({{deck.stats.nli_reported}} only) and the 50-item human sheet awaits labels",
+  "**One complete judge:** every rate and test uses the LLM judge; the NLI judge stopped early ({{deck.stats.nli_reported}} only); no human labels, and a stricter AI annotator agreed only moderately",
   "**Post-study changes not re-measured:** the brand fix, Gate 3 on by default and its withdrawal rule post-date the study and the AQ run; only RABBITS and adversarial were re-run",
   "**Gate 3 costs coverage:** shorter answers, some starting mid-thought or cut to one sentence",
   "**Small local models:** test routing {{study.per_condition.C5.routing_system.accuracy_strict|pct}} strict (C5), AQ routing {{aq.metrics.overall_routing_accuracy|perc}}; one Ollama serialises users",
@@ -553,7 +553,7 @@ limitations = [
 future = [
   "Rewrite unsupported sentences instead of deleting them",
   "Stronger NLI verifier, re-calibrated on a larger dev set; re-run the study on the final code",
-  "Clinician-validated benchmark and the completed human annotation",
+  "Clinician-validated benchmark and human annotation",
   "Conformal abstention thresholds (a V3 variant) [@angelopoulos2023conformal]",
   "Local NER for names; master-key rotation and token revocation",
   "Token-level streaming; Hindi, Tamil and Hinglish questions",
@@ -586,7 +586,7 @@ Thank the panel and the guide. Invite questions.
 
 Likely questions and where the answers are (docs/DEMO_SCRIPT.md has full answers):
 1. Why two gates instead of one? Different information at different times; the ablation (C3, C4) measures each gate, and the Evidence Gate carries most of the effect.
-2. How was hallucination measured? Atomic claims judged by an LLM judge from another model family on all {{deck.stats.n_conditions|int}} conditions; an NLI judge re-labelled the claims of the ungated conditions for agreement (response-level kappa {{study.judge_agreement.kappa_response_hallucination|cif:3}}); a 50-item human sheet is exported and still to be labelled.
+2. How was hallucination measured? Atomic claims judged by an LLM judge from another model family on all {{deck.stats.n_conditions|int}} conditions; an NLI judge re-labelled the claims of the ungated conditions for agreement (response-level kappa {{study.judge_agreement.kappa_response_hallucination|cif:3}}); no human labels were collected, but an AI annotator (not a human) labelled {{ai_annotation.n_claims|comma}} claims of a 50-item sample and agreed with the LLM judge at κ {{ai_annotation.ai_vs_llm.kappa_3class.kappa|f2}}, while finding answered C5 and C1 responses about equally often unsupported.
 3. Did the gate work? Yes by the rule fixed in advance: C5 significantly reduced hallucination and unsafe answers against vanilla RAG and prompt-only safety. Mostly by asking or declining, not by better-grounded answers.
 4. Why is Gate 3 on if it shortens answers? It significantly reduced hallucination against C5, and we applied the brief's rule for a winning variant (on by default behind a flag); the coverage cost is real and is our first piece of future work.
 5. Why local models? Privacy of health data and a free, reproducible setup sized for a 6 GB GPU (not yet run on the demo laptop).
